@@ -1,0 +1,8 @@
+progress/**/*.png filter=lfs diff=lfs merge=lfs -text
+progress/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+progress/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+progress/**/*.webp filter=lfs diff=lfs merge=lfs -text
+progress/**/*.wav filter=lfs diff=lfs merge=lfs -text
+progress/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
+progress/**/*.ogg filter=lfs diff=lfs merge=lfs -text
+progress/**/*.mp4 filter=lfs diff=lfs merge=lfs -text

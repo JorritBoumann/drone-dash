@@ -22,6 +22,8 @@ export class DeliverySystem {
   legPar = 0;
   legDistance = 0;
   private lastSiteId = -1;
+  private isClear?: (from: THREE.Vector3, to: THREE.Vector3) => boolean;
+  private readonly glideFrom = new THREE.Vector3();
 
   constructor(private readonly sites: Site[]) {}
 
@@ -31,6 +33,7 @@ export class DeliverySystem {
     this.combo = 0;
     this.deliveries = 0;
     this.lastSiteId = -1;
+    this.isClear = isClear;
     this.phase = 'pickup';
     // first objective: prefer one reachable in a straight, unobstructed line from the spawn
     this.target = this.choose(rng, from, 35, 110, ['depot', 'park', 'rooftop'], isClear ? (s) => isClear(from, s.pos) : undefined);
@@ -40,6 +43,23 @@ export class DeliverySystem {
 
   get multiplier(): number {
     return 1 + Math.min(this.combo, RUN.maxCombo) * 0.5;
+  }
+
+  /**
+   * Prefer pads you can see coming: the glide line from 25 m out (on the side you arrive from) down to the pad must
+   * clear solid buildings. Pads tucked behind a tower from the arrival side still exist, they are just not picked
+   * when a readable one is available.
+   */
+  private approachable(from: THREE.Vector3): ((s: Site) => boolean) | undefined {
+    const clear = this.isClear;
+    if (!clear) return undefined;
+    return (s) => {
+      const dx = from.x - s.pos.x, dz = from.z - s.pos.z;
+      const d = Math.hypot(dx, dz) || 1;
+      const back = Math.min(25, d);
+      this.glideFrom.set(s.pos.x + (dx / d) * back, Math.max(s.pos.y + 25, 40), s.pos.z + (dz / d) * back);
+      return clear(this.glideFrom, s.pos);
+    };
   }
 
   private choose(rng: Rng, from: THREE.Vector3, minD: number, maxD: number, kinds?: Site['kind'][], ok?: (s: Site) => boolean): Site {
@@ -76,7 +96,7 @@ export class DeliverySystem {
       const picked = t;
       this.pickupSite = t;
       const kinds: Site['kind'][] = rng() < 0.45 ? ['doorstep'] : ['rooftop', 'doorstep', 'park', 'depot'];
-      this.target = this.choose(rng, t.pos, minD, maxD, kinds);
+      this.target = this.choose(rng, t.pos, minD, maxD, kinds, this.approachable(t.pos));
       this.legDistance = Math.hypot(this.target.pos.x - t.pos.x, this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
       this.legPar = this.legDistance / 12.5 + 5;
       this.legTime = 0;
@@ -95,7 +115,7 @@ export class DeliverySystem {
     const site = t;
     this.phase = 'pickup';
     // next pickup reasonably close so the loop keeps moving
-    this.target = this.choose(rng, t.pos, 30, 95 + Math.min(this.deliveries * 5, 60));
+    this.target = this.choose(rng, t.pos, 30, 95 + Math.min(this.deliveries * 5, 60), undefined, this.approachable(t.pos));
     this.legTime = 0;
     return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo };
   }

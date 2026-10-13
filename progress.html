@@ -16,7 +16,165 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-13 12:53 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-13 19:02 UTC.</p>
+<section><h2>round 3</h2><details open><summary>critic.md</summary><pre># Drone Dash, round 3 critic report
+
+**Verdict:** Arrivals now feel clean and fair, and the round 2 gap is closed. The game is now too forgiving: a 40 m/s head-on crash costs nothing, so flying fast and badly is never punished.
+
+## Round 2 gap (final approach to street targets): closed
+
+Scripts are copied to `critic-scripts/` with no logic changes. The screenshot folder is relative, so it now writes to `round-3/critic/`.
+
+| Run | Seeds | Legs | Timeouts | Longest final | Sum final / sum cruise | Marker off screen | Slow and &gt;4 m above |
+|---|---|---|---|---|---|---|---|
+| A | 11, 22, 33, 44 (tuned) | 43 | 0 | 6.6 s | 137.4 / 221.4 s | 0.9% (18 of 2,112) | 3.5% |
+| B | 11, 22, 33, 44 (tuned) | 46 | 0 | 4.6 s | 144.3 / 222.7 s | 0.7% (16 of 2,215) | 1.5% |
+| C | 7, 58, 91, 130 (new) | 40 | 1 | 4.4 s | 119.5 / 219.4 s | 0.9% (16 of 1,841) | 0.3% |
+
+Round 2 numbers were 46% off screen, 16.6% on a roof, and sum final 180 s against sum cruise 113 s.
+
+- All criteria pass on the tuned seeds in both runs. Median final approach is 3.0 s on street and raised targets alike. There were 0 final-approach stalls.
+- On the new seeds, all criteria pass except one timeout. It is not a final-approach failure. On seed 91 the clock ran out 0.5 s into a final approach, after a 40.2 s cruise leg. The bot cruises at 40 m. In that leg it hit a tower taller than that, again and again (`critic/C-seed91-cruise-stuck.png`, 52 m altitude, 147 m out). A re-run with a trace (`cruise-trace.mjs`) gave the same result. This is mostly a bot limit. A player can see the tower and climb. It is listed below as a minor gap.
+- Flat-frame probe (`acceptance-probe.mjs`): 1,018 frames, **0 flat**. Mobile play: 14,657 frames, 0 flat.
+
+### How the arrival help feels
+
+- **It is fair and does not fly the game for you.** `assist-probe.mjs` runs 8 seeds with fixed time steps. I committed 10 m from the pad, 7 to 31 m above it. With descend held and no steering, the pad triggered on 6 of 8 legs, median 1.55 s. When I held descend and flew away, it triggered on **0 of 6** legs. The pull never overrides intent.
+- **It is generous.** Holding one button 10 m out finishes the drop. The two misses were rooftop pads where the drone sank past the roof edge. That is a fair miss.
+- **Camera:** on the final approach it looks down at about 55 to 63 degrees from 13 to 16 m away. The pad and street read clearly (`P-seed22-commit-A.png`). Pitch rate is p50 0.09 rad/s and p95 0.64 rad/s. I saw no sickness-level whipping. The camera came closer than 2.5 m to the drone in 8 of 4,254 samples (min 1.95 m).
+- **X-ray ring:** it reads as "the pad is here, behind this". It is small and faint behind bright walls (`A-seed22-stall-final-approach.png`, 16 m out, ring barely visible behind a sunlit wall). It did not confuse me.
+- **Ledge hop:** I saw no clipping through roofs in screenshots. Stalls are now rare: 4 street stalls in 6 minutes of long-run play.
+
+## Single biggest remaining gap: crashes have no cost
+
+The drop is no longer the hard part, so the only skill left is routing. Routing has no risk, because hitting a wall costs nothing. In the best arcade delivery flyers, the fun is threading a fast line past towers while a mistake is expensive. Here, full boost straight into a tower is the same as braking.
+
+Evidence (`critic-scripts/crash-stakes.mjs`): two deliveries to build a x2.0 combo with a parcel on board, then boost at 10 m into the first wall.
+- Seed 22: 39.8 m/s head-on into a tower (`critic/X-seed22-crash.png`). One second later: time left 30.8 to 29.5 s (normal drain only), combo still 2, score 1,123 unchanged, parcel still carried.
+- Seed 58 (12.6 to 1.2 m/s) and seed 130 (15.6 to 0.4 m/s): same result. Nothing lost.
+- Mobile play: a chain of 3 bumps from 40.8 to 19.5 m/s, then a delivery 2 s later that *added* time (`critic/m07-bump.png`). Desktop play logs about 4 bumps per minute.
+- Combo only resets on a slow delivery, so crashing is in practice the fastest way to brake.
+
+**Acceptance test:** start the dev server and run `node progress/round-3/critic-scripts/crash-stakes.mjs` (seeds 22, 58, 130) unchanged.
+1. On every seed, a hit that drops speed by more than 8 m/s must cost something visible and lasting within 1 s. That means at least one of: the combo drops, more than 2 s comes off the clock beyond normal drain, or score is lost. The HUD must show what was lost.
+2. Light scrapes must stay free. In `play-desktop.mjs`, bumps that drop speed by less than 6 m/s must change none of these values.
+3. No regression: `arrival-metrics.mjs` still passes on seeds 11, 22, 33, 44 and 7, 58, 91, 130 with final-approach criteria as above.
+
+The builder chooses the cost (parcel damage, combo break, time). It must be readable, not a silent number.
+
+## Other gaps (ranked)
+
+1. **Run start still faces away from the first target** (round 2 gap 1, not fixed). At takeoff the marker is pinned at the bottom-right edge, 67 m away. The title copy is still fading over gameplay (`critic/d02-takeoff.png`).
+2. **Landing is close to automatic.** Descend held from 10 m finishes 75% of drops in about 1.5 s. Options: a smaller pull radius, or more points for a manual, centred drop, to reward precision.
+3. **Towers taller than cruise height trap a straight-line flyer.** Seed 91 cost a 40 s leg and the run (`C-seed91-cruise-stuck.png`). Seed 44 had a 22.8 s cruise. At 52 m the camera looks steeply down, so the tower face fills the view and it is not obvious that you should climb.
+4. **The nav marker still covers the objective pill** (round 2 gap 5, not fixed). "Juniper" is hidden (`critic/m03-flight.png`).
+5. **At boost the camera trails 13 to 15 m** (p50 13.1 m against 7 to 10 m at cruise). The drone gets small. In 14% of cruise samples it sits in the top 30% of the frame, near the HUD pill (`critic/d08-stuck-near-drop.png`, 30 m/s). The file name is from the script. The drone is not stuck.
+
+## Performance
+
+- Desktop 1280x720, bloom on, 120 Hz: two 3-minute runs (`long-run.mjs`), about 43,000 frames. **Median 8.30 ms, p95 9.80 ms, p99 10.3 ms.** **Max 18.1 ms, 0 frames over 20 ms.** p95 is up 1 ms from round 2 (8.8 ms). There is still large headroom.
+- Mobile emulation (iPhone 13 held sideways, touch, post off, 9-pixel probe on): 6,902 frames, median 8.30 ms, p95 9.60 ms, 5 frames over 20 ms, one 492 ms start or compile hitch.
+- First load (production build): 0.71 MB (JS 686 KB, CSS 15 KB, HTML 6 KB). lil-gui (31 KB) loads only with `?debug`. Budget 15 MB: pass.
+- About 80 to 86 draw calls and 298k triangles.
+- The clock now produces pressure: a crude bot run lasts about 3 minutes and 9 deliveries.
+
+## Screenshots (progress/round-3/critic/)
+
+- Arrival help: P-seed11-commit-A/H, P-seed22-commit-A/H, P-seed33-commit-A/H (the title overlay in the seed 33 shots is a test artifact from starting through the test hook)
+- Stall and cruise: A-seed22-stall-final-approach (long run), C-seed91-cruise-stuck
+- Crashes: X-seed22-crash, X-seed58-crash, X-seed130-crash
+- Long run end: L-seed22-end, L-seed58-end
+- Desktop flow: d01-title to d09-game-over
+- Mobile (iPhone 13 held sideways, touch): m01-title to m09-restart
+
+Scripts (progress/round-3/critic-scripts/): arrival-metrics.mjs, acceptance-probe.mjs (copied, unchanged logic), assist-probe.mjs, cruise-trace.mjs, long-run.mjs, cam-distance.mjs, crash-stakes.mjs, play-desktop.mjs, play-mobile.mjs.
+</pre></details><details><summary>builder.md</summary><pre># Round 3 builder note: final approach to street-level targets
+
+## Causes found
+I traced the critic's autopilot sample by sample. I also read the colliders around each slow target.
+
+1. **The camera never looked down at the pad.** The chase camera keeps a shallow pitch. Take a pad 20 m below and 10 m ahead. It sits about 60 degrees below the horizon. The vertical FOV is only 60 degrees, so the pad leaves the frame. Only a special case for "far and high" existed.
+2. **Parapets pinned the drone on roofs.** Every flat roof has a 0.7 m parapet that is solid. A drone that lands on a roof and flies toward the edge hits the parapet with its contact normal mostly horizontal. It bounces back. Holding descend pulls it back down, so it stays inside the parapet ring. This was the main roof stall (seed 44 pharmacy: the pad is 1.6 m past the parapet of a 6.6 m building).
+3. **The drone arrived over the pad while still high.** It drops at 10 m/s, and the bot starts its descent 25 m out. It then reaches the pad at 20 to 30 m altitude, hovers, drifts and wobbles, and often settles on the next roof. Boost speed bled off at 35% of the normal drag, so arrivals after a boost overshot by 10 to 20 m.
+4. **Tree colliders started too low.** Each one is a box that starts at the lowest point of the canopy. The round canopy is an ellipsoid, so the lower corners of the box were invisible. At street level they wedged the drone between a facade and a tree (seed 22 Records: 4 stalls).
+5. **Some pads were hidden behind a tower.** From the arrival side, a tower stood in the way. One example is seed 44 Deli on Copper &amp; 4th, beside a 70 m tower. Coming from the far side, a straight approach runs into the tower wall. This is the critic's original seed-44 screenshot.
+6. The trigger radius and the landing tolerance were not the problem. I did not change them.
+
+## Changes (and why)
+- **Approach camera** (`CameraRig.ts`, `CAMERA.approach*`). The effect starts when the target is within 45 m and more than 2 m below. It is fully on at 18 m. The camera rises up to 4.5 m and pulls in 18%. It pitches down until the pad sits in the lower part of the frame. The pitch is capped so the drone stays in frame. Only the pitch changes, so the heading still follows the drone. The effect blends in over about 0.4 s.
+- **Through-roof ground ring** (`ObjectiveMarker.ts`). This is an additive ring with no depth test, drawn at the pad. You can see where the pad is through roofs and towers from 6 to 90 m. It uses a basic material and no `pow()`. The round-2 beam and wall clamps are untouched.
+- **Ledge hop** (`Drone.ts`, `FLIGHT.hop*`). Some obstacles are low: their top is less than 2.2 m above the skids, with nothing taller behind. If you fly into one, the drone skims up over it instead of bouncing. This covers parapets, roof units and fountain rims. Collision still applies. The hop only adds lift.
+- **Faster drop, crisper stop** (`FLIGHT.descendSpeed` 16, `sinkBrakeResponse` 7). Climb stays at 10 m/s. Getting down to a street drop now feels snappy. When you release descend, the drop stops fast, so you do not sink past a roof edge.
+- **Dive airbrake.** Within 28 m of the pad, when you descend, leftover boost speed bleeds at the normal rate. So you do not sail past the pad.
+- **Drop guide** (`FLIGHT.guide*`). The guide works within 11 m of the pad. You must be descending, or hovering less than 6 m above the pad. The drone then eases toward the pad centre at up to 6 m/s. Pulling back weakens the pull, and climbing or boosting cancels it.
+- **Tree colliders fit the canopy** (`CityGenerator.ts`). The canopy box now starts where the ellipsoid is as wide as the box (2.2 x scale instead of 1.6 x scale). A thin trunk collider was added. Pines are unchanged.
+- **Pad placement** (`DeliverySystem.ts`). When possible, the game picks a next target that you can glide to. The test line runs from 25 m out on the arrival side to the pad, and must clear solid buildings. This uses the same `isClear` test the first pickup already used. When nothing else fits, hidden pads still appear.
+
+## Files changed
+- src/systems/CameraRig.ts
+- src/entities/ObjectiveMarker.ts (ring only, bloom clamps intact)
+- src/entities/Drone.ts
+- src/game/config.ts
+- src/game/Game.ts (gives the active pad to the drone, clears it at game over)
+- src/systems/DeliverySystem.ts
+- src/world/CityGenerator.ts
+- src/systems/DebugTools.ts (descendSpeed slider)
+
+Debug hooks and diagnostics fields are unchanged.
+
+## Acceptance numbers
+The original `arrival-metrics.mjs` saves stall screenshots into `progress/round-2/critic/`, and I must not edit round 2. So I ran a copy in which only the `OUT` path differs (a scratch folder). I checked the logic with a `diff` against the original. Default seeds 11, 22, 33, 44, default URL, bloom on.
+
+| run | legs / timeouts | longest final | sum final vs sum cruise | marker off screen | slow and &gt;4 m above |
+|---|---|---|---|---|---|
+| round 2 (critic) | 28 / 1 | 32.4 s | 180.0 vs 112.9 | 46.1% | 16.6% |
+| final A | 46 / 0 | 6.5 s | 148.3 vs 222.8 | 0.6% | 1.8% |
+| final B | 41 / 0 | 6.8 s | 136.0 vs 203.3 | 0.7% | 4.4% |
+
+- Stalls in the final approach: 0 in both final runs (round 2: 24).
+- Run-to-run variance is real. Two runs before the last two tweaks (crisper stop, guide range 8 to 11 m) each had one 18 to 20 s leg. Slow-and-high has ranged from 1.5% to 5.2% across builds, and was 1.8% and 4.4% on the final build. It comes from 1 to 2 s spells resting on a neighbouring roof or tree top before the hop or guide frees the drone.
+- `acceptance-probe.mjs` (unmodified): 1,025 frames, 0 flat.
+- `npm run build`: passes (JS 686 KB).
+- Frame time (`play-desktop.mjs` copy, 1280x720, bloom on, 120 Hz): median 8.30 ms. p95 was 9.2 to 9.9 ms across runs, with 0 frames over 20 ms.
+  - This p95 is higher than the critic's 8.8 ms. I ran an A/B with the new camera, guide and ring disabled, and it gave the same p95 (9.7 ms). So the difference is machine load (other sessions and dev servers were running), not this change.
+  - The runs are also about 20k frames long now, against 8k in round 2, because the bot makes more deliveries.
+
+## Screenshots (progress/round-3/)
+- approach-20m.png: the camera rises and frames the beam at 41 m.
+- approach-9m.png: street level, the pad framed beside the facade.
+- xray-ring-through-tower.png: from an intermediate build. The ring shows the pad through a tower. That target type is now avoided from that side.
+</pre></details><div class="grid"><figure><a href="progress/round-3/critic/A-seed22-stall-final-approach.png"><img loading="lazy" src="progress/round-3/critic/A-seed22-stall-final-approach.png" alt="A-seed22-stall-final-approach.png"></a><figcaption>A-seed22-stall-final-approach.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/C-seed91-cruise-stuck.png"><img loading="lazy" src="progress/round-3/critic/C-seed91-cruise-stuck.png" alt="C-seed91-cruise-stuck.png"></a><figcaption>C-seed91-cruise-stuck.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/L-seed22-end.png"><img loading="lazy" src="progress/round-3/critic/L-seed22-end.png" alt="L-seed22-end.png"></a><figcaption>L-seed22-end.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/L-seed58-end.png"><img loading="lazy" src="progress/round-3/critic/L-seed58-end.png" alt="L-seed58-end.png"></a><figcaption>L-seed58-end.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/P-seed11-commit-A.png"><img loading="lazy" src="progress/round-3/critic/P-seed11-commit-A.png" alt="P-seed11-commit-A.png"></a><figcaption>P-seed11-commit-A.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/P-seed11-commit-H.png"><img loading="lazy" src="progress/round-3/critic/P-seed11-commit-H.png" alt="P-seed11-commit-H.png"></a><figcaption>P-seed11-commit-H.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/P-seed22-commit-A.png"><img loading="lazy" src="progress/round-3/critic/P-seed22-commit-A.png" alt="P-seed22-commit-A.png"></a><figcaption>P-seed22-commit-A.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/P-seed22-commit-H.png"><img loading="lazy" src="progress/round-3/critic/P-seed22-commit-H.png" alt="P-seed22-commit-H.png"></a><figcaption>P-seed22-commit-H.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/P-seed33-commit-A.png"><img loading="lazy" src="progress/round-3/critic/P-seed33-commit-A.png" alt="P-seed33-commit-A.png"></a><figcaption>P-seed33-commit-A.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/P-seed33-commit-H.png"><img loading="lazy" src="progress/round-3/critic/P-seed33-commit-H.png" alt="P-seed33-commit-H.png"></a><figcaption>P-seed33-commit-H.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/X-seed130-crash.png"><img loading="lazy" src="progress/round-3/critic/X-seed130-crash.png" alt="X-seed130-crash.png"></a><figcaption>X-seed130-crash.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/X-seed22-crash.png"><img loading="lazy" src="progress/round-3/critic/X-seed22-crash.png" alt="X-seed22-crash.png"></a><figcaption>X-seed22-crash.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/X-seed58-crash.png"><img loading="lazy" src="progress/round-3/critic/X-seed58-crash.png" alt="X-seed58-crash.png"></a><figcaption>X-seed58-crash.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d01-title.png"><img loading="lazy" src="progress/round-3/critic/d01-title.png" alt="d01-title.png"></a><figcaption>d01-title.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d02-takeoff.png"><img loading="lazy" src="progress/round-3/critic/d02-takeoff.png" alt="d02-takeoff.png"></a><figcaption>d02-takeoff.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d03-flying.png"><img loading="lazy" src="progress/round-3/critic/d03-flying.png" alt="d03-flying.png"></a><figcaption>d03-flying.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d04-near-pickup.png"><img loading="lazy" src="progress/round-3/critic/d04-near-pickup.png" alt="d04-near-pickup.png"></a><figcaption>d04-near-pickup.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d05-parcel-picked.png"><img loading="lazy" src="progress/round-3/critic/d05-parcel-picked.png" alt="d05-parcel-picked.png"></a><figcaption>d05-parcel-picked.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d06-carrying-enroute.png"><img loading="lazy" src="progress/round-3/critic/d06-carrying-enroute.png" alt="d06-carrying-enroute.png"></a><figcaption>d06-carrying-enroute.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d07-delivery.png"><img loading="lazy" src="progress/round-3/critic/d07-delivery.png" alt="d07-delivery.png"></a><figcaption>d07-delivery.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d08-stuck-near-drop.png"><img loading="lazy" src="progress/round-3/critic/d08-stuck-near-drop.png" alt="d08-stuck-near-drop.png"></a><figcaption>d08-stuck-near-drop.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d08b-after-bump.png"><img loading="lazy" src="progress/round-3/critic/d08b-after-bump.png" alt="d08b-after-bump.png"></a><figcaption>d08b-after-bump.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/d09-game-over.png"><img loading="lazy" src="progress/round-3/critic/d09-game-over.png" alt="d09-game-over.png"></a><figcaption>d09-game-over.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m01-title.png"><img loading="lazy" src="progress/round-3/critic/m01-title.png" alt="m01-title.png"></a><figcaption>m01-title.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m02-takeoff-250ms.png"><img loading="lazy" src="progress/round-3/critic/m02-takeoff-250ms.png" alt="m02-takeoff-250ms.png"></a><figcaption>m02-takeoff-250ms.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m03-flight.png"><img loading="lazy" src="progress/round-3/critic/m03-flight.png" alt="m03-flight.png"></a><figcaption>m03-flight.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m04-picked-up.png"><img loading="lazy" src="progress/round-3/critic/m04-picked-up.png" alt="m04-picked-up.png"></a><figcaption>m04-picked-up.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m05-carrying-near-drop.png"><img loading="lazy" src="progress/round-3/critic/m05-carrying-near-drop.png" alt="m05-carrying-near-drop.png"></a><figcaption>m05-carrying-near-drop.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m06-delivery.png"><img loading="lazy" src="progress/round-3/critic/m06-delivery.png" alt="m06-delivery.png"></a><figcaption>m06-delivery.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m07-bump.png"><img loading="lazy" src="progress/round-3/critic/m07-bump.png" alt="m07-bump.png"></a><figcaption>m07-bump.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m08-game-over.png"><img loading="lazy" src="progress/round-3/critic/m08-game-over.png" alt="m08-game-over.png"></a><figcaption>m08-game-over.png</figcaption></figure>
+<figure><a href="progress/round-3/critic/m09-restart.png"><img loading="lazy" src="progress/round-3/critic/m09-restart.png" alt="m09-restart.png"></a><figcaption>m09-restart.png</figcaption></figure></div></section>
 <section><h2>round 2</h2><details open><summary>critic.md</summary><pre># Drone Dash, round 2 critic report
 
 **Verdict:** The blank bloom render is fixed and the game now flies cleanly on desktop and mobile. The weakest part is now the last 30 m of every street-level leg: the drone settles on a roof, the target is out of view, and the clock runs out.

@@ -273,6 +273,7 @@ export class Game {
     this.hud.showOver(score, this.best, this.delivery.deliveries, this.topCombo, newBest && score > 0);
     this.hud.showScreen('over');
     this.marker.hide();
+    this.drone.hasGuide = false;
     this.cameraRig.setOrbitAngle(this.drone.yaw + Math.PI / 2);
   }
 
@@ -291,6 +292,8 @@ export class Game {
     const kind = this.delivery.phase === 'pickup' ? 'pickup' : 'drop';
     const t = this.delivery.target;
     this.marker.set(kind, t.pos, t.radius);
+    this.drone.guide.copy(t.pos);
+    this.drone.hasGuide = true;
     this.hud.setObjective(kind, t.name);
   }
 

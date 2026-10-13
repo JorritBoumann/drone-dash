@@ -18,6 +18,7 @@ export class DebugTools {
       f.add(FLIGHT, 'turnRate', 0.5, 5, 0.05);
       f.add(FLIGHT, 'lateralGrip', 0.2, 10, 0.1);
       f.add(FLIGHT, 'climbSpeed', 2, 25, 0.5);
+      f.add(FLIGHT, 'descendSpeed', 2, 30, 0.5);
       f.add(FLIGHT, 'bankAngle', 0, 1.2, 0.01);
       f.add(FLIGHT, 'pitchAngle', 0, 1, 0.01);
       const c = gui.addFolder('Camera');

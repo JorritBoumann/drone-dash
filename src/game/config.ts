@@ -8,7 +8,9 @@ export const FLIGHT = {
   turnResponse: 7, // how fast yaw rate reaches its target
   lateralGrip: 2.6, // how quickly sideways drift bleeds off (gives momentum feel)
   climbSpeed: 10, // m/s vertical target speed
+  descendSpeed: 16, // m/s target sink speed when descending
   climbResponse: 4.5,
+  sinkBrakeResponse: 7, // how fast a descent is arrested when descend is released
   hoverBob: 0.12, // m amplitude of idle bob
   maxAltitude: 105,
   radius: 0.95, // collision sphere
@@ -19,6 +21,14 @@ export const FLIGHT = {
   boostDrain: 0.38, // per second
   boostRegen: 0.16, // per second
   boostRegenDelay: 0.9, // s
+  hopHeight: 2.2, // m: ledges lower than this above the skids are skimmed over when flying into them
+  hopSpeed: 6, // m/s upward while skimming a ledge
+  hopTime: 0.3, // s
+  guideBrakeRange: 28, // m: diving toward the pad inside this range bleeds leftover boost speed at the normal rate
+  guideRange: 11, // m: drop guide eases the drone toward the pad centre inside this horizontal distance
+  guideSpeed: 6, // m/s max guided drift
+  guidePull: 3, // 1/s how firmly the guide steers
+  guideLowHeight: 6, // m: below this height above the pad the guide also helps while hovering
 };
 
 export const CAMERA = {
@@ -34,6 +44,11 @@ export const CAMERA = {
   maxDistance: 8,
   maxHeight: 9,
   heightPerAlt: 0.12,
+  // final approach: when the target is close and below, the camera rises, pulls in and pitches down to frame the pad
+  approachStart: 45, // m horizontal distance where the framing starts to blend in
+  approachFull: 18, // m where it is fully on
+  approachRise: 4.5, // m extra camera height
+  approachPullIn: 0.18, // fraction of follow distance removed
 };
 
 export const RUN = {

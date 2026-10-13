@@ -57,6 +57,11 @@ export class Drone {
   private bumpFlash = 0;
   private bumpAmp = 0;
   private cargoSnap = 0;
+  /** Active objective pad; the drop guide eases the drone over it on the way down. */
+  readonly guide = new THREE.Vector3();
+  hasGuide = false;
+  private guiding = false;
+  private hop = 0; // s left of a ledge hop (lifts the drone over parapets and roof clutter it is pushing into)
   private readonly prevVel = new THREE.Vector3();
   private readonly tmp = new THREE.Vector3();
   private readonly tmp2 = new THREE.Vector3();
@@ -270,6 +275,8 @@ export class Drone {
     this.carrying = false;
     this.cargo.visible = false;
     this.pitch = this.roll = 0;
+    this.hop = 0;
+    this.hasGuide = false;
     this.group.rotation.set(0, yaw, 0);
     this.tilt.rotation.set(0, 0, 0);
   }
@@ -312,8 +319,11 @@ export class Drone {
     const thrust = this.boosting ? F.boostThrust : F.thrust;
     const top = this.boosting ? F.boostSpeed : F.maxSpeed;
     // over the current top speed (e.g. just after a boost) speed bleeds off gently instead of collapsing
+    // ...except when dropping toward a nearby pad: then leftover boost speed airbrakes so the drone does not sail past it
     const hSpeed = Math.hypot(this.velocity.x, this.velocity.z);
-    const drag = (thrust / top) * (hSpeed > top + 0.5 ? 0.35 : 1);
+    const p0 = this.group.position;
+    const diving = this.hasGuide && intent.lift < 0 && p0.y - this.guide.y > 2 && Math.hypot(this.guide.x - p0.x, this.guide.z - p0.z) < F.guideBrakeRange;
+    const drag = (thrust / top) * (hSpeed > top + 0.5 && !diving ? 0.35 : 1);
     const v = this.velocity;
     this.prevVel.copy(v);
     v.x += this.forward.x * thrustIn * thrust * dt;
@@ -335,9 +345,37 @@ export class Drone {
     v.x += this.forward.x * latLen * Math.sign(fwdComp || 1);
     v.z += this.forward.z * latLen * Math.sign(fwdComp || 1);
 
+    // Drop guide: once the player commits to a pad (descending, or hovering low beside it) the beacon
+    // eases the drone over its centre so the last few metres are a clean drop instead of a hunt.
+    this.guiding = false;
+    if (this.hasGuide && intent.lift <= 0 && !this.boosting) {
+      const gx = this.guide.x - this.group.position.x;
+      const gz = this.guide.z - this.group.position.z;
+      const gd = Math.hypot(gx, gz);
+      const above = this.group.position.y - this.guide.y;
+      const committed = intent.lift < 0 || above < F.guideLowHeight;
+      if (committed && above > 0.5 && gd < F.guideRange) {
+        const w = THREE.MathUtils.smoothstep(F.guideRange - gd, 0, 2.5);
+        const want = Math.min(gd * 1.6, F.guideSpeed);
+        const wx = gd > 1e-3 ? (gx / gd) * want : 0;
+        const wz = gd > 1e-3 ? (gz / gd) * want : 0;
+        const kk = (1 - Math.exp(-F.guidePull * dt)) * w * (1 - Math.max(0, -intent.thrust) * 0.7);
+        v.x += (wx - v.x) * kk;
+        v.z += (wz - v.z) * kk;
+        this.guiding = w > 0.2;
+      }
+    }
+
     // Vertical: target climb rate, auto-hover when released
-    const targetVy = intent.lift * F.climbSpeed;
-    v.y += (targetVy - v.y) * (1 - Math.exp(-F.climbResponse * dt));
+    // dropping is quicker than climbing: getting down to a street-level drop should feel snappy
+    let targetVy = intent.lift * (intent.lift < 0 ? F.descendSpeed : F.climbSpeed);
+    if (this.hop > 0) {
+      this.hop = Math.max(0, this.hop - dt);
+      targetVy = Math.max(targetVy, F.hopSpeed);
+    }
+    // arresting a fast drop is crisper than starting one, so releasing descend does not sink you past a roof edge
+    const vResp = v.y < 0 && targetVy > v.y ? F.sinkBrakeResponse : F.climbResponse;
+    v.y += (targetVy - v.y) * (1 - Math.exp(-vResp * dt));
 
     // Sub-stepped integration so fast boosts never tunnel through thin walls
     const p = this.group.position;
@@ -349,7 +387,13 @@ export class Drone {
       const depth = world.resolveSphere(p, F.radius, this.normal);
       if (depth > 0) {
         const vn = v.dot(this.normal);
-        if (vn < 0) {
+        if (vn < 0 && (intent.thrust > 0.2 || this.guiding) && this.isLowLedge(world, p)) {
+          // Pushing into a low ledge (parapet, roof unit, fountain rim): skim over it instead of
+          // bouncing off and getting pinned on the roof. Collision still holds; we only add lift.
+          v.addScaledVector(this.normal, -vn);
+          v.y = Math.max(v.y, F.hopSpeed * 0.6);
+          this.hop = F.hopTime;
+        } else if (vn < 0) {
           const impact = -vn;
           v.addScaledVector(this.normal, -(1 + F.bounce) * vn);
           if (impact > 2.5 && this.normal.y < 0.7) {
@@ -394,6 +438,24 @@ export class Drone {
 
     this.speed = Math.hypot(v.x, v.z);
     this.animate(dt, intent);
+  }
+
+  /**
+   * True when the obstacle just contacted (along this.normal) is a low step: its top sits less than
+   * FLIGHT.hopHeight above the bottom of the drone and nothing taller stands behind it.
+   */
+  private isLowLedge(world: CollisionWorld, p: THREE.Vector3): boolean {
+    const n = this.normal;
+    if (n.y > 0.7 || n.y < -0.2) return false;
+    const hl = Math.hypot(n.x, n.z);
+    if (hl < 1e-3) return false;
+    const r = FLIGHT.radius;
+    const px = p.x - (n.x / hl) * (r + 0.2);
+    const pz = p.z - (n.z / hl) * (r + 0.2);
+    const bottom = p.y - r;
+    const top = world.surfaceBelow(px, bottom + FLIGHT.hopHeight, pz);
+    if (top <= bottom - 0.05) return false;
+    return world.surfaceBelow(px, 1e4, pz) <= top + 0.01;
   }
 
   /** Visual-only: tilt, rotors, lights, cargo swing. */

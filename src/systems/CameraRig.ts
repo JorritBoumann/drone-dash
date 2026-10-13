@@ -15,12 +15,14 @@ export class CameraRig {
   private time = 0;
   private fov: number = CAMERA.fov;
   private orbit = 0;
+  private approach = 0; // 0..1, smoothed: how much the final-approach framing applies
   private lift = 0; // extra height when the view is blocked, so the camera rises over walls instead of crowding the drone
 
   constructor(private readonly camera: THREE.PerspectiveCamera) {}
 
   snapTo(drone: Drone): void {
     this.yaw = drone.yaw;
+    this.approach = 0;
     this.computeIdeal(drone, 0);
     this.camera.position.copy(this.ideal);
     this.lookSmoothed.copy(this.look);
@@ -34,11 +36,13 @@ export class CameraRig {
   private computeIdeal(drone: Drone, speedFactor: number, alt = 0, target: THREE.Vector3 | null = null): void {
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     const p = drone.group.position;
-    // never further than CAMERA.maxDistance so the drone stays readable at speed
-    const dist = Math.min(CAMERA.maxDistance, CAMERA.distance + speedFactor * 1.0 + (drone.boosting ? 0.8 : 0));
+    const ap = target ? this.approach : 0;
+    // never further than CAMERA.maxDistance so the drone stays readable at speed;
+    // on the final approach the camera pulls in a little and rises to look down over roof edges
+    const dist = Math.min(CAMERA.maxDistance, CAMERA.distance + speedFactor * 1.0 + (drone.boosting ? 0.8 : 0)) * (1 - CAMERA.approachPullIn * ap);
     const vy = THREE.MathUtils.clamp(drone.velocity.y / FLIGHT.climbSpeed, -1, 1);
     // higher up -> camera rises and pitches down so the city stays in frame
-    const height = Math.min(CAMERA.maxHeight, CAMERA.height + CAMERA.heightPerAlt * alt);
+    const height = Math.min(CAMERA.maxHeight, CAMERA.height + CAMERA.heightPerAlt * alt) + CAMERA.approachRise * ap;
     this.ideal.set(p.x - fx * dist, p.y + height - vy * 0.9 + this.lift, p.z - fz * dist);
     let lookY = p.y + 0.7 + vy * 0.8 - Math.min(5, alt * 0.06);
     if (target) {
@@ -46,7 +50,32 @@ export class CameraRig {
       const hd = Math.hypot(target.x - p.x, target.z - p.z);
       if (below > 4 && hd > 20) lookY -= Math.min(6, below * 0.12);
     }
+    const lookH = dist + CAMERA.lookAhead;
+    if (target && ap > 0.001) {
+      // Pitch down until the pad sits in the lower part of the frame, but never so far that the drone
+      // leaves the top of it. Only pitch changes; the heading still follows the drone.
+      const c = this.ideal;
+      const half = THREE.MathUtils.degToRad(this.fov) / 2;
+      const basePitch = Math.atan2(c.y - lookY, lookH);
+      const pitchT = Math.atan2(c.y - (target.y + 1.2), Math.max(0.5, Math.hypot(target.x - c.x, target.z - c.z)));
+      const pitchD = Math.atan2(c.y - p.y, dist);
+      let want = Math.max(basePitch, pitchT - half * 0.3);
+      want = Math.min(want, pitchD + half * 0.72, 1.4);
+      const pitch = basePitch + Math.max(0, want - basePitch) * ap;
+      lookY = c.y - Math.tan(pitch) * lookH;
+    }
     this.look.set(p.x + fx * CAMERA.lookAhead, lookY, p.z + fz * CAMERA.lookAhead);
+  }
+
+  /** 0..1 weight of the final-approach framing: the target is close and below the drone. */
+  private approachWeight(drone: Drone, target: THREE.Vector3 | null): number {
+    if (!target) return 0;
+    const p = drone.group.position;
+    const hd = Math.hypot(target.x - p.x, target.z - p.z);
+    const below = p.y - target.y;
+    const near = THREE.MathUtils.smoothstep(CAMERA.approachStart - hd, 0, CAMERA.approachStart - CAMERA.approachFull);
+    const low = THREE.MathUtils.smoothstep(below, 2, 6);
+    return near * low;
   }
 
   update(dt: number, drone: Drone, world: CollisionWorld, alt = 0, target: THREE.Vector3 | null = null): void {
@@ -57,6 +86,8 @@ export class CameraRig {
     this.yaw += dy * (1 - Math.exp(-CAMERA.yawLag * dt));
 
     const speedFactor = Math.min(1, drone.speed / FLIGHT.maxSpeed);
+    const wantApproach = this.approachWeight(drone, target);
+    this.approach += (wantApproach - this.approach) * (1 - Math.exp(-(wantApproach > this.approach ? 2.5 : 1.5) * dt));
     this.computeIdeal(drone, speedFactor, alt, target);
     const cam = this.camera;
     const k = 1 - Math.exp(-CAMERA.followLag * dt);

@@ -34,6 +34,8 @@ export class ObjectiveMarker {
   private readonly chevronMat: THREE.MeshStandardMaterial;
   private pulse = 0;
   private readonly chevron: THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshBasicMaterial>;
+  // ground ring drawn without depth test so the pad reads through roofs and awnings on the way down
+  private readonly xray: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
 
   constructor() {
     this.group.name = 'objective-marker';
@@ -145,6 +147,14 @@ export class ObjectiveMarker {
     this.chevron = new THREE.Mesh(vGeo, new THREE.MeshBasicMaterial({ color: MARKER_COLORS.pickup, toneMapped: false }));
     this.chevron.renderOrder = 4;
     this.group.add(this.chevron);
+
+    this.xray = new THREE.Mesh(
+      new THREE.RingGeometry(0.78, 1, 48, 1).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: MARKER_COLORS.pickup, transparent: true, opacity: 0, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false }),
+    );
+    this.xray.position.y = 0.15;
+    this.xray.renderOrder = 7;
+    this.group.add(this.xray);
   }
 
   set(kind: MarkerKind, pos: THREE.Vector3, radius: number): void {
@@ -161,6 +171,8 @@ export class ObjectiveMarker {
     this.wall.scale.set(radius * 1.15, 2.6, radius * 1.15);
     this.beam.material.uniforms.uColor.value.copy(c);
     (this.flare.material as THREE.SpriteMaterial).color.copy(c);
+    this.xray.material.color.copy(c);
+    this.xray.scale.setScalar(radius * 1.15);
     this.parcel.visible = kind === 'pickup';
     this.chevrons.visible = kind === 'drop';
     this.pulse = 1;
@@ -186,6 +198,10 @@ export class ObjectiveMarker {
     this.flare.scale.set(fs, fs, 1);
     this.flare.position.y = 2.2 + Math.min(dist / 30, 6);
     (this.flare.material as THREE.SpriteMaterial).opacity = 0.55 * THREE.MathUtils.smoothstep(dist, 10, 50) + 0.15;
+
+    // x-ray ring: strongest between ~8 and 60 m, gone when far (beam does that job) and when on top of it
+    this.xray.material.opacity = 0.45 * THREE.MathUtils.smoothstep(dist, 6, 12) * (1 - THREE.MathUtils.smoothstep(dist, 60, 90)) * (0.85 + 0.15 * Math.sin(time * 5));
+    this.xray.visible = this.xray.material.opacity > 0.01;
 
     if (this.parcel.visible) {
       this.parcel.position.y = 1.9 + Math.sin(time * 2.2) * 0.25;

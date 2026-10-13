@@ -292,7 +292,12 @@ function addTree(trees: TreeSpec[], colliders: Box[], rng: Rng, x: number, y: nu
   const c = color(pick(rng, greens), 0.6, rng);
   trees.push({ x, y, z, scale, color: c, pine });
   const r = (pine ? 1.5 : 2.0) * scale;
-  colliders.push({ minX: x - r * 0.75, minY: y + 1.6 * scale, minZ: z - r * 0.75, maxX: x + r * 0.75, maxY: y + (pine ? 7.2 : 5.6) * scale, maxZ: z + r * 0.75, soft: true });
+  // Round canopies are ellipsoids (centre 3.4s, radii 2.0s x 1.8s): at 1.6s they are only a point, so the box starts
+  // where the canopy is as wide as the box (2.2s). Otherwise its invisible lower corners snag the drone under trees.
+  const minY = y + (pine ? 1.6 : 2.2) * scale;
+  colliders.push({ minX: x - r * 0.75, minY, minZ: z - r * 0.75, maxX: x + r * 0.75, maxY: y + (pine ? 7.2 : 5.6) * scale, maxZ: z + r * 0.75, soft: true });
+  // trunk
+  colliders.push({ minX: x - 0.2, minY: y, minZ: z - 0.2, maxX: x + 0.2, maxY: minY, maxZ: z + 0.2, soft: true });
 }
 
 type Edges = { edgeW: boolean; edgeE: boolean; edgeN: boolean; edgeS: boolean };

@@ -11,6 +11,7 @@ interface ThreeGameDiagnostics {
   timeLeft: number;
   deliveries: number;
   combo: number;
+  crashes?: number;
   objective: { phase: string; name: string; position: { x: number; y: number; z: number } | null } | null;
   fps: number;
   camera: { x: number; y: number; z: number; fov: number; aspect: number };

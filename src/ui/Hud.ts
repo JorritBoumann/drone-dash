@@ -18,6 +18,9 @@ export class Hud {
   private readonly timerValue = $('timer-value');
   private readonly timerRing = document.getElementById('timer-ring-fg') as unknown as SVGCircleElement;
   private readonly timeBonus = $('time-bonus');
+  private readonly timePenalty = $('time-penalty');
+  private comboBreakTimer = 0;
+  private timerHitTimer = 0;
   private readonly objective = $('objective');
   private readonly objectiveVerb = $('objective-verb');
   private readonly objectiveName = $('objective-name');
@@ -80,8 +83,10 @@ export class Hud {
   setCombo(mult: number, combo: number): void {
     if (combo === this.last.combo) return;
     this.last.combo = combo;
-    this.comboChip.hidden = combo <= 0;
-    this.comboValue.textContent = `x${mult.toFixed(1)}`;
+    if (combo > 0 || !this.comboChip.classList.contains('broken')) this.comboChip.hidden = combo <= 0;
+    if (combo > 0) this.comboChip.classList.remove('broken');
+    // a breaking chip keeps showing the multiplier that was lost
+    if (combo > 0 || !this.comboChip.classList.contains('broken')) this.comboValue.textContent = `x${mult.toFixed(1)}`;
   }
 
   setTime(seconds: number, startTime: number): void {
@@ -105,6 +110,35 @@ export class Hud {
     this.timeBonus.classList.remove('show');
     void this.timeBonus.offsetWidth;
     this.timeBonus.classList.add('show');
+  }
+
+  /** Crash cost by the clock: a coral "-3s" drops out of the timer and the timer shudders. */
+  flashTimePenalty(sec: number): void {
+    this.timePenalty.textContent = `-${sec}s`;
+    this.timePenalty.classList.remove('show');
+    this.timer.classList.remove('hit');
+    void this.timePenalty.offsetWidth;
+    this.timePenalty.classList.add('show');
+    this.timer.classList.add('hit');
+    window.clearTimeout(this.timerHitTimer);
+    // drop the class afterwards so the low-time pulse animation is not masked
+    this.timerHitTimer = window.setTimeout(() => this.timer.classList.remove('hit'), 650);
+  }
+
+  /** The combo chip cracks and falls away instead of silently disappearing. */
+  breakCombo(lost: number): void {
+    window.clearTimeout(this.comboBreakTimer);
+    this.comboValue.textContent = `x${lost.toFixed(1)}`;
+    this.comboChip.hidden = false;
+    this.comboChip.classList.remove('broken');
+    void this.comboChip.offsetWidth;
+    this.comboChip.classList.add('broken');
+    this.comboBreakTimer = window.setTimeout(() => {
+      if (this.comboChip.classList.contains('broken')) {
+        this.comboChip.classList.remove('broken');
+        this.comboChip.hidden = this.last.combo <= 0;
+      }
+    }, 900);
   }
 
   setObjective(kind: MarkerKind, name: string): void {
@@ -171,18 +205,20 @@ export class Hud {
     this.speedLines.style.opacity = String(q * 0.85);
   }
 
-  hitFlash(strength: number): void {
+  hitFlash(strength: number, crash = false): void {
     this.hitFlashEl.style.setProperty('--hit', strength.toFixed(2));
     this.hitFlashEl.classList.remove('show');
+    this.hitFlashEl.classList.toggle('heavy', crash);
     void this.hitFlashEl.offsetWidth;
     this.hitFlashEl.classList.add('show');
   }
 
-  popText(main: string, sub: string, kind: MarkerKind): void {
+  popText(main: string, sub: string, kind: MarkerKind | 'crash'): void {
     this.popMain.textContent = main;
     this.popSub.textContent = sub;
     this.pop.classList.toggle('drop', kind === 'drop');
     this.pop.classList.toggle('pickup', kind === 'pickup');
+    this.pop.classList.toggle('crash', kind === 'crash');
     this.pop.classList.remove('show');
     void this.pop.offsetWidth;
     this.pop.classList.add('show');
@@ -197,6 +233,10 @@ export class Hud {
   }
 
   resetCache(): void {
+    window.clearTimeout(this.comboBreakTimer);
+    this.comboChip.classList.remove('broken');
+    this.timePenalty.classList.remove('show');
+    this.timer.classList.remove('hit');
     this.last = { score: -1, time: '', combo: -1, deliveries: -1, boost: -1, speed: -1, alt: -1, dist: -1, low: false, boostState: '' };
   }
 }

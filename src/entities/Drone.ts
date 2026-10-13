@@ -4,7 +4,8 @@ import type { FlightIntent } from '../core/InputController';
 import { FLIGHT } from '../game/config';
 import type { CollisionWorld } from '../systems/CollisionWorld';
 
-export type FlightEvents = { bump: number; landed: boolean };
+/** bump: wall impact speed; ledge: impact speed absorbed by a ledge hop (it still stops the drone, so it can still be a crash). */
+export type FlightEvents = { bump: number; ledge: number; landed: boolean };
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -56,6 +57,9 @@ export class Drone {
   private time = 0;
   private bumpFlash = 0;
   private bumpAmp = 0;
+  private tumble = 0;
+  private tumbleAmp = 0;
+  private alarm = 0;
   private cargoSnap = 0;
   /** Active objective pad; the drop guide eases the drone over it on the way down. */
   readonly guide = new THREE.Vector3();
@@ -290,10 +294,19 @@ export class Drone {
     this.cargoSnap = v ? 1 : 0;
   }
 
+  /** Hard crash: a short visual tumble, a cargo jolt and a red status blink. Flight control is unchanged. */
+  crash(strength: number): void {
+    this.tumble = 1;
+    this.tumbleAmp = 0.5 + strength * 0.7;
+    this.alarm = 1;
+    if (this.carrying) this.cargoSwingVel.set(3 + strength * 4, (Math.random() - 0.5) * 6);
+  }
+
   /** Advance flight. Returns impact info for audio/camera feedback. */
   update(dt: number, intent: FlightIntent, world: CollisionWorld, bounds: number, events: FlightEvents): void {
     this.time += dt;
     events.bump = 0;
+    events.ledge = 0;
     events.landed = false;
     const F = FLIGHT;
 
@@ -390,6 +403,7 @@ export class Drone {
         if (vn < 0 && (intent.thrust > 0.2 || this.guiding) && this.isLowLedge(world, p)) {
           // Pushing into a low ledge (parapet, roof unit, fountain rim): skim over it instead of
           // bouncing off and getting pinned on the roof. Collision still holds; we only add lift.
+          events.ledge = Math.max(events.ledge, -vn);
           v.addScaledVector(this.normal, -vn);
           v.y = Math.max(v.y, F.hopSpeed * 0.6);
           this.hop = F.hopTime;
@@ -479,7 +493,12 @@ export class Drone {
     this.bumpFlash = Math.max(0, this.bumpFlash - dt * 3);
     const wob = Math.sin(this.time * 38) * this.bumpFlash * 0.12 * this.bumpAmp;
     this.tilt.position.y = hover;
-    this.tilt.rotation.set(this.pitch + wob, 0, this.roll - wob * 0.6);
+    // crash tumble: a damped roll/pitch shake that settles in about a second
+    this.tumble = Math.max(0, this.tumble - dt * 1.1);
+    const tk = this.tumble * this.tumble * this.tumbleAmp;
+    const tumbleP = Math.sin(this.time * 17) * 0.35 * tk;
+    const tumbleR = Math.sin(this.time * 23 + 1.3) * 0.55 * tk;
+    this.tilt.rotation.set(this.pitch + wob + tumbleP, 0, this.roll - wob * 0.6 + tumbleR);
 
     // rotor spin follows throttle effort
     const effort = 0.5 + Math.abs(intent.thrust) * 0.25 + Math.max(0, intent.lift) * 0.3 + (this.boosting ? 0.5 : 0);
@@ -497,6 +516,11 @@ export class Drone {
     const ph = this.time % 1.4;
     this.strobeMat.emissiveIntensity = ph < 0.06 || (ph > 0.16 && ph < 0.22) ? 8 : 0;
     this.statusMat.emissiveIntensity = this.carrying ? 3 + Math.sin(this.time * 6) * 1.2 : 2.6;
+    if (this.alarm > 0) {
+      this.alarm = Math.max(0, this.alarm - dt / 0.9);
+      const on = this.alarm > 0 && Math.sin(this.time * 30) > 0;
+      this.statusMat.emissive.set(on ? '#ff4030' : this.carrying ? '#ffb02e' : '#38e8ff');
+    }
 
     // cargo pendulum driven by acceleration
     if (this.carrying) {

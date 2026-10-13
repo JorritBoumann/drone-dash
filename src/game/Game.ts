@@ -16,7 +16,7 @@ import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { createSky, Environment, LightingRig, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
-import { FLIGHT, QUALITY, RUN } from './config';
+import { CRASH, FLIGHT, QUALITY, RUN } from './config';
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
@@ -67,7 +67,7 @@ export class Game {
   private readonly fxRng: Rng;
   private readonly intent: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
   private readonly idle: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
-  private readonly events: FlightEvents = { bump: 0, landed: false };
+  private readonly events: FlightEvents = { bump: 0, ledge: 0, landed: false };
   private readonly startPos = new THREE.Vector3();
   private readonly titleFocus = new THREE.Vector3(0, 8, 0);
   private startYaw = 0;
@@ -76,6 +76,13 @@ export class Game {
   private lastTick = -1;
   private wasBoosting = false;
   private bumpCooldown = 0;
+  // crash stakes: speed lost in the current hit, time since the last wall contact, and the charged crash window
+  private hitLoss = 0;
+  private hitAge = 0;
+  private sinceContact = 99;
+  private crashWindow = 0;
+  private crashCharged = 0;
+  private crashes = 0;
   private hitStop = 0;
   private frame = 0;
   private time = 0;
@@ -217,6 +224,11 @@ export class Game {
     const tgt = this.delivery.target.pos;
     this.drone.reset(this.startPos, Math.atan2(-(tgt.x - this.startPos.x), -(tgt.z - this.startPos.z)));
     this.topCombo = 0;
+    this.hitLoss = 0;
+    this.sinceContact = 99;
+    this.crashWindow = 0;
+    this.crashCharged = 0;
+    this.crashes = 0;
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
@@ -352,7 +364,9 @@ export class Game {
     this.hitStop = Math.max(0, this.hitStop - realDt);
     this.input.read(this.intent);
     const d = this.drone;
+    const speedBefore = d.speed;
     d.update(dt, this.intent, this.world, this.layout.half + 30, this.events);
+    this.checkCrash(speedBefore, realDt);
     const dp = d.group.position;
     const groundBelow = this.world.surfaceBelow(dp.x, dp.y, dp.z);
     const altAboveGround = Math.max(0, dp.y - groundBelow - 0.85);
@@ -422,6 +436,54 @@ export class Game {
     this.updateNav();
 
     if (tl <= 0) this.endRun();
+  }
+
+  /**
+   * Crash stakes. A hit is measured by the speed it takes off the drone (contacts a few frames apart count as one hit).
+   * Scrapes under CRASH.threshold are free. Harder hits break the combo and cost clock time by tier, once per collision.
+   */
+  private checkCrash(speedBefore: number, realDt: number): void {
+    this.crashWindow = Math.max(0, this.crashWindow - realDt);
+    this.sinceContact += realDt;
+    if (this.events.bump <= 0 && this.events.ledge <= 0) return;
+    const loss = Math.max(0, speedBefore - this.drone.speed);
+    if (this.sinceContact <= CRASH.chainGap) {
+      // same collision: only the first moments count, so a long slide along a parapet never adds up to a crash
+      this.hitAge += this.sinceContact;
+      if (this.hitAge <= CRASH.hitSpan) this.hitLoss += loss;
+    } else {
+      this.hitAge = 0;
+      this.hitLoss = loss;
+    }
+    this.sinceContact = 0;
+    if (this.hitLoss < CRASH.threshold) return;
+    let tier = CRASH.tiers[0];
+    for (const t of CRASH.tiers) if (this.hitLoss >= t.severity) tier = t;
+    const charged = this.crashWindow > 0 ? this.crashCharged : 0;
+    if (tier.seconds <= charged) return;
+    const res = this.delivery.penalize(tier.seconds - charged, CRASH.floor, true);
+    const fresh = this.crashWindow <= 0;
+    this.crashCharged = tier.seconds;
+    this.crashWindow = CRASH.window;
+    if (fresh) this.crashes++;
+    this.crashFeedback(tier.label, tier.seconds, res.comboLost, Math.min(1, this.hitLoss / 30), fresh);
+  }
+
+  private crashFeedback(label: string, seconds: number, comboLost: number, s: number, fresh: boolean): void {
+    const d = this.drone;
+    this.hud.flashTimePenalty(seconds);
+    const lost = comboLost > 0 ? `-${seconds} sec · x${comboLost.toFixed(1)} combo lost` : `-${seconds} sec`;
+    this.hud.popText(`${label}!`, lost, 'crash');
+    if (comboLost > 0) this.hud.breakCombo(comboLost);
+    if (!fresh) return; // upgraded tier of the same hit: numbers update, effects already played
+    this.audio.crash(s, comboLost > 0);
+    this.cameraRig.addShake(0.6 + s * 0.4);
+    this.hud.hitFlash(1, true);
+    this.hitStop = 0.1 + s * 0.06;
+    d.crash(s);
+    const p = d.group.position;
+    this.vfx.burst(p, new THREE.Color('#ff8a3d'), 22 + Math.round(s * 18), 6 + s * 6, 0.16, this.fxRng);
+    this.vfx.burst(p, new THREE.Color('#fff1c9'), 10, 9 + s * 4, 0.1, this.fxRng);
   }
 
   private emitBoostTrail(): void {
@@ -525,6 +587,7 @@ export class Game {
       timeLeft: this.delivery.timeLeft,
       deliveries: this.delivery.deliveries,
       combo: this.delivery.combo,
+      crashes: this.crashes,
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
       fps: Math.round(this.fps * 10) / 10,
       camera: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, fov: this.camera.fov, aspect: this.camera.aspect },

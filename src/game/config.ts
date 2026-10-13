@@ -61,6 +61,24 @@ export const RUN = {
   maxCombo: 5,
 };
 
+/**
+ * Crash stakes. Severity is the speed (m/s) a single hit takes off the drone. Scrapes below `threshold`
+ * are free; anything harder breaks the combo and takes seconds off the clock, scaled by how hard it was.
+ * One crash is charged per collision: follow-up contacts inside `window` only top up to the harder tier.
+ */
+export const CRASH = {
+  threshold: 7,
+  tiers: [
+    { severity: 7, seconds: 3, label: 'Crash' },
+    { severity: 16, seconds: 4, label: 'Hard crash' },
+    { severity: 26, seconds: 5, label: 'Wreck' },
+  ],
+  window: 1.2,
+  chainGap: 0.15, // contacts closer than this count as one hit when measuring speed lost
+  hitSpan: 0.2, // speed lost is summed over at most this long from first contact
+  floor: 1, // a crash never takes the clock below this; crashes do not end the run on their own
+};
+
 export const QUALITY = {
   maxDpr: 2,
   exposure: 0.95,

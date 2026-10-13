@@ -41,6 +41,15 @@ export class DeliverySystem {
     this.legTime = 0;
   }
 
+  /** Crash cost: take seconds off the clock (never below `floor`) and break any running combo. */
+  penalize(seconds: number, floor: number, breakCombo: boolean): { seconds: number; comboLost: number } {
+    const taken = Math.max(0, Math.min(seconds, this.timeLeft - floor));
+    this.timeLeft -= taken;
+    const comboLost = breakCombo && this.combo > 0 ? this.multiplier : 0;
+    if (breakCombo) this.combo = 0;
+    return { seconds: taken, comboLost };
+  }
+
   get multiplier(): number {
     return 1 + Math.min(this.combo, RUN.maxCombo) * 0.5;
   }

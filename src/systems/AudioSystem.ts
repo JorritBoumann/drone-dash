@@ -208,6 +208,19 @@ export class AudioSystem {
     this.tone(2400 + Math.random() * 600, t, 0.05, 'square', 0.02 * s, 0);
   }
 
+  /** Hard crash: a heavy crunch plus a falling two-note "lost it" cue (lower still when a combo breaks). */
+  crash(strength: number, comboBroken: boolean): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime;
+    const s = Math.min(1, strength);
+    this.tone(95, t, 0.45, 'sine', 0.55 + s * 0.3, 0.1, 38);
+    this.noise(t, 0.32 + s * 0.2, 0.35 + s * 0.25, 'lowpass', 2400, 160, 0.9);
+    this.noise(t + 0.02, 0.12, 0.08 + s * 0.06, 'bandpass', 3800, 1800, 3);
+    const base = comboBroken ? 392 : 466.16;
+    this.tone(base, t + 0.12, 0.22, 'triangle', 0.1, 0.3);
+    this.tone(base * 0.749, t + 0.26, 0.4, 'triangle', 0.11, 0.4, base * 0.7);
+  }
+
   boost(): void {
     if (!this.ready) return;
     const t = this.ctx!.currentTime;

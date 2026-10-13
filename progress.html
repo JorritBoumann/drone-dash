@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone Dash progress</title>
+<style>
+:root { --bg: #f7f4ee; --fg: #1d1d1f; --muted: #6b6b70; --card: #fff; }
+@media (prefers-color-scheme: dark) { :root { --bg: #151517; --fg: #ececf0; --muted: #9a9aa2; --card: #202024; } }
+body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+main { max-width: 1100px; margin: 0 auto; }
+h1 { margin: 0 0 4px; } p.sub { color: var(--muted); margin: 0 0 24px; }
+section { background: var(--card); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; }
+h2 { text-transform: capitalize; margin-top: 0; }
+pre { white-space: pre-wrap; font-size: 13px; max-height: 480px; overflow: auto; }
+summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
+figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+</style></head>
+<body><main><h1>Drone Dash progress</h1>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-13 12:53 UTC.</p>
+<section><h2>round 2</h2><details open><summary>critic.md</summary><pre># Drone Dash, round 2 critic report
+
+**Verdict:** The blank bloom render is fixed and the game now flies cleanly on desktop and mobile. The weakest part is now the last 30 m of every street-level leg: the drone settles on a roof, the target is out of view, and the clock runs out.
+
+## Round 1 gap: closed
+
+- Acceptance probe (`critic-scripts/acceptance-probe.mjs`), default URL, 1280x720, `renderer.post === true`:
+  - W+Space 3 s: 326 frames, 0 flat (fewest distinct samples in a frame: 8 of 9)
+  - W+E 3 s: 337 frames, 0 flat
+  - W+A 3 s: 335 frames, 0 flat
+  - **Total 998 frames, 0 flat. PASS.** Round 1 was 187 of 331 flat.
+- `play-desktop.mjs` (round 1 script, copied to `critic-scripts/play-desktop.mjs`, now logs retries): **all 10 screenshots saved on the first try**. Every file is 351 KB or larger. PASS.
+- Other ways to find a blank frame: `long-session.mjs` ran the 9-pixel probe on every frame through 2 runs. That covered climbing, boosting, a deliberate boost crash at 6 m, 4 deliveries, game over, the over screen, and an Enter restart. **29,422 frames, 0 flat, 0 read errors.** Mobile (post off) had 18,192 frames and 0 flat.
+
+## Single biggest remaining gap: the final approach to street-level targets
+
+Flying between targets feels good. Arriving at street-level targets does not. On the way down, the drone lands on whatever roof is between it and the pad. The chase camera then sits low behind the drone and shows only roof surface and parapet. The target is below the roof edge, and the nav marker is stuck at the bottom of the screen with a down arrow. The player has no view of the pad and no clear way down to it. This is the same problem round 1 listed as gap 1. It is now the main cost in a run.
+
+Evidence (`critic-scripts/arrival-metrics.mjs`, seeds 11, 22, 33, 44, desktop, bloom on). The autopilot steers at the marker and cruises at 40 m. Inside 25 m it descends. If it stalls for 3 s, it backs off and climbs. It plays like a casual player who flies straight at the marker.
+- Run A: 28 legs. **The last 30 m took 180.0 s in total. The cruise took 112.9 s.** The last 30 m is about a quarter of the distance. It used 61% of travel time. 6 of 28 legs needed more than 10 s for the last 30 m (32.4, 19.1, 13.7, 11.7, 10.0 s, and one that never arrived). 21 of 24 stalls were on street-level targets (y &lt; 2).
+- Run B (same seeds, plus visibility sampling): last 30 m 128.4 s, cruise 84.7 s. **In 3 of 4 runs, the clock ran out during a final approach.** I took 3,275 final-approach samples. **The nav marker was off screen in 46.1% of them.** In 16.6%, the drone was slower than 3 m/s and more than 4 m above the target. That means it sat on a roof.
+- Desktop autopilot run (`play-desktop.mjs`): it hovered on a roof at 23 m altitude, 17 m from the "Noodle Bar" street drop, for 30 s until time ran out. The camera was jammed into the drone (`critic/d08-stuck-near-drop.png`).
+- Screenshots: `critic/A-seed44-stall-final-approach.png` (6 m from the pharmacy drop; the drone sits on a roof at 7 m and only the roof shows), `critic/A-seed22-stall-final-approach.png` (27 m, roof parapet, marker pinned bottom), `critic/A-seed11-stall-final-approach.png`, `critic/A-seed33-stall-final-approach.png`.
+- The trigger is not too small. The pickup zone is about 4.1 m for a rooftop and about 3.9 m for a doorstep, which roughly matches the drawn pad. The problem is view and route, not the hit radius.
+
+The best arcade delivery flyers handle the drop moment in a few ways. They tilt the camera to look down at the target as you close in. They keep the pad or beam readable through occluding roofs. And they gently pull the craft into the zone, or over the edge, once you commit to it. The builder can choose how to fix it.
+
+**Acceptance test:** Start the dev server. Run `node progress/round-2/critic-scripts/arrival-metrics.mjs` without changing the script (default seeds 11, 22, 33, 44, default URL, bloom on). It must print:
+1. 0 timeouts (no run ends during a final approach), and no leg with `final` over 10 s.
+2. `sum final` at or below `sum cruise`.
+3. Nav marker off screen in under 15% of final-approach samples.
+4. "slow and &gt;4 m above target" under 5% of final-approach samples.
+
+Rerun `acceptance-probe.mjs` too: 0 flat frames, so the fix does not break the round 1 fix.
+
+## Other gaps (ranked)
+
+1. **Run start still faces the wrong way.** I pressed Enter and gave no input. The camera flew in from 237 m away to 7.5 m in about 0.7 s. After that, the target nav marker stays off screen for the full 2.5 s sampled, on desktop and on mobile (`start-probe.mjs`). The first pickup sits at the left edge, 78 m away (`critic/d02-takeoff.png`, and after restart `critic/L05-restart-300ms.png`, 47 m to the left). The title copy is still fading over gameplay at 300 ms. Test: within 1.0 s of Enter, with no input, the nav marker is on screen and within 25% of screen width from center.
+2. **Crashes have no stake.** A boost crash into a wall at 6 m altitude dropped speed from 17.9 to 9.5 m/s. 600 ms later the drone was at 1.4 m/s with no time lost (`critic/L01-crash-frame.png`, `L02`, `L03`). Typical runs log 5 or 6 bumps. Walls slow you down but never feel dangerous.
+3. **The camera crowds the drone near walls.** In the long session, camera-to-drone distance fell under 2.5 m in 110 of 28,990 playing frames. The minimum was 1.92 m. When wedged, the props fill the screen (`critic/d08-stuck-near-drop.png`). This is rare but ugly, and it overlaps with the main gap.
+4. **No difficulty curve.** Legs stay the same kind of task from start to end. The +17 to +19 s time bonuses keep the clock generous. Three deliveries (1,459) earned "New best" (`critic/L04-game-over.png`).
+5. **The nav marker covers the objective pill.** The target can be ahead and above. Then the arrow and distance chip sit over the objective name. See `critic/m03-flight.png`, where "Juniper" is hidden, and `critic/m07-bump.png`.
+
+What meets the bar:
+- Golden-hour art and a city that reads at a glance.
+- The drone model, the beam and the pad ring.
+- Pop text and combo chip (`critic/d07-delivery.png`), and a clean game-over card.
+- A clean mobile HUD with no control overlaps. The stick is 110 px, climb and descend are 54 px, boost is 76 px.
+
+Physics feels weighty but controllable:
+- Climb: 12.9 m in 1.5 s.
+- 0 to 16 m/s: 1.95 s.
+- Coast to a stop: 1.8 s over 8.9 m.
+- S brakes from 15 m/s in 0.37 s.
+
+## Performance
+
+- Desktop 1280x720, bloom on, Apple GPU via ANGLE, 120 Hz. `play-desktop.mjs` with no per-frame readback: 8,306 frames (about 70 s of active flight). **Median 8.30 ms, p95 8.80 ms, p99 9.2 ms, max 9.4 ms, 0 frames over 20 ms.** 60 fps is met with large headroom.
+- There is one hitch of about 241 ms on the first gameplay frame after Enter (`start-probe.mjs`), likely shader compile.
+- With the 9-pixel readback running every frame (`long-session.mjs`): p95 16.7 ms and 30 frames over 20 ms. That is cost from the probe, not from the game.
+- Mobile emulation (iPhone 13 held sideways, DPR 2, post off): 8,668 frames, median 8.3 ms, p95 9.1 ms, 6 frames over 20 ms, one max of 499 ms (a start or compile hitch). Confirm on a real device.
+- First load: dev server 6.95 MB over 35 requests. The production build loads about 0.70 MB (JS 683 KB, CSS 15 KB, HTML 6 KB; source maps are not fetched). Both are well under the 15 MB budget. Draw calls are 66 to 85, with about 291k triangles.
+
+## Note on test tooling
+
+The first mobile run looked like the descend button climbed. It was my driver: CDP `touchEnd` ends the touch points it lists, so I lifted the stick finger instead of the button finger (`critic-scripts/mobile-lift-check.mjs`). With the fix, the touch controls work correctly. Not a game bug.
+
+## Screenshots (progress/round-2/critic/)
+
+- Desktop flow: d01-title, d02-takeoff, d03-flying, d04-near-pickup, d05-parcel-picked, d06-carrying-enroute, d07-delivery, d08-stuck-near-drop, d08b-after-bump, d09-game-over
+- Long session: L01-crash-frame, L02-crash-plus120ms, L03-after-crash-600ms, L04-game-over, L05-restart-300ms
+- Arrival stalls: A-seed11/22/33/44-stall-final-approach
+- Mobile (iPhone 13 held sideways, touch): m01-title, m02-takeoff-250ms, m03-flight, m04-picked-up, m05-carrying-near-drop, m06-delivery, m07-bump, m08-game-over, m09-restart
+
+Scripts (progress/round-2/critic-scripts/): acceptance-probe.mjs, play-desktop.mjs, long-session.mjs, arrival-metrics.mjs, start-probe.mjs, play-mobile.mjs, mobile-stick-check.mjs, mobile-button-check.mjs, mobile-lift-check.mjs
+</pre></details><details><summary>builder.md</summary><pre># Round 2 builder note: blank desktop render with bloom on
+
+## Root cause
+The objective sky beam (and its ring wall) shader computed `pow(1.0 - vUv.y, ...)`. The composer renders into a 4x MSAA HalfFloat target, and on partly covered edge pixels MSAA evaluates varyings at the pixel centre, so `vUv.y` lands just above 1.0 on the beam's top rim and `pow()` of a negative base returns NaN (about 15 to 18 pixels near the top of the screen). The clamp pass lets NaN through (NaN fails every comparison), and UnrealBloomPass blurs it across every mip, so the composite becomes NaN everywhere and the output shows one flat colour.
+
+How it was proven: per-pass readback on a blank frame showed NaN first appearing in the RenderPass output (18 values), the high-pass target at 9 values, and the bloom output at 100% NaN. Hiding each visible object in turn on that frame showed that only hiding the beam mesh brought the NaN count to 0. The same frame rendered to non-MSAA Half or Float targets had no NaN, which matches the MSAA extrapolation explanation.
+
+## Fix
+`src/entities/ObjectiveMarker.ts`: clamp `vUv.y` (wall and beam) and `vFacing` (beam) to [0,1] before `pow()`. No change to the post chain, bloom settings or quality. The look is unchanged.
+
+## Files changed
+- src/entities/ObjectiveMarker.ts
+
+## Acceptance test (1280x720, default URL, Playwright chromium, `renderer.post === true`)
+- W+Space 3 s: 329 frames, 0 blank
+- W+E 3 s: 296 frames, 0 blank
+- W+A 3 s: 309 frames, 0 blank
+- Total: 934 frames, 0 blank (was 184 of 323 for W+Space before the fix)
+- play-desktop.mjs (copy that writes to a scratch folder so progress/round-1 stays untouched): all 10 screenshots saved on the first try, smallest 365 KB
+- Frame time (play-desktop, 8,265 frames): median 8.30 ms, p95 9.00 ms, p99 9.30 ms, max 9.4 ms, 0 over 20 ms (round 1: median 8.3, p95 9.1)
+- `npm run build`: passes
+</pre></details><div class="grid"><figure><a href="progress/round-2/critic/A-seed11-stall-final-approach.png"><img loading="lazy" src="progress/round-2/critic/A-seed11-stall-final-approach.png" alt="A-seed11-stall-final-approach.png"></a><figcaption>A-seed11-stall-final-approach.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/A-seed22-stall-final-approach.png"><img loading="lazy" src="progress/round-2/critic/A-seed22-stall-final-approach.png" alt="A-seed22-stall-final-approach.png"></a><figcaption>A-seed22-stall-final-approach.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/A-seed33-stall-final-approach.png"><img loading="lazy" src="progress/round-2/critic/A-seed33-stall-final-approach.png" alt="A-seed33-stall-final-approach.png"></a><figcaption>A-seed33-stall-final-approach.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/A-seed44-stall-final-approach.png"><img loading="lazy" src="progress/round-2/critic/A-seed44-stall-final-approach.png" alt="A-seed44-stall-final-approach.png"></a><figcaption>A-seed44-stall-final-approach.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/L01-crash-frame.png"><img loading="lazy" src="progress/round-2/critic/L01-crash-frame.png" alt="L01-crash-frame.png"></a><figcaption>L01-crash-frame.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/L02-crash-plus120ms.png"><img loading="lazy" src="progress/round-2/critic/L02-crash-plus120ms.png" alt="L02-crash-plus120ms.png"></a><figcaption>L02-crash-plus120ms.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/L03-after-crash-600ms.png"><img loading="lazy" src="progress/round-2/critic/L03-after-crash-600ms.png" alt="L03-after-crash-600ms.png"></a><figcaption>L03-after-crash-600ms.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/L04-game-over.png"><img loading="lazy" src="progress/round-2/critic/L04-game-over.png" alt="L04-game-over.png"></a><figcaption>L04-game-over.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/L05-restart-300ms.png"><img loading="lazy" src="progress/round-2/critic/L05-restart-300ms.png" alt="L05-restart-300ms.png"></a><figcaption>L05-restart-300ms.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d01-title.png"><img loading="lazy" src="progress/round-2/critic/d01-title.png" alt="d01-title.png"></a><figcaption>d01-title.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d02-takeoff.png"><img loading="lazy" src="progress/round-2/critic/d02-takeoff.png" alt="d02-takeoff.png"></a><figcaption>d02-takeoff.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d03-flying.png"><img loading="lazy" src="progress/round-2/critic/d03-flying.png" alt="d03-flying.png"></a><figcaption>d03-flying.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d04-near-pickup.png"><img loading="lazy" src="progress/round-2/critic/d04-near-pickup.png" alt="d04-near-pickup.png"></a><figcaption>d04-near-pickup.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d05-parcel-picked.png"><img loading="lazy" src="progress/round-2/critic/d05-parcel-picked.png" alt="d05-parcel-picked.png"></a><figcaption>d05-parcel-picked.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d06-carrying-enroute.png"><img loading="lazy" src="progress/round-2/critic/d06-carrying-enroute.png" alt="d06-carrying-enroute.png"></a><figcaption>d06-carrying-enroute.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d07-delivery.png"><img loading="lazy" src="progress/round-2/critic/d07-delivery.png" alt="d07-delivery.png"></a><figcaption>d07-delivery.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d08-stuck-near-drop.png"><img loading="lazy" src="progress/round-2/critic/d08-stuck-near-drop.png" alt="d08-stuck-near-drop.png"></a><figcaption>d08-stuck-near-drop.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d08b-after-bump.png"><img loading="lazy" src="progress/round-2/critic/d08b-after-bump.png" alt="d08b-after-bump.png"></a><figcaption>d08b-after-bump.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/d09-game-over.png"><img loading="lazy" src="progress/round-2/critic/d09-game-over.png" alt="d09-game-over.png"></a><figcaption>d09-game-over.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m01-title.png"><img loading="lazy" src="progress/round-2/critic/m01-title.png" alt="m01-title.png"></a><figcaption>m01-title.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m02-takeoff-250ms.png"><img loading="lazy" src="progress/round-2/critic/m02-takeoff-250ms.png" alt="m02-takeoff-250ms.png"></a><figcaption>m02-takeoff-250ms.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m03-flight.png"><img loading="lazy" src="progress/round-2/critic/m03-flight.png" alt="m03-flight.png"></a><figcaption>m03-flight.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m04-picked-up.png"><img loading="lazy" src="progress/round-2/critic/m04-picked-up.png" alt="m04-picked-up.png"></a><figcaption>m04-picked-up.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m05-carrying-near-drop.png"><img loading="lazy" src="progress/round-2/critic/m05-carrying-near-drop.png" alt="m05-carrying-near-drop.png"></a><figcaption>m05-carrying-near-drop.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m06-delivery.png"><img loading="lazy" src="progress/round-2/critic/m06-delivery.png" alt="m06-delivery.png"></a><figcaption>m06-delivery.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m07-bump.png"><img loading="lazy" src="progress/round-2/critic/m07-bump.png" alt="m07-bump.png"></a><figcaption>m07-bump.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m08-game-over.png"><img loading="lazy" src="progress/round-2/critic/m08-game-over.png" alt="m08-game-over.png"></a><figcaption>m08-game-over.png</figcaption></figure>
+<figure><a href="progress/round-2/critic/m09-restart.png"><img loading="lazy" src="progress/round-2/critic/m09-restart.png" alt="m09-restart.png"></a><figcaption>m09-restart.png</figcaption></figure></div></section>
+<section><h2>round 1</h2><details open><summary>critic.md</summary><pre># Drone Dash, round 1 critic report
+
+**Verdict:** A charming, well-built arcade courier game that is unplayable on desktop as shipped. With bloom on (the desktop default), the 3D view turns into a flat orange screen for most of the flight.
+
+## The single biggest gap: the desktop render goes blank in flight
+
+With the default desktop settings (post-processing on), the whole 3D view regularly turns into one flat peach-orange colour. Only the HUD stays visible. This happens while you climb, boost, hover high, and even hover still at 14 m. It lasts for seconds at a time, and some single frames flicker back to normal, so it strobes. With `?post=0` the same flight renders perfectly. On touch devices post-processing is off by default, so mobile does not have the bug.
+
+Evidence:
+- I read back pixels inside the page after each frame (9 sample points per frame, Apple M5 Metal GPU through ANGLE). While I held W+Space for 3 s, **187 of 331 frames (56%)** were one flat colour with post on. With `?post=1` it was 202/348, and with `?post=0` it was **0/361**. Script: `critic-scripts/pixel-probe.mjs`, `pixel-probe2.mjs`.
+- Key probe (`critic-scripts/key-probe.mjs`): standing still and W alone render fine. After about 0.6 s of W+Space the view goes flat. W+E (boost) was flat for 6 of 8 screenshots.
+- In a full autopilot run, my screenshot helper retried 25 times over about 1 s and still could not get a non-blank frame at four key moments: `critic/d03-flying-BLANK.png`, `d04-near-pickup-BLANK.png`, `d05-parcel-picked-BLANK.png`, `d08b-after-bump-BLANK.png`. Also `d10-blank-frame-post-on.png` and `probe-boost-held.png`.
+- The same moments with post off look great: `critic/nopost-d03-flying.png`, `nopost-d08b-after-bump.png`, `nopost-d06-carrying-enroute.png`.
+- The camera is not inside a building. During blank frames it was in open air at y 40 to 48 (logged in the probe run). The background colour you see is the sky/fog horizon colour, which means the post chain outputs a flat result. A NaN or Inf from an HDR highlight that spreads through bloom is a likely cause, but the builder must find the real cause.
+
+**Acceptance test the builder must pass:**
+Load `http://127.0.0.1:5188/` with default settings (no URL params) in Playwright with channel `chromium` at 1280x720. Press Enter, then hold W+Space for 3 s, W+E for 3 s, and W+A for 3 s. After every rAF, read back 9 pixels spread across the canvas. **Zero frames may have all 9 samples identical** (the same metric as `critic-scripts/pixel-probe.mjs`). Bloom must stay on, with `renderer.post === true` in `__THREE_GAME_DIAGNOSTICS__`. Then run `node progress/round-1/critic-scripts/play-desktop.mjs`. Every screenshot in `critic/` it writes must succeed on the first try, with no file under about 100 KB.
+
+## Other gaps for later rounds (ranked)
+1. **Arrival is fiddly.** Pickup radius is 3.2 m and the vertical tolerance is tight. My autopilot circled a rooftop pickup 4.4 m away for over 4 s, and twice hovered on a roof edge 21 to 24 m from a street-level drop it could not drop down to (`nopost-d08-stuck-near-drop.png`). A good arcade courier game pulls you into the zone at the end of the approach, or shows a clear landing cone so the player knows where to descend.
+2. **Collisions feel like walls of rubber, not crashes.** I logged 5 to 7 bumps per run. Speed drops from about 30 to 10 m/s with a small flash. There is no visible drone wobble or spin and no lasting penalty, so walls never feel dangerous. The timer is the only stake.
+3. **Boost is tiny on mobile.** One 2 s boost press drained the bar almost to empty and flung the drone out over the water (`m03-boost-turn.png`). The boost button sits right next to climb, so it is easy to hit by mistake.
+4. **Run start is disorienting.** At 0.3 s the title text is still fading over the gameplay view, and the target is 78 m away behind your left shoulder (`d02-takeoff.png`). The drone should spawn facing the first pickup with the camera already behind it.
+5. **No sense of difficulty curve.** Three legs per run, all of the same kind. Time bonuses (+19 s) make the clock generous early and nothing ramps up. Two deliveries scored 1,188 and earned "New best" (`d09-game-over.png`).
+
+What already meets the bar: the golden-hour art direction, readable building silhouettes, the drone model with banking, the strong objective beam and pad ring (`nopost-d08b-after-bump.png`), the edge-of-screen nav arrow with distance, the clear pop text and combo chip (`d07-delivery.png`), and a clean game-over card. The best polished browser arcade flyers have a camera that never hides the target, a world that reads at a glance, landings that snap in, and impacts you feel in the controller. The main things missing here are the stable render and the landing snap.
+
+## Performance
+- Desktop, 1280x720, Apple M5 on a 120 Hz display, about 85 s of active autopilot flight (10,283 rAF samples): **median 8.3 ms, p95 9.1 ms, p99 9.3 ms, max 10.3 ms, 0 frames over 20 ms.** In an earlier run there was a single 300 ms hitch on the first gameplay frame, likely shader compile. It is locked at 120 fps, so 60 fps is met with large headroom. The blank frames cost no time, so they are not a perf symptom.
+- With post off: median 8.3 ms, p95 9.0 ms, one 151 ms hitch at start.
+- Draw calls 71 to 85, about 291k triangles.
+- First-load transfer (dev server, unminified): **6.95 MB over 35 requests**, under the 15 MB budget. The existing `dist/` is 4.1 MB on disk.
+- Mobile (iPhone 13 landscape viewport, DPR 2, post off): 120 fps reported most of the time. One reading of 33.7 fps came during a boost and turn with two CDP touches held. This is unconfirmed and needs a real device check.
+
+## Screenshots taken (progress/round-1/critic/)
+- d01-title.png, d02-takeoff.png, d03-flying-BLANK.png, d04-near-pickup-BLANK.png, d05-parcel-picked-BLANK.png, d06-carrying-enroute.png, d07-delivery.png, d08-circling-pickup-BLANK.png, d08b-after-bump-BLANK.png, d09-game-over.png, d10-blank-frame-post-on.png, probe-boost-held.png
+- nopost-d01-title.png to nopost-d09-game-over.png (the same flow with `?post=0`)
+- m01-title.png, m02-flying-stick-and-climb.png, m03-boost-turn.png, m04-hover-hud.png, m05-game-over.png (iPhone 13 landscape, touch)
+
+Scripts: progress/round-1/critic-scripts/ (play-desktop.mjs, play-desktop-nopost.mjs, play-mobile.mjs, blank-probe.mjs, key-probe.mjs, pixel-probe.mjs, pixel-probe2.mjs)
+</pre></details><div class="grid"><figure><a href="progress/round-1/critic/d01-title.png"><img loading="lazy" src="progress/round-1/critic/d01-title.png" alt="d01-title.png"></a><figcaption>d01-title.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d02-takeoff.png"><img loading="lazy" src="progress/round-1/critic/d02-takeoff.png" alt="d02-takeoff.png"></a><figcaption>d02-takeoff.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d03-flying-BLANK.png"><img loading="lazy" src="progress/round-1/critic/d03-flying-BLANK.png" alt="d03-flying-BLANK.png"></a><figcaption>d03-flying-BLANK.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d04-near-pickup-BLANK.png"><img loading="lazy" src="progress/round-1/critic/d04-near-pickup-BLANK.png" alt="d04-near-pickup-BLANK.png"></a><figcaption>d04-near-pickup-BLANK.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d05-parcel-picked-BLANK.png"><img loading="lazy" src="progress/round-1/critic/d05-parcel-picked-BLANK.png" alt="d05-parcel-picked-BLANK.png"></a><figcaption>d05-parcel-picked-BLANK.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d06-carrying-enroute.png"><img loading="lazy" src="progress/round-1/critic/d06-carrying-enroute.png" alt="d06-carrying-enroute.png"></a><figcaption>d06-carrying-enroute.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d07-delivery.png"><img loading="lazy" src="progress/round-1/critic/d07-delivery.png" alt="d07-delivery.png"></a><figcaption>d07-delivery.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d08-circling-pickup-BLANK.png"><img loading="lazy" src="progress/round-1/critic/d08-circling-pickup-BLANK.png" alt="d08-circling-pickup-BLANK.png"></a><figcaption>d08-circling-pickup-BLANK.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d08b-after-bump-BLANK.png"><img loading="lazy" src="progress/round-1/critic/d08b-after-bump-BLANK.png" alt="d08b-after-bump-BLANK.png"></a><figcaption>d08b-after-bump-BLANK.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d09-game-over.png"><img loading="lazy" src="progress/round-1/critic/d09-game-over.png" alt="d09-game-over.png"></a><figcaption>d09-game-over.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/d10-blank-frame-post-on.png"><img loading="lazy" src="progress/round-1/critic/d10-blank-frame-post-on.png" alt="d10-blank-frame-post-on.png"></a><figcaption>d10-blank-frame-post-on.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/m01-title.png"><img loading="lazy" src="progress/round-1/critic/m01-title.png" alt="m01-title.png"></a><figcaption>m01-title.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/m02-flying-stick-and-climb.png"><img loading="lazy" src="progress/round-1/critic/m02-flying-stick-and-climb.png" alt="m02-flying-stick-and-climb.png"></a><figcaption>m02-flying-stick-and-climb.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/m03-boost-turn.png"><img loading="lazy" src="progress/round-1/critic/m03-boost-turn.png" alt="m03-boost-turn.png"></a><figcaption>m03-boost-turn.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/m04-hover-hud.png"><img loading="lazy" src="progress/round-1/critic/m04-hover-hud.png" alt="m04-hover-hud.png"></a><figcaption>m04-hover-hud.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/m05-game-over.png"><img loading="lazy" src="progress/round-1/critic/m05-game-over.png" alt="m05-game-over.png"></a><figcaption>m05-game-over.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d01-title.png"><img loading="lazy" src="progress/round-1/critic/nopost-d01-title.png" alt="nopost-d01-title.png"></a><figcaption>nopost-d01-title.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d02-takeoff.png"><img loading="lazy" src="progress/round-1/critic/nopost-d02-takeoff.png" alt="nopost-d02-takeoff.png"></a><figcaption>nopost-d02-takeoff.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d03-flying.png"><img loading="lazy" src="progress/round-1/critic/nopost-d03-flying.png" alt="nopost-d03-flying.png"></a><figcaption>nopost-d03-flying.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d04-near-pickup.png"><img loading="lazy" src="progress/round-1/critic/nopost-d04-near-pickup.png" alt="nopost-d04-near-pickup.png"></a><figcaption>nopost-d04-near-pickup.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d05-parcel-picked.png"><img loading="lazy" src="progress/round-1/critic/nopost-d05-parcel-picked.png" alt="nopost-d05-parcel-picked.png"></a><figcaption>nopost-d05-parcel-picked.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d06-carrying-enroute.png"><img loading="lazy" src="progress/round-1/critic/nopost-d06-carrying-enroute.png" alt="nopost-d06-carrying-enroute.png"></a><figcaption>nopost-d06-carrying-enroute.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d07-delivery.png"><img loading="lazy" src="progress/round-1/critic/nopost-d07-delivery.png" alt="nopost-d07-delivery.png"></a><figcaption>nopost-d07-delivery.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d08-stuck-near-drop.png"><img loading="lazy" src="progress/round-1/critic/nopost-d08-stuck-near-drop.png" alt="nopost-d08-stuck-near-drop.png"></a><figcaption>nopost-d08-stuck-near-drop.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d08b-after-bump.png"><img loading="lazy" src="progress/round-1/critic/nopost-d08b-after-bump.png" alt="nopost-d08b-after-bump.png"></a><figcaption>nopost-d08b-after-bump.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/nopost-d09-game-over.png"><img loading="lazy" src="progress/round-1/critic/nopost-d09-game-over.png" alt="nopost-d09-game-over.png"></a><figcaption>nopost-d09-game-over.png</figcaption></figure>
+<figure><a href="progress/round-1/critic/probe-boost-held.png"><img loading="lazy" src="progress/round-1/critic/probe-boost-held.png" alt="probe-boost-held.png"></a><figcaption>probe-boost-held.png</figcaption></figure></div></section>
+</main></body></html>

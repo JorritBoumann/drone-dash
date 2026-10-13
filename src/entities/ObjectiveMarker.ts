@@ -62,7 +62,9 @@ export class ObjectiveMarker {
           uniform vec3 uColor; uniform float uTime; uniform float uIntensity;
           varying vec2 vUv; varying float vFacing;
           void main(){
-            float h = vUv.y;
+            // MSAA evaluates varyings at the pixel centre even on partly covered edge pixels, so
+            // vUv.y can land just past 1.0 on the rim; pow() of a negative base is NaN in GLSL.
+            float h = clamp(vUv.y, 0.0, 1.0);
             float a = pow(1.0 - h, 2.2);
             float scan = smoothstep(0.92, 1.0, fract(h * 1.0 - uTime * 0.6));
             a = a * 0.55 + scan * (1.0 - h) * 0.6;
@@ -86,8 +88,9 @@ export class ObjectiveMarker {
           uniform vec3 uColor; uniform float uTime; uniform float uIntensity;
           varying vec2 vUv; varying float vFacing;
           void main(){
-            float h = vUv.y;
-            float core = pow(vFacing, 1.6);
+            // keep pow() bases in [0,1]: MSAA edge pixels extrapolate varyings past their range
+            float h = clamp(vUv.y, 0.0, 1.0);
+            float core = pow(clamp(vFacing, 0.0, 1.0), 1.6);
             float a = pow(1.0 - h, 1.05) * (0.3 + 0.7 * core);
             float bands = 0.75 + 0.25 * sin(h * 90.0 - uTime * 7.0);
             float pulse = 0.82 + 0.18 * sin(uTime * 4.0);

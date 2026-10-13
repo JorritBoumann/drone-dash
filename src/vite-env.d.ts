@@ -12,6 +12,10 @@ interface ThreeGameDiagnostics {
   deliveries: number;
   combo: number;
   crashes?: number;
+  /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
+  /** Debug: this frame's contacts (wall impact speed, ledge hop impact, crash-relevant speed loss). */
+  contact?: { bump: number; ledge: number; wallLoss: number };
+  lastCrash?: { loss: number; wallTop: number; normalY: number; y: number } | null;
   objective: { phase: string; name: string; position: { x: number; y: number; z: number } | null } | null;
   fps: number;
   camera: { x: number; y: number; z: number; fov: number; aspect: number };
@@ -66,6 +70,10 @@ interface DroneDashApi {
   manualRender(on: boolean): void;
   readonly state: string;
   diagnostics(): ThreeGameDiagnostics | undefined;
+  /** Debug: move the drone (yaw 0 faces -z) and set its horizontal speed along the heading. */
+  place(x: number, y: number, z: number, yaw: number, speed?: number): void;
+  /** Debug: every delivery site in the city. */
+  sites(): Array<{ name: string; kind: string; x: number; y: number; z: number }>;
 }
 
 interface Window {

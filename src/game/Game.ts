@@ -67,7 +67,7 @@ export class Game {
   private readonly fxRng: Rng;
   private readonly intent: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
   private readonly idle: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
-  private readonly events: FlightEvents = { bump: 0, ledge: 0, landed: false };
+  private readonly events: FlightEvents = { bump: 0, ledge: 0, landed: false, wallLoss: 0, wallTop: -1e9, wallNormalY: 0 };
   private readonly startPos = new THREE.Vector3();
   private readonly titleFocus = new THREE.Vector3(0, 8, 0);
   private startYaw = 0;
@@ -79,9 +79,14 @@ export class Game {
   // crash stakes: speed lost in the current hit, time since the last wall contact, and the charged crash window
   private hitLoss = 0;
   private hitAge = 0;
+  private hitPending = false;
   private sinceContact = 99;
+  private hitSkim = false;
+  private hitTop = 0;
+  private hitNormalY = 0;
   private crashWindow = 0;
   private crashCharged = 0;
+  private lastCrash: { loss: number; wallTop: number; normalY: number; y: number } | null = null;
   private crashes = 0;
   private hitStop = 0;
   private frame = 0;
@@ -225,9 +230,11 @@ export class Game {
     this.drone.reset(this.startPos, Math.atan2(-(tgt.x - this.startPos.x), -(tgt.z - this.startPos.z)));
     this.topCombo = 0;
     this.hitLoss = 0;
+    this.hitPending = false;
     this.sinceContact = 99;
     this.crashWindow = 0;
     this.crashCharged = 0;
+    this.lastCrash = null;
     this.crashes = 0;
     this.lastTick = -1;
     this.wasBoosting = false;
@@ -364,9 +371,8 @@ export class Game {
     this.hitStop = Math.max(0, this.hitStop - realDt);
     this.input.read(this.intent);
     const d = this.drone;
-    const speedBefore = d.speed;
     d.update(dt, this.intent, this.world, this.layout.half + 30, this.events);
-    this.checkCrash(speedBefore, realDt);
+    this.checkCrash(realDt);
     const dp = d.group.position;
     const groundBelow = this.world.surfaceBelow(dp.x, dp.y, dp.z);
     const altAboveGround = Math.max(0, dp.y - groundBelow - 0.85);
@@ -439,24 +445,42 @@ export class Game {
   }
 
   /**
-   * Crash stakes. A hit is measured by the speed it takes off the drone (contacts a few frames apart count as one hit).
+   * Crash stakes. A hit is measured by the horizontal speed the wall contact itself takes off the drone (collision
+   * response only: drag, braking and the drop guide do not count; contacts a few frames apart count as one hit).
+   * Never charged: ledge hops and other low obstacles the drone can skim (Drone reports them as `ledge` or leaves
+   * them out of `wallLoss`), and clipping the upper edge of the target pad's own block while dropping onto it.
    * Scrapes under CRASH.threshold are free. Harder hits break the combo and cost clock time by tier, once per collision.
    */
-  private checkCrash(speedBefore: number, realDt: number): void {
+  private checkCrash(realDt: number): void {
     this.crashWindow = Math.max(0, this.crashWindow - realDt);
+    const ev = this.events;
+    const wall = ev.wallLoss > 0 && !this.isTargetEdge(ev.wallTop);
     this.sinceContact += realDt;
-    if (this.events.bump <= 0 && this.events.ledge <= 0) return;
-    const loss = Math.max(0, speedBefore - this.drone.speed);
-    if (this.sinceContact <= CRASH.chainGap) {
-      // same collision: only the first moments count, so a long slide along a parapet never adds up to a crash
-      this.hitAge += this.sinceContact;
-      if (this.hitAge <= CRASH.hitSpan) this.hitLoss += loss;
-    } else {
-      this.hitAge = 0;
-      this.hitLoss = loss;
+    if (wall) {
+      // contacts closer together than chainGap are one collision: being pinned against a wall is charged at most once
+      const fresh = this.sinceContact > CRASH.chainGap;
+      this.sinceContact = 0;
+      if (!this.hitPending && fresh) {
+        this.hitPending = true;
+        this.hitAge = 0;
+        this.hitLoss = 0;
+        this.hitSkim = false;
+      }
+      // only the first moments of a collision count, so a long slide along a wall never adds up to a crash
+      if (this.hitPending && this.hitAge <= CRASH.hitSpan) {
+        this.hitLoss += ev.wallLoss;
+        this.hitTop = ev.wallTop;
+        this.hitNormalY = ev.wallNormalY;
+      }
     }
-    this.sinceContact = 0;
-    if (this.hitLoss < CRASH.threshold) return;
+    if (!this.hitPending) return;
+    // the game's own ledge hop fired during this collision: the drone is skimming over, not crashing
+    if (ev.ledge > 0) this.hitSkim = true;
+    this.hitAge += realDt;
+    // decide once the collision has had a moment to play out (a hop shows within this span)
+    if (this.hitAge < CRASH.hitSpan) return;
+    this.hitPending = false;
+    if (this.hitSkim || this.hitLoss < CRASH.threshold) return;
     let tier = CRASH.tiers[0];
     for (const t of CRASH.tiers) if (this.hitLoss >= t.severity) tier = t;
     const charged = this.crashWindow > 0 ? this.crashCharged : 0;
@@ -466,7 +490,18 @@ export class Game {
     this.crashCharged = tier.seconds;
     this.crashWindow = CRASH.window;
     if (fresh) this.crashes++;
+    this.lastCrash = { loss: this.hitLoss, wallTop: this.hitTop, normalY: this.hitNormalY, y: this.drone.group.position.y };
     this.crashFeedback(tier.label, tier.seconds, res.comboLost, Math.min(1, this.hitLoss / 30), fresh);
+  }
+
+  /** The wall just hit is the upper edge of the block the current pad sits on (roof lip, kerb, lawn edge), near the pad. */
+  private isTargetEdge(wallTop: number): boolean {
+    const t = this.delivery.target;
+    if (!t) return false;
+    const p = this.drone.group.position;
+    if (Math.hypot(t.pos.x - p.x, t.pos.z - p.z) > CRASH.padEdgeRange) return false;
+    if (Math.abs(wallTop - t.pos.y) > 1.5) return false;
+    return p.y - FLIGHT.radius > wallTop - CRASH.padEdgeDepth;
   }
 
   private crashFeedback(label: string, seconds: number, comboLost: number, s: number, fresh: boolean): void {
@@ -588,6 +623,8 @@ export class Game {
       deliveries: this.delivery.deliveries,
       combo: this.delivery.combo,
       crashes: this.crashes,
+      lastCrash: this.lastCrash,
+      contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
       fps: Math.round(this.fps * 10) / 10,
       camera: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, fov: this.camera.fov, aspect: this.camera.aspect },
@@ -646,6 +683,8 @@ export class Game {
         return window.__THREE_GAME_DIAGNOSTICS__?.state ?? 'title';
       },
       diagnostics: () => window.__THREE_GAME_DIAGNOSTICS__,
+      place: (x: number, y: number, z: number, yaw: number, speed = 0) => this.drone.place(new THREE.Vector3(x, y, z), yaw, speed),
+      sites: () => this.layout.sites.map((s) => ({ name: s.name, kind: s.kind, x: s.pos.x, y: s.pos.y, z: s.pos.z })),
     };
     window.__THREE_GAME_TEST_HOOKS__ = {
       seed: (value: number) => {

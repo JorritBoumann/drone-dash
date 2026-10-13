@@ -4,8 +4,13 @@ import type { FlightIntent } from '../core/InputController';
 import { FLIGHT } from '../game/config';
 import type { CollisionWorld } from '../systems/CollisionWorld';
 
-/** bump: wall impact speed; ledge: impact speed absorbed by a ledge hop (it still stops the drone, so it can still be a crash). */
-export type FlightEvents = { bump: number; ledge: number; landed: boolean };
+/**
+ * bump: wall impact speed (into the surface normal); ledge: impact speed absorbed by a ledge hop (always free).
+ * wallLoss: horizontal speed taken off by wall contacts this frame (collision response only, not drag, braking or the
+ * drop guide). Contacts with low obstacles (skimmable lips, kerbs, rims) are not counted. wallTop: tallest top of the
+ * obstacle column at the hardest wall contact.
+ */
+export type FlightEvents = { bump: number; ledge: number; landed: boolean; wallLoss: number; wallTop: number; wallNormalY: number };
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -65,6 +70,12 @@ export class Drone {
   readonly guide = new THREE.Vector3();
   hasGuide = false;
   private guiding = false;
+  private hopCarry = 0; // m/s of forward speed a ledge hop absorbed; handed back once the drone clears the ledge
+  private readonly hopDir = new THREE.Vector3();
+  private hopTop = 0; // top of the ledge being hopped; the carry is only handed back once the skids are above it
+  private hopLift = 0; // m/s upward target of the current hop
+  private stepOffset = 0; // m: visual lag after stepping over a low lip (eases back to 0)
+  private brushing = false; // touching a soft prop last frame
   private hop = 0; // s left of a ledge hop (lifts the drone over parapets and roof clutter it is pushing into)
   private readonly prevVel = new THREE.Vector3();
   private readonly tmp = new THREE.Vector3();
@@ -280,9 +291,23 @@ export class Drone {
     this.cargo.visible = false;
     this.pitch = this.roll = 0;
     this.hop = 0;
+    this.hopCarry = 0;
     this.hasGuide = false;
     this.group.rotation.set(0, yaw, 0);
     this.tilt.rotation.set(0, 0, 0);
+  }
+
+  /** Debug/test: move the drone and give it a horizontal speed along its heading (keeps cargo and boost). */
+  place(position: THREE.Vector3, yaw: number, speed: number): void {
+    this.group.position.copy(position);
+    this.yaw = yaw;
+    this.yawRate = 0;
+    this.forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+    this.velocity.set(this.forward.x * speed, 0, this.forward.z * speed);
+    this.prevVel.copy(this.velocity);
+    this.hop = 0;
+    this.hopCarry = 0;
+    this.group.rotation.set(0, yaw, 0);
   }
 
   setCarrying(v: boolean): void {
@@ -308,6 +333,9 @@ export class Drone {
     events.bump = 0;
     events.ledge = 0;
     events.landed = false;
+    events.wallLoss = 0;
+    events.wallTop = -1e9;
+    events.wallNormalY = 0;
     const F = FLIGHT;
 
     // Yaw with smoothed rate
@@ -384,7 +412,7 @@ export class Drone {
     let targetVy = intent.lift * (intent.lift < 0 ? F.descendSpeed : F.climbSpeed);
     if (this.hop > 0) {
       this.hop = Math.max(0, this.hop - dt);
-      targetVy = Math.max(targetVy, F.hopSpeed);
+      targetVy = Math.max(targetVy, this.hopLift);
     }
     // arresting a fast drop is crisper than starting one, so releasing descend does not sink you past a roof edge
     const vResp = v.y < 0 && targetVy > v.y ? F.sinkBrakeResponse : F.climbResponse;
@@ -395,20 +423,72 @@ export class Drone {
     const travel = v.length() * dt;
     const steps = Math.max(1, Math.ceil(travel / (F.radius * 0.45)));
     const h = dt / steps;
+    let touched = false;
+    let wallHit = false;
+    let brushed = this.brushing; // one glance per brush: while still touching the prop, the drone only slides
+    let hardest = 0;
+    const hStart = Math.hypot(v.x, v.z);
     for (let s = 0; s < steps; s++) {
       p.addScaledVector(v, h);
       const depth = world.resolveSphere(p, F.radius, this.normal);
       if (depth > 0) {
+        touched = true;
         const vn = v.dot(this.normal);
-        if (vn < 0 && (intent.thrust > 0.2 || this.guiding) && this.isLowLedge(world, p)) {
+        const soft = world.deepestSoft;
+        // the obstacle top is below the drone's middle (belly clipping an edge) or a skimmable low step
+        const edge = this.normal.y > 0.35 && this.normal.y <= 0.7;
+        const low = vn < 0 && (soft || edge || this.isLowLedge(world, p));
+        if (soft && vn < 0 && this.normal.y <= 0.7) {
+          // thin props (lamp posts, trees) brush the drone aside: glance round them, no bounce, no crash
+          const hs = Math.hypot(v.x, v.z);
+          v.addScaledVector(this.normal, -vn);
+          let tx = v.x, tz = v.z;
+          let tl = Math.hypot(tx, tz);
+          if (brushed) {
+            // already glanced this frame: just slide
+          } else if (tl < hs * 0.3) {
+            // dead centre: pick the side the drone is turning or drifting toward
+            const side = this.yawRate !== 0 ? -Math.sign(this.yawRate) : 1;
+            tx = -this.normal.z * side;
+            tz = this.normal.x * side;
+            tl = Math.hypot(tx, tz) || 1;
+          }
+          if (!brushed) {
+            const keep = hs * 0.8;
+            v.x = (tx / tl) * keep;
+            v.z = (tz / tl) * keep;
+            brushed = true;
+          }
+          events.bump = Math.max(events.bump, -vn * 0.5);
+        } else if (low && (intent.thrust > 0.2 || this.guiding)) {
           // Pushing into a low ledge (parapet, roof unit, fountain rim): skim over it instead of
           // bouncing off and getting pinned on the roof. Collision still holds; we only add lift.
+          // The forward speed it absorbs is handed back once the drone is over the top.
           events.ledge = Math.max(events.ledge, -vn);
+          const top = this.columnTop(world, p);
+          const rise = top - (p.y - F.radius) + 0.05;
+          if (rise > 0 && rise <= F.stepUp) {
+            // a lip this low (parapet, kerb, rim) is stepped over without losing speed; the body eases up visually
+            p.y += rise;
+            this.stepOffset -= rise;
+            if (v.y < 0) v.y = 0;
+            continue;
+          }
+          const hn = Math.hypot(this.normal.x, this.normal.z);
+          const carry = -vn * hn * 0.85;
+          if (!this.guiding && carry > this.hopCarry && hn > 1e-3) {
+            this.hopCarry = carry;
+            this.hopTop = this.columnTop(world, p);
+            this.hopDir.set(-this.normal.x / hn, 0, -this.normal.z / hn);
+          }
           v.addScaledVector(this.normal, -vn);
-          v.y = Math.max(v.y, F.hopSpeed * 0.6);
+          // the faster you meet it, the snappier the pop, so a fast skim stalls only briefly
+          this.hopLift = Math.max(this.hop > 0 ? this.hopLift : 0, F.hopSpeed, Math.min(F.hopSpeed * 2, -vn * 0.55));
+          v.y = Math.max(v.y, this.hopLift * 0.75);
           this.hop = F.hopTime;
         } else if (vn < 0) {
           const impact = -vn;
+          const hBefore = Math.hypot(v.x, v.z);
           v.addScaledVector(this.normal, -(1 + F.bounce) * vn);
           if (impact > 2.5 && this.normal.y < 0.7) {
             // tangential scrub on hard wall hits
@@ -421,6 +501,16 @@ export class Drone {
             if (impact > 1.5) events.landed = true;
           } else {
             events.bump = Math.max(events.bump, impact);
+            if (!low) {
+              // a real wall (not a skimmable lip or kerb): remember the hardest contact
+              wallHit = true;
+              const lost = hBefore - Math.hypot(v.x, v.z);
+              if (lost > hardest) {
+                hardest = lost;
+                events.wallTop = this.columnTop(world, p);
+                events.wallNormalY = this.normal.y;
+              }
+            }
           }
         }
       }
@@ -444,6 +534,22 @@ export class Drone {
         v[axis] -= Math.sign(p[axis]) * over * 6 * dt;
         if (over > 25) p[axis] = Math.sign(p[axis]) * (lim + 25);
       }
+    }
+    this.brushing = brushed && touched;
+    // crash severity: net horizontal speed the collisions took off this frame (thrust, drag and guide ran before the loop)
+    if (wallHit) events.wallLoss = Math.max(0, hStart - Math.hypot(v.x, v.z));
+    // ledge hop carry: once over the ledge (no contact this frame), give back the forward speed it absorbed
+    if (this.hopCarry > 0 && !touched && p.y - F.radius > this.hopTop + 0.05) {
+      if (!this.guiding && intent.thrust > 0.2) {
+        const along = v.x * this.hopDir.x + v.z * this.hopDir.z;
+        const add = Math.max(0, this.hopCarry - Math.max(0, along));
+        v.x += this.hopDir.x * add;
+        v.z += this.hopDir.z * add;
+      }
+      this.hopCarry = 0;
+    } else if (this.hop <= 0 && this.hopCarry > 0) {
+      // hop window over and the ledge was not cleared: drop the carry
+      this.hopCarry = 0;
     }
     if (events.bump > 0) {
       this.bumpFlash = 1;
@@ -472,6 +578,16 @@ export class Drone {
     return world.surfaceBelow(px, 1e4, pz) <= top + 0.01;
   }
 
+  /** Tallest obstacle top just inside the surface the drone is touching (along this.normal). */
+  private columnTop(world: CollisionWorld, p: THREE.Vector3): number {
+    const n = this.normal;
+    const hl = Math.hypot(n.x, n.z);
+    if (hl < 1e-3) return world.surfaceBelow(p.x, 1e4, p.z);
+    // just past the contact point, horizontally into the obstacle
+    const k = FLIGHT.radius * hl + 0.15;
+    return world.surfaceBelow(p.x - (n.x / hl) * k, 1e4, p.z - (n.z / hl) * k);
+  }
+
   /** Visual-only: tilt, rotors, lights, cargo swing. */
   private animate(dt: number, intent: FlightIntent): void {
     const F = FLIGHT;
@@ -492,7 +608,8 @@ export class Drone {
     const hover = Math.sin(this.time * 2.1) * F.hoverBob * (1 - sf * 0.7);
     this.bumpFlash = Math.max(0, this.bumpFlash - dt * 3);
     const wob = Math.sin(this.time * 38) * this.bumpFlash * 0.12 * this.bumpAmp;
-    this.tilt.position.y = hover;
+    this.stepOffset *= Math.exp(-14 * dt);
+    this.tilt.position.y = hover + this.stepOffset;
     // crash tumble: a damped roll/pitch shake that settles in about a second
     this.tumble = Math.max(0, this.tumble - dt * 1.1);
     const tk = this.tumble * this.tumble * this.tumbleAmp;

@@ -16,7 +16,212 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-13 20:50 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-13 22:44 UTC.</p>
+<section><h2>round 5</h2><details open><summary>critic.md</summary><pre># Drone Dash, round 5 critic report
+
+**Verdict:** The crash cost is now fair. Low street flight no longer gets charged for skims or pad edges. But the low line still pays nothing. A street route delivers about a third as fast as cruising over the roofs, so the best plan is still to fly over the city.
+
+## Round 4 gap (crash cost fired on hops and pad edges): closed
+
+Scripts are copied to `critic-scripts/`. Only the output folders changed. New scripts have their own names.
+
+**crash-classify.mjs, all 8 seeds**
+
+| Cruise | Sim time | Deliveries | Charged crashes | Hop-like | Within 30 m of target |
+|---|---|---|---|---|---|
+| 12 m | 606 s | 19 | 28 (2.8/min) | **0** | 5 |
+| 20 m | 703 s | 26 | 36 (3.1/min) | **0** | 2 |
+| 40 m (reference) | 876 s | 39 | 18 (1.2/min) | 0 | 1 |
+
+Round 4 at 12 m: 40% of charged crashes were hop-like. Now 0 at both heights.
+
+**Near-target crashes.** I reran seeds 22, 44, 91 and 130 with a logging variant (`crash-classify-v.mjs`). It records the game's own crash record and the speed 0.3 s before the hit. All 5 near-target crashes hit a real building face: wall tops 10.6 to 55 m, far above the pad (0.4 m). The drone was moving at 14 to 17 m/s just before. 0 were on the pad's own lip, kerb or edge. In one screenshot the bot overshoots a street pad into the shop front behind it (`N-alt12-seed44-t54.1-near.jpg`). In another it drops fast beside a facade (`N-alt20-seed22-t32.9-near.jpg`). This is the bot's own action after a real wall hit, not a game fault.
+
+The bot's "from" speed is low (2 to 6 m/s) because the game decides 0.2 s after first contact. By then the drone has already stopped. Speed 0.3 s earlier was 13 to 17 m/s in every logged case.
+
+**crash-stakes.mjs (seeds 22, 58, 130, plus repeats with crash counter)**
+- Seed 22: 29.0 to 10.1 m/s. Within 1 s: clock down 4 s on top of normal ticking, combo x2 lost.
+- Seed 58: 28.9 to 10.5 m/s, 4 s and combo lost. Repeat run: same result.
+- Seed 130: 18.5 to 10.0 m/s, 3 s and combo lost. In the first run the bot measured a follow-up scrape after the real crash. The screenshot shows "-3 SEC · X2.0 COMBO LOST" was already applied (`X-seed130-crash.jpg`).
+- Seed 58, first run: no hit over 8 m/s within 8 s of boosting at 10 m. The street ahead was clear, or the drone brushed through trees and lamp posts, which are now free. Free thin props are fair. They look soft, and a player expects to glance off a tree.
+
+**Scrapes are free (new controlled sweep, `wall-speed-sweep.mjs`).** 18 real block faces on seed 22, head-on at 10 m. With forward held: 0 of 126 charged at 3 to 7 m/s, 2 of 18 at 8 m/s, 18 of 18 at 10 m/s and above. With forward released: 0 charged up to 12 m/s, 18 of 18 at 16 m/s.
+
+**arrival-metrics.mjs, all 8 seeds twice**
+- Run B (clean, one browser at a time): seeds 11, 22, 33, 44: 43 legs, 0 timeouts, longest final 4.9 s, marker off screen 1.2%, slow and high 0.6%. Seeds 7, 58, 91, 130: 39 legs, 1 end-of-clock cruise leg, longest final 4.5 s, 1.2% off screen, 0.0% slow and high. Pass.
+- Run A was run in parallel with other browsers (CPU contention). It showed 4 finals over 10 s (18 to 33 s) and far fewer legs (29 and 25). The clean rerun did not repeat any of them. Treat run A as invalid.
+
+**Flat-frame probe:** 905 frames, **0 flat**. Mobile run: 15,164 frames, 0 flat.
+
+## Seed 11: not a game fault
+
+- Clean, alone, 5 runs in a row: 52 legs, **0 finals over 10 s**, longest 6.1 s (Tailor, Juniper &amp; 6th, the same rooftop canyon leg as round 4), median 3.2 s.
+- Under CPU contention (5 runs plus run A): 3 finals over 10 s (18.4, 20.3, 25.4 s), all with bot stall and back-off cycles.
+- So the long seed 11 finals follow host load, not the seed. When the bot polls more slowly, it misses the pad and loops. The game's arrival is fine.
+
+## Low street line against high cruise
+
+New routed pilots (`route-play.mjs` deterministic, `route-play-rt.mjs` real keyboard). The low pilot follows the street grid at 7 m. It goes corner to corner and brakes into turns. It boosts only on long straights, and it rises up the facade for rooftop pads. The high pilot flies straight at 40 m and boosts.
+
+| Pilot | Seeds | Time | Deliveries/min | Crashes/min | Mean speed | Run length |
+|---|---|---|---|---|---|---|
+| Low, real time | 22, 58, 130 | 215 s | **1.12** | **0.0** | 8 to 9 m/s | 64 to 81 s |
+| High, real time | 22, 58, 130 | 450 s (150 s cap) | **3.33** | 1.3 | 14 to 16 m/s | all hit the cap |
+| Low, deterministic | 11, 22, 58, 130 | 303 s | 1.39 | 0.0 | | 62 to 85 s |
+| High, deterministic | 11, 22, 58, 130 | 666 s | 3.24 | 1.6 | | 124 to 217 s |
+| Low, aggressive (corners 11 m/s) | 11, 22, 58, 130 | 124 s | 0.97 | 2.4 | | 24 to 38 s |
+
+- **Fair now.** 518 s of careful street flight gave 0 crashes. Corner-cutting at 11 m/s gives crashes into real corners, which is fair.
+- **Not rewarding.** The street line delivers at a third of the high rate, and runs end in about half the time. My pilot is slower than a good player. But even at 15 m/s average, a street route is about 1.3 times longer than the straight line and can rarely boost. My estimate for that player is still only about 55% of the high rate.
+- High cruise is also where the hard crashes happen (boosting into towers at 30 to 45 m/s, 4 to 5 s each). It still wins by a wide margin.
+
+## Single biggest remaining gap: the street line is safe but pays nothing, so the high line wins by 3 to 1
+
+Evidence: see the table above. The game has no near-miss, low-flight or street bonus. The time bonus uses the straight-line leg distance, so a street route earns nothing extra for the longer path. Leaving the street costs nothing either. In the best arcade city flyers, the street line is the stylish, risky line. It pays back in score, time or speed. Here it is just slower. The crash rework removed the punishment, but nothing gives the player a reason to go down there.
+
+**Acceptance test** (dev server on 5188, run from the game folder):
+1. `LINE=low SEEDS=22,58,130 SIMT=150 node progress/round-5/critic-scripts/route-play-rt.mjs` and the same with `LINE=high`, both unchanged bots.
+2. Pass: low deliveries per minute are at least **0.6 times** high. Now: 1.12 against 3.33 (0.34 times). Or: low score per minute is at least **0.75 times** high. Now: 348 against 2,439.
+3. Pass: the low run shows a visible low-line reward at least once a minute, for example a HUD pop or a meter. Low crashes stay at or under 1.5 per minute.
+4. No regression: crash-classify at 12 m and 20 m still has 0 hop-like and 0 pad-edge charges. crash-stakes still charges every hit over 8 m/s.
+
+## Other gaps (ranked)
+
+1. **Holding forward changes what counts as a crash.** Head-on at 10 m/s with forward held: 18 of 18 charged. Head-on at 12 m/s with forward released: 0 of 18 charged. Thrust during the 0.2 s window adds about 2 to 4 m/s to the measured loss. Players almost always hold forward. So the real threshold is about 9 m/s. Letting go of the key before a hit is an odd way to dodge a penalty.
+2. **Pitched roofs are still walls.** The drone met a gable slope at 13.7 m/s. The ridge was 0.6 m above the drone's middle. The game charged -3 s (`P-low-seed22-crash1.jpg`). A player expects to ride up a slope that low.
+3. **Crash feedback lands 0.2 s after impact.** At the moment of impact there is no cue yet (`X-seed22-crash.jpg`). When the window closes, the "Crash!" text, shake and sound follow. It reads fine. A short cue on first contact (spark or thud) can tie the cost to the hit more tightly.
+4. **Rooftop canyon beside street pads (seed 11 Tailor).** Still the slowest leg, at 4.5 to 6.1 s. It is fair, and it is no longer an outlier.
+
+## How it plays
+
+- **Crash feel is good.** You get a big coral "Crash!" and a chip with seconds and combo lost. The combo badge is struck through. A red vignette, shake and sound follow. Three tiers (3, 4, 5 s) feel proportionate. Tree and lamp brushes are free and look free.
+- **Street flying feels safe but slow.** Corners at 7 m/s are clean. Long avenues are pleasant to fly. But each leg starts on a rooftop pad, so you climb out, drop into the street, and fly a longer path for the same reward.
+- **Full loop works** on desktop and on iPhone 13 held sideways (touch): title, pickup, delivery, combo, crashes, game over, Fly Again (clock 50.9 s after the mobile restart). Mobile touch controls stay clear of the HUD (`m07-bump.jpg`). The mobile run made 3 deliveries in the first 41 s.
+
+## Performance
+
+- Desktop 1280x720, bloom on, 40 s of flight: 4,854 frames, **median 8.30 ms, p95 9.80 ms, 0 frames over 20 ms**. Same as round 4.
+- Mobile emulation (iPhone 13 held sideways, touch, DPR 2), 60 s: 7,161 frames, median 8.30 ms, p95 9.60 ms, max 18.6 ms, 0 over 20 ms.
+- First load, production build: **0.72 MB** (JS 693 KB, CSS 17 KB, HTML 6 KB, plus a 31 KB lil-gui chunk). Budget 15 MB: pass.
+
+## Screenshots (progress/round-5/critic/)
+
+- Crash stakes: X-seed22-crash, X-seed130-crash, X2-seed58-crash-421/746, X2-seed130-crash-89
+- Crash classify: K-alt12-*, K-alt20-*, K-alt40-* (first 8 crashes each); near-target checks N-alt12-seed44-t54.1-near, N-alt12-seed91-t34.3-near, N-alt20-seed22-t32.9-near, N-alt20-seed130-t54.7/t98.0-near
+- Routed pilots: P-low-* (aggressive low run, incl. pitched roof P-low-seed22-crash1), P-high-*, Q-high-* (real-time high run; the real-time low run had no crashes, so no shots)
+- Arrival stalls from the contended run A (invalid run): A-seed7/11/22/58-stall-final-approach
+- Desktop flow: d01-title to d09-game-over
+- Mobile (iPhone 13 held sideways, touch): m01-title to m09-restart
+
+New scripts (progress/round-5/critic-scripts/): wall-speed-sweep.mjs, crash-classify-v.mjs, route-play.mjs, route-play-rt.mjs, route-play-debug.mjs.
+</pre></details><details><summary>builder.md</summary><pre># Drone Dash, round 5 builder report: fair crash classification
+
+## Cause
+
+The round 4 crash check fired on the game's own skim helpers. Four separate faults caused this:
+
+1. **The ledge hop counted as a crash.** A hop cancels the drone's speed into the ledge. The crash check then counted that speed as "lost".
+2. **The speed loss was a raw before/after delta.** It included drag, the S brake and the drop guide's pull near pads. So near a pad, a light touch plus braking was enough to pass 7 m/s.
+3. **Edge clips counted as wall hits.** Sometimes the drone's underside clipped a roof edge or the rim of a box (contact normal 20 to 45 degrees up). The bounce then took off horizontal speed, and the game charged it.
+4. **Lamp posts and trees counted as walls.** These are "soft" props. Near the camera, the game hides them. One head-on post hit stopped the drone dead (the critic's "nothing in view looks like an obstacle", grass, 10 m from a park pad). In a probe I placed the drone in front of a park lamp post: it stopped at 0 m/s and stayed pinned.
+
+## Design
+
+- **Only real walls can cost you.** Only a wall contact counts toward a crash. These contacts are never counted:
+  - a low lip the drone can skim (the same test the game uses for its hop)
+  - an underside clip on an edge (normal y 0.35 to 0.7)
+  - a lamp post or tree
+- **Severity is the speed the collision itself takes off.** It is the horizontal speed before the sub-stepped collision loop minus the speed after it. Thrust, drag, braking and the guide all run before the loop, so none of them count. The 3, 4 and 5 s tiers and the 7 m/s threshold are unchanged.
+- **A hop always wins.** The crash is judged 0.2 s after first contact (the same span the loss was already summed over). If the game's own ledge hop fires inside that span, the collision is a skim and costs nothing.
+- **The pad's own edge is free.** The rule applies within 30 m of the current pad. A wall there is free if its top is within 1.5 m of the pad height and the skids are less than 4 m below that top. This covers a roof lip, a kerb or a lawn edge you clip as you drop in.
+- **Low lines keep their speed.** This is the low-flying reward. I kept it inside the physics and added no new scoring rule.
+  - Lips up to 0.9 m above the skids are stepped over at full speed. This covers parapets (0.7 m), kerbs and fountain rims. The body eases up visually.
+  - Taller ledges up to 2.2 m still hop. The pop is faster the harder you meet the ledge. Once you clear the top, the hop gives back 85% of the forward speed it absorbed.
+  - Posts and trees brush you aside with 80% of your speed. There is one glance per brush, so you slide off instead of sticking.
+- **Round 4 feedback is unchanged for real crashes:** HUD pop, -Ns chip, vignette, sparks, shake, tumble and sound. Brushes and skims keep the light scrape feedback.
+
+I did not add a slipstream or combo bonus. Fair skims plus speed carry already make the low line pay. A scoring rule needs its own balancing round.
+
+## Files changed
+
+- `src/entities/Drone.ts`:
+  - `FlightEvents` gains `wallLoss`, `wallTop` and `wallNormalY`.
+  - Collision loop: soft-prop glance, edge-clip class, step-up, hop speed carry and impact-scaled hop lift.
+  - New `columnTop()` helper.
+  - New `place()` debug method.
+- `src/game/Game.ts`:
+  - `checkCrash` rewritten: wall-only loss, 0.2 s judge, hop skim and pad edge rule.
+  - New `isTargetEdge`.
+  - Diagnostics gain `lastCrash` and `contact`.
+  - Hooks gain `__GAME__.place()` and `__GAME__.sites()`. All existing hooks are unchanged.
+- `src/systems/CollisionWorld.ts`: `deepestSoft` flag.
+- `src/game/config.ts`:
+  - `FLIGHT.stepUp`
+  - `CRASH.padEdgeRange` and `CRASH.padEdgeDepth`
+  - comments on `chainGap` and `hitSpan`
+- `src/vite-env.d.ts`: types for the new diagnostics and hooks.
+- `src/entities/ObjectiveMarker.ts`: not touched. The bloom clamps are intact.
+
+## Scripts
+
+The critic scripts are copied to `progress/round-5/scripts/`. Only the output folder changed (now `../shots/`). The logic is unchanged.
+
+I added three extra scripts of my own:
+- `crash-classify-diag.mjs`: adds target y, the game's `lastCrash`, and a trace of climb input after each crash.
+- `crash-stakes-trace.mjs`: logs contacts after the hit.
+- `obstacle-probe.mjs`: places the drone in front of a fountain or post.
+
+## Numbers
+
+**crash-classify.mjs (official copy, deterministic, 8 seeds):**
+
+| Cruise | Sim time | Deliveries | Charged crashes | Per minute | Hop-like | Near pad, on its surface |
+|---|---|---|---|---|---|---|
+| 12 m | 526 s | 14 | 29 | 3.3 | **1** | **1** (seed 22, see below) |
+| 20 m | 744 s | 29 | 35 | 2.8 | **0** | 0 |
+| 40 m (diag copy) | 905 s | 43 | 17 | 1.1 | 0 | 0 |
+
+The round 4 critic measured 12 m at 45 crashes, 18 of them hop-like.
+
+Over 6 more diagnostic runs at 12 m and 20 m:
+- 0 to 1 hop-like matches per run. Every one is a flat wall hit: normal y 0, wall top 2.4 to 12 m above the drone. Then the bot presses Space within 0.3 s, from its unstick routine (S plus Space) or its altitude hold. No residual case was a game hop.
+- Every flagged "near pad, on its surface" case, checked by screenshot, was a building facade or the depot building hit head-on at street level. Example: `shots/K-alt12-seed22-crash6.jpg` shows a shop front 10 m from the café pad. `D-alt12-seed44-crash2` (the depot front wall) came from a diagnostic run, and I deleted that run's screenshots before the final classify runs. None was a lip, kerb or lawn edge.
+
+**Honest result:** criterion 1 is not a clean 0 at 12 m. The critic's hop-like test cannot tell the bot's own climb after a real wall hit from a hop.
+
+**Real time (crash-classify-rt.mjs, seeds 11, 22, 58, 130):**
+- 12 m: 3.2 crashes a minute, 9 deliveries (2.25 a run).
+- 40 m: 0.4 crashes a minute, 17 deliveries (4.25 a run).
+- I ran the two in parallel. That seems to slow the 40 m bot: seeds 11 and 58 made only 2 deliveries each, with 0 crashes.
+- Deterministic deliveries per run: 1.75 at 12 m against 5.4 at 40 m.
+- The optional target (12 m at half of 40 m) is **not met**. Most remaining 12 m crashes are real: the straight-line bot flies head-on into 13 to 57 m buildings without avoiding them.
+
+**crash-stakes.mjs (22, 58, 130):**
+- 58: 28.5 to 10.8 m/s, -4.8 s (bot reading).
+- 130: 16.7 to 7.6 m/s, -3.8 s, combo 2 to 0.
+- 22: 16.7 to 3.5 m/s, **free**. The bot boosted at 2 m into the park fountain's centre pillar (`shots/X-seed22-crash.jpg`). The pillar top is 1.4 to 2.2 m above the skids, so by the game's own rule this is a ledge hop. The bot releases the keys at the hit, so the drone does not carry its speed on. I count this as the hop rule working, but it does not pass the critic's "every hit over 8 m/s" line literally.
+- On the earlier run, seed 58 was a 13.5 m/s rooftop parapet hop, also free. It is now a full-speed step-over.
+
+**Scrapes:** the free bump counts above are 165 to 231 per run, with no charge.
+
+**arrival-metrics.mjs:**
+
+| Run | Legs | Final-approach timeouts | Longest final | Off screen | Slow and high |
+|---|---|---|---|---|---|
+| 11, 22, 33, 44 | 43 | 0 | **15.8 s** | 3.2% | 3.2% |
+| 7, 58, 91, 130 | 40 | 0 | 4.6 s | 0.9% | 0.3% |
+| 11, 11 | 21 | 0 | 3.7 s | 2.1% | 4.1% |
+
+- The second set has 1 timeout, but it is a cruise leg (seed 91), not a final approach. The clock ran out before the bot got within 30 m, as in round 4.
+- The 15.8 s final is seed 11, Willow Lofts Rooftop. It is the same leg that took 16.6 s in round 4's builder run. The bot dropped beside a taller tower, stalled 4 times, then landed (`shots/A-seed11-stall-final-approach.jpg`).
+- On the re-runs of seed 11, the same leg took 3.7 s both times.
+
+**Other checks:**
+- Flat-frame probe: 1,021 frames, **0 flat**.
+- Frame time (long-run, 120 s each, bloom on): seed 22 median 8.30 ms, p95 9.80 ms. Seed 58 median 8.30 ms, p95 9.80 ms. 0 frames over 20 ms. This equals round 4.
+- `npm run build` passes (JS 693 KB).
+- The dev server on port 5188 is stopped.
+</pre></details><div class="grid"></div></section>
 <section><h2>round 4</h2><details open><summary>critic.md</summary><pre># Drone Dash, round 4 critic report
 
 **Verdict:** Crashes now cost something, and the feedback reads well. But the cost also fires on the game's own ledge hop and on low contacts near pads. So flying low through the city is a trap. The best plan is to cruise above every roof.

@@ -10,6 +10,8 @@ export class CollisionWorld {
   private readonly stamp: Int32Array;
   private query = 0;
   private readonly candidates: number[] = [];
+  /** True when the deepest contact of the last resolveSphere call was a soft prop (tree, lamp post). */
+  deepestSoft = false;
 
   constructor(readonly boxes: Box[], readonly floorY = 0) {
     this.stamp = new Int32Array(boxes.length);
@@ -59,6 +61,7 @@ export class CollisionWorld {
   resolveSphere(p: THREE.Vector3, r: number, outNormal: THREE.Vector3): number {
     let deepest = 0;
     outNormal.set(0, 0, 0);
+    this.deepestSoft = false;
     // a few iterations so corners between boxes settle
     for (let iter = 0; iter < 3; iter++) {
       let any = false;
@@ -92,6 +95,7 @@ export class CollisionWorld {
         if (depth > deepest) {
           deepest = depth;
           outNormal.set(dx, dy, dz);
+          this.deepestSoft = !!b.soft;
         }
         any = true;
       }

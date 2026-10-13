@@ -22,6 +22,7 @@ export const FLIGHT = {
   boostRegen: 0.16, // per second
   boostRegenDelay: 0.9, // s
   hopHeight: 2.2, // m: ledges lower than this above the skids are skimmed over when flying into them
+  stepUp: 0.9, // m: lips up to this high above the skids (parapets, kerbs, rims) are stepped over at full speed
   hopSpeed: 6, // m/s upward while skimming a ledge
   hopTime: 0.3, // s
   guideBrakeRange: 28, // m: diving toward the pad inside this range bleeds leftover boost speed at the normal rate
@@ -74,8 +75,10 @@ export const CRASH = {
     { severity: 26, seconds: 5, label: 'Wreck' },
   ],
   window: 1.2,
-  chainGap: 0.15, // contacts closer than this count as one hit when measuring speed lost
-  hitSpan: 0.2, // speed lost is summed over at most this long from first contact
+  chainGap: 0.15, // s: wall contacts closer than this belong to the same collision
+  hitSpan: 0.2, // s: speed lost is summed over this long from first contact, then the hit is judged (a ledge hop in that span makes it a skim)
+  padEdgeRange: 30, // m: near the current pad, clipping the top edge of the pad's own block is a landing, not a crash
+  padEdgeDepth: 4, // m: ...when the drone's skids are at most this far below that edge
   floor: 1, // a crash never takes the clock below this; crashes do not end the run on their own
 };
 

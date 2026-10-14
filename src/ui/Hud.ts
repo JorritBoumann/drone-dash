@@ -230,7 +230,8 @@ export class Hud {
 
   /**
    * Slow clock marker: while drafting slows the clock, the timer glows teal and a small tag under it shows the clock's
-   * speed (x0.5 = half speed). `gain` is clock seconds gained per second.
+   * speed (x0.5 = half speed, "frozen" at full draft, "+0.1/s" when a perfect draft early in the run runs it back).
+   * `gain` is clock seconds gained per second.
    */
   setSlowClock(gain: number, dt = 1 / 60): void {
     const on = gain >= 0.03;
@@ -241,7 +242,8 @@ export class Hud {
       this.timer.classList.toggle('slow', show);
     }
     if (on) {
-      const text = `clock x${Math.max(0, 1 - gain).toFixed(1)}`;
+      const speed = Math.max(0, 1 - gain);
+      const text = gain > 1.05 ? `clock +${(gain - 1).toFixed(1)}/s` : speed < 0.05 ? 'clock frozen' : `clock x${speed.toFixed(1)}`;
       if (text !== this.last.slow) {
         this.last.slow = text;
         this.timerSlow.textContent = text;

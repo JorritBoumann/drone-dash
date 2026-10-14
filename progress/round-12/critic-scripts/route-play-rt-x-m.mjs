@@ -1,7 +1,5 @@
-// Round 12 builder tuning copy: identical to balance-probe-m.mjs, plus one PAY log line per slipstream payout (log-only).
-// Round 9 critic: identical control logic to balance-probe-h.mjs; log-only additions: medal passes, breakdown sums, game-over DOM, audio fanfare count, HUD goal text, medal screenshots.
-// Round 8 critic: identical to balance-probe.mjs, plus slipstream.hotPoints in the log line (log-only).
-// Round 7 critic: balance-probe = route-play-rt-x (low line) with OFF (metres right of road centre on straights), CRUISE (target speed), NOBOOST=1, logs mean slip quality and hug.
+// Round 9 critic: identical control logic to route-play-rt-x-h.mjs; log-only additions: medal passes, breakdown sums, game-over DOM, audio fanfare count, HUD goal text, medal screenshots.
+// Round 8 critic: identical to route-play-rt-x.mjs, plus slipstream.hotPoints in the log line (log-only).
 // Round 6 critic: route-play-rt-x = route-play-rt.mjs with log-only additions (slipstream payouts, payout times, mean headwind). Control logic identical.
 // Round 5 critic: route-play-rt, the real-time version of route-play.mjs. Real keyboard input (page.keyboard), the game runs at its own frame rate, control loop polls every ~50 ms.
 // Round 5 critic: a routed, player-like pilot.
@@ -10,9 +8,8 @@
 // LINE=high : the arrival bot's line: straight at the target at 40 m, boost when far, drop at the pad.
 // Plays each seed until the clock runs out (or SIMT). Logs deliveries, crashes (with speed 0.3 s before), score.
 import { chromium } from '@playwright/test';
-const OUT = new URL('../builder2-shots/', import.meta.url).pathname;
+const OUT = new URL('../critic/', import.meta.url).pathname;
 const LINE = process.env.LINE || 'low'; const CORNER = Number(process.env.CORNER || 7); const BOOSTD = Number(process.env.BOOSTD || 55); /* low line: corner speed, min straight length to boost */ const LOWY = Number(process.env.LOWY || 7); const SIMT = Number(process.env.SIMT || 300);
-const OFF = Number(process.env.OFF || 0), CRUISE = Number(process.env.CRUISE || 16), NOBOOST = !!process.env.NOBOOST; let qSum = 0, hugSum = 0, hugN = 0;
 const seeds = (process.env.SEEDS || '11,22,58,130').split(',');
 const ROADS = [-154, -110, -66, -22, 22, 66, 110, 154];
 const nr = (v) => ROADS.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
@@ -29,7 +26,6 @@ function route(p, o) {
   else pts = !finalOnX && Zc === Zt ? [{ x: p.x, z: Zc }, last] : [{ x: p.x, z: Zc }, { x: Xt, z: Zc }, { x: Xt, z: Zt }, last];
   pts.push({ x: o.x, z: o.z, final: true });
   const out = []; for (const q of pts) { const l = out[out.length - 1] || p; if (Math.hypot(q.x - l.x, q.z - l.z) > 3 || q.final) out.push(q); }
-  for (const q of out) if (!q.final && q !== out[out.length - 2]) { q.x += OFF; q.z += OFF; }
   return out;
 }
 for (const seed of seeds) {
@@ -60,8 +56,8 @@ for (const seed of seeds) {
       const offRoad = leaving && Math.min(Math.abs(p.x - nr(p.x)), Math.abs(p.z - nr(p.z))) > 6.5;
       wantY = offRoad && hd >= 30 ? 26 : hd < 30 ? (raised ? o.y + 1.5 : o.y + 1.2) : (raised && hd < 45 ? o.y + 2 : LOWY);
       const corner = !w.final && wd < 14; const remaining = wps.length > 1 ? 0 : wd;
-      tgtSpeed = hd < 8 ? 4 : corner ? CORNER : w.final && hd < 25 ? 8 : CRUISE;
-      boost = !NOBOOST && !corner && !w.final && wd > BOOSTD && Math.abs(err) < 0.12 && d.player.boost > 0.3;
+      tgtSpeed = hd < 8 ? 4 : corner ? CORNER : w.final && hd < 25 ? 8 : 16;
+      boost = !corner && !w.final && wd > BOOSTD && Math.abs(err) < 0.12 && d.player.boost > 0.3;
       if (raised && hd < 30 && p.y < o.y - 0.5) tgtSpeed = 1;
       if (Math.abs(err) > 0.5) tgtSpeed = Math.min(tgtSpeed, 8); // rise up the facade before moving over the roof
     }
@@ -73,11 +69,11 @@ for (const seed of seeds) {
       await key('KeyE', boost);
       await key('Space', p.y < wantY - 1.2); await key('ShiftLeft', p.y > wantY + 1.2);
     }
-    prev = d; d = await step(); if (!hudGoal && simT > 3) hudGoal = await page.evaluate(() => { const e = document.getElementById('goal'); const r = e.getBoundingClientRect(); return { text: e.innerText.replace(/\s+/g, ' '), vis: e.offsetParent !== null && r.width > 0, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; }); if (d.goals && d.goals.passes > lastPass) { lastPass = d.goals.passes; passShotAt = simT + 0.9; } if (passShotAt && simT > passShotAt && passShots < 3) { passShotAt = 0; passShots++; await page.screenshot({ path: OUT + `M-${LINE}${typeof OFF !== 'undefined' ? '-c' + CRUISE : ''}-seed${seed}-pass${passShots}.jpg`, type: 'jpeg', quality: 80 }); } const now = Date.now(); const dtw = (now - tLast) / 1000; tLast = now; simT = (now - t00) / 1000; sp.push(d.player.speed); if (sp.length > 8) sp.shift(); dtw0 = dtw; altSum += d.player.position.y; n++; spSum += d.player.speed; hwSum += d.player.headwind || 0; if (d.slipstream) { qSum += d.slipstream.quality; if (d.slipstream.drafting) { hugSum += d.slipstream.hug; hugN++; } } if (d.slipstream && d.slipstream.payouts > lastPay) { lastPay = d.slipstream.payouts; payT.push(+simT.toFixed(0)); console.log("PAY", seed, simT.toFixed(1), "chain", d.slipstream.chain, "pace", (d.slipstream.lastPace||0).toFixed(1), "sec", d.slipstream.lastSeconds, "leg", d.slipstream.legSeconds, "alt", d.player.position.y.toFixed(1), "tl", d.timeLeft.toFixed(1)); }
+    prev = d; d = await step(); if (!hudGoal && simT > 3) hudGoal = await page.evaluate(() => { const e = document.getElementById('goal'); const r = e.getBoundingClientRect(); return { text: e.innerText.replace(/\s+/g, ' '), vis: e.offsetParent !== null && r.width > 0, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; }); if (d.goals && d.goals.passes > lastPass) { lastPass = d.goals.passes; passShotAt = simT + 0.9; } if (passShotAt && simT > passShotAt && passShots < 3) { passShotAt = 0; passShots++; await page.screenshot({ path: OUT + `M-${LINE}${typeof OFF !== 'undefined' ? '-c' + CRUISE : ''}-seed${seed}-pass${passShots}.jpg`, type: 'jpeg', quality: 80 }); } const now = Date.now(); const dtw = (now - tLast) / 1000; tLast = now; simT = (now - t00) / 1000; sp.push(d.player.speed); if (sp.length > 8) sp.shift(); dtw0 = dtw; altSum += d.player.position.y; n++; spSum += d.player.speed; hwSum += d.player.headwind || 0; if (d.slipstream && d.slipstream.payouts > lastPay) { lastPay = d.slipstream.payouts; payT.push(+simT.toFixed(0)); }
     if (d.crashes > prev.crashes) {
       const e = { t: +simT.toFixed(1), sp03: +sp[0].toFixed(1), y: +d.player.position.y.toFixed(1), hd: +hd.toFixed(0), loss: d.lastCrash ? +d.lastCrash.loss.toFixed(1) : null, wallTop: d.lastCrash ? +d.lastCrash.wallTop.toFixed(1) : null, unstick: unstick > 0, timeLost: +(prev.timeLeft - d.timeLeft).toFixed(1), comboLost: prev.combo };
       crashes.push(e);
-      if (shots < 3) { shots++; await page.screenshot({ path: OUT + `B-off${OFF}-seed${seed}-crash${shots}.jpg`, type: 'jpeg', quality: 80 }); }
+      if (shots < 3) { shots++; await page.screenshot({ path: OUT + `Q-${LINE}-seed${seed}-crash${shots}.jpg`, type: 'jpeg', quality: 80 }); }
     }
   }
   
@@ -92,10 +88,10 @@ for (const seed of seeds) {
   const M = { truncated, finalScore: fin.score, tier: fin.goals.tier, tierName: fin.goals.tierName, passes: fin.goals.passes, passList: fin.goals.passList, breakdown: bd, bdSum, bdOk: bdSum === fin.score && bd.total === fin.score, overDom, domSum, domOk: !truncated && domSum === fin.score && domTotal === fin.score && overDom.overScore === fin.score, medalNotes: medalNotes.length, medalFanfares: medalNotes.length / 3, medalFreqs: [...new Set(medalNotes.map((o) => Math.round(o.f)))], audioState: ctxState, hudGoal };
   console.log('MEDAL ' + JSON.stringify({ seed, ...M }));
 
-  const r = { seed, line: LINE, simT: +simT.toFixed(0), deliveries: d.deliveries, score: d.score, crashes: crashes.length, perMin: +(crashes.length / simT * 60).toFixed(1), meanAlt: +(altSum / n).toFixed(1), meanSpeed: +(spSum / n).toFixed(1), crashList: crashes, slip: d.slipstream ? { payouts: d.slipstream.payouts, points: d.slipstream.points, seconds: d.slipstream.seconds, hotPoints: d.slipstream.hotPoints } : null, payT, meanHeadwind: +(hwSum / n).toFixed(2), meanQ: +(qSum / n).toFixed(2), meanHugWhileDraft: +(hugSum / Math.max(1, hugN)).toFixed(2), draftFrac: +(hugN / n).toFixed(2) }; qSum = 0; hugSum = 0; hugN = 0;
+  const r = { seed, line: LINE, simT: +simT.toFixed(0), deliveries: d.deliveries, score: d.score, crashes: crashes.length, perMin: +(crashes.length / simT * 60).toFixed(1), meanAlt: +(altSum / n).toFixed(1), meanSpeed: +(spSum / n).toFixed(1), crashList: crashes, slip: d.slipstream ? { payouts: d.slipstream.payouts, points: d.slipstream.points, seconds: d.slipstream.seconds, hotPoints: d.slipstream.hotPoints } : null, payT, meanHeadwind: +(hwSum / n).toFixed(2) };
   results.push(r); console.log(JSON.stringify(r));
   await page.close();
 }
 const sum = (f) => results.reduce((a, r) => a + r[f], 0);
-console.log(`OFF ${OFF} CRUISE ${CRUISE} NOBOOST ${NOBOOST} | LINE ${LINE}${LINE === 'low' ? ' ' + LOWY + ' m corner ' + CORNER + ' boost>' + BOOSTD : ''}: seeds ${seeds.length}, sim ${sum('simT')} s, deliveries ${sum('deliveries')} (${(sum('deliveries') / sum('simT') * 60).toFixed(2)}/min), crashes ${sum('crashes')} (${(sum('crashes') / sum('simT') * 60).toFixed(1)}/min), score ${sum('score')} (${(sum('score') / sum('simT') * 60).toFixed(0)}/min), slip payouts ${results.reduce((a, r) => a + (r.slip ? r.slip.payouts : 0), 0)} (${(results.reduce((a, r) => a + (r.slip ? r.slip.payouts : 0), 0) / sum('simT') * 60).toFixed(2)}/min), slip pts ${results.reduce((a, r) => a + (r.slip ? r.slip.points : 0), 0)}`);
+console.log(`LINE ${LINE}${LINE === 'low' ? ' ' + LOWY + ' m corner ' + CORNER + ' boost>' + BOOSTD : ''}: seeds ${seeds.length}, sim ${sum('simT')} s, deliveries ${sum('deliveries')} (${(sum('deliveries') / sum('simT') * 60).toFixed(2)}/min), crashes ${sum('crashes')} (${(sum('crashes') / sum('simT') * 60).toFixed(1)}/min), score ${sum('score')} (${(sum('score') / sum('simT') * 60).toFixed(0)}/min), slip payouts ${results.reduce((a, r) => a + (r.slip ? r.slip.payouts : 0), 0)} (${(results.reduce((a, r) => a + (r.slip ? r.slip.payouts : 0), 0) / sum('simT') * 60).toFixed(2)}/min), slip pts ${results.reduce((a, r) => a + (r.slip ? r.slip.points : 0), 0)}`);
 await browser.close();

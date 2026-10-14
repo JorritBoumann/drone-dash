@@ -6,8 +6,20 @@ import type { Site } from '../world/CityGenerator';
 export type DeliveryPhase = 'pickup' | 'deliver';
 export type DeliveryEvent =
   | { type: 'picked'; site: Site }
-  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; hot: number }
+  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number }
   | null;
+
+export type Tally = {
+  drops: number; // delivery base points (100 + 1.2 per metre of leg)
+  fast: number; // fast-drop bonus points before the combo multiplier
+  combo: number; // extra points from the delivery combo multiplier
+  slip: number; // slipstream payouts
+  fastCount: number;
+  dropSeconds: number; // clock seconds earned by deliveries
+  slipSeconds: number; // clock seconds earned by slipstream payouts
+  crashSeconds: number; // clock seconds lost to crashes
+};
+export const newTally = (): Tally => ({ drops: 0, fast: 0, combo: 0, slip: 0, fastCount: 0, dropSeconds: 0, slipSeconds: 0, crashSeconds: 0 });
 
 /** Objective loop: pick a parcel up, drop it off before the clock runs out; fast drops chain combos. */
 export class DeliverySystem {
@@ -22,7 +34,8 @@ export class DeliverySystem {
   legPar = 0;
   legDistance = 0;
   legRoute = 0;
-  lastHotPoints = 0; // street bonus in the last delivery's points (slipstream chain carried to the drop)
+  /** Where every point and second of the run came from (game-over breakdown). The point lines sum exactly to `score`. */
+  readonly tally = newTally();
   private lastSiteId = -1;
   private isClear?: (from: THREE.Vector3, to: THREE.Vector3) => boolean;
   private readonly glideFrom = new THREE.Vector3();
@@ -35,6 +48,7 @@ export class DeliverySystem {
     this.combo = 0;
     this.deliveries = 0;
     this.lastSiteId = -1;
+    Object.assign(this.tally, newTally());
     this.isClear = isClear;
     this.phase = 'pickup';
     // first objective: prefer one reachable in a straight, unobstructed line from the spawn
@@ -49,6 +63,7 @@ export class DeliverySystem {
     this.timeLeft -= taken;
     const comboLost = breakCombo && this.combo > 0 ? this.multiplier : 0;
     if (breakCombo) this.combo = 0;
+    this.tally.crashSeconds += taken;
     return { seconds: taken, comboLost };
   }
 
@@ -57,11 +72,13 @@ export class DeliverySystem {
     const pts = Math.round(points * (useCombo ? this.multiplier : 1));
     this.score += pts;
     this.timeLeft += seconds;
+    this.tally.slip += pts;
+    this.tally.slipSeconds += seconds;
     return pts;
   }
 
   get multiplier(): number {
-    return 1 + Math.min(this.combo, RUN.maxCombo) * 0.5;
+    return 1 + Math.min(this.combo, RUN.maxCombo) * RUN.comboStep;
   }
 
   /**
@@ -97,10 +114,9 @@ export class DeliverySystem {
   }
 
   /** Check arrival at the active objective. */
-  update(dt: number, rng: Rng, drone: THREE.Vector3, droneRadius: number, holdPar = false, hot = 1): DeliveryEvent {
+  update(dt: number, rng: Rng, drone: THREE.Vector3, droneRadius: number): DeliveryEvent {
     this.timeLeft = Math.max(0, this.timeLeft - dt);
-    // slipstream: drafting along the street holds the fast-drop window open
-    if (!holdPar) this.legTime += dt;
+    this.legTime += dt;
     const t = this.target;
     const dx = drone.x - t.pos.x, dz = drone.z - t.pos.z;
     const dy = drone.y - droneRadius - t.pos.y;
@@ -118,9 +134,10 @@ export class DeliverySystem {
       const kinds: Site['kind'][] = rng() < 0.45 ? ['doorstep'] : ['rooftop', 'doorstep', 'park', 'depot'];
       this.target = this.choose(rng, t.pos, minD, maxD, kinds, this.approachable(t.pos));
       this.legDistance = Math.hypot(this.target.pos.x - t.pos.x, this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
-      // par is judged on the street route (grid distance), so following the streets is not a slow drop by definition
+      // par is judged on the street route (grid distance) at a clean street pace with corners, so a pilot who follows the
+      // streets makes it without needing the slipstream (drafting earns its own points, never delivery points)
       this.legRoute = Math.abs(this.target.pos.x - t.pos.x) + Math.abs(this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
-      this.legPar = this.legRoute / 12.5 + 5;
+      this.legPar = this.legRoute / RUN.parSpeed + RUN.parSlack;
       this.legTime = 0;
       return { type: 'picked', site: picked };
     }
@@ -130,10 +147,16 @@ export class DeliverySystem {
     this.combo = fast ? this.combo + 1 : 0;
     const decay = Math.max(0.55, 1 - this.deliveries * 0.035);
     const timeBonus = Math.round(Math.max(RUN.minTimeBonus, Math.min(20, 5 + this.legDistance / 11)) * decay);
-    const base = Math.round((RUN.baseScore + this.legDistance * 1.2 + (fast ? 75 : 0)) * this.multiplier);
-    const points = Math.round(base * hot);
-    this.lastHotPoints = points - base;
+    const plain = Math.round(RUN.baseScore + this.legDistance * 1.2);
+    const fastPts = fast ? RUN.fastBonus : 0;
+    const points = Math.round((RUN.baseScore + this.legDistance * 1.2 + fastPts) * this.multiplier);
     this.score += points;
+    const T = this.tally;
+    T.drops += plain;
+    T.fast += fastPts;
+    T.combo += points - plain - fastPts;
+    T.fastCount += fast ? 1 : 0;
+    T.dropSeconds += timeBonus;
     this.deliveries += 1;
     this.timeLeft += timeBonus;
     const site = t;
@@ -141,6 +164,6 @@ export class DeliverySystem {
     // next pickup reasonably close so the loop keeps moving
     this.target = this.choose(rng, t.pos, 30, 95 + Math.min(this.deliveries * 5, 60), undefined, this.approachable(t.pos));
     this.legTime = 0;
-    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, hot };
+    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo };
   }
 }

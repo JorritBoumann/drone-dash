@@ -288,6 +288,27 @@ export class AudioSystem {
     this.tone(880, t, 0.06, 'triangle', 0.08, 0.1);
   }
 
+  /**
+   * Medal won: a short three-note fanfare (a soft brass-like square plus a sine body) that ends on a held chord with
+   * a bell shimmer. Each higher medal starts a whole tone higher and adds one bell. `delay` lines it up with the banner.
+   */
+  medal(tier: number, delay = 0): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime + delay;
+    const lift = Math.pow(2, ((Math.min(tier, 4) - 1) * 2) / 12);
+    const motif = [392, 523.25, 659.25];
+    motif.forEach((n, i) => {
+      const dur = i === 2 ? 1.1 : 0.16;
+      this.tone(n * lift, t + i * 0.12, dur, 'square', 0.035, 0.4);
+      this.tone(n * lift, t + i * 0.12, dur, 'sine', 0.16, 0.5);
+    });
+    this.tone(783.99 * lift, t + 0.24, 1.1, 'sine', 0.1, 0.6);
+    this.tone(196 * lift, t + 0.24, 0.9, 'sine', 0.18, 0.2);
+    const bells = [2093, 2637, 3136, 4186];
+    for (let i = 0; i < Math.min(tier, 4); i++) this.tone(bells[i] * lift * 0.5, t + 0.32 + i * 0.07, 0.6, 'sine', 0.05, 0.7);
+    this.noise(t + 0.24, 0.7, 0.04, 'highpass', 6000, 11000);
+  }
+
   gameOver(): void {
     if (!this.ready) return;
     const t = this.ctx!.currentTime;

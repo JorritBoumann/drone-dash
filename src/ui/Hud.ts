@@ -1,4 +1,30 @@
 import type { MarkerKind } from '../entities/ObjectiveMarker';
+import { GOALS } from '../game/config';
+import { nextGoal, tierName } from '../game/goals';
+
+/** Everything the game-over card explains. The point lines sum exactly to `score`. */
+export type RunSummary = {
+  score: number;
+  best: number;
+  bestTier: number;
+  newBest: boolean;
+  tier: number;
+  deliveries: number;
+  fastCount: number;
+  topCombo: number; // highest combo multiplier reached (1 = none)
+  drops: number;
+  fast: number;
+  combo: number;
+  slip: number;
+  slipPayouts: number;
+  startTime: number;
+  dropSeconds: number;
+  slipSeconds: number;
+  crashSeconds: number;
+  crashes: number;
+};
+
+const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -50,6 +76,16 @@ export class Hud {
   private readonly windEl = $('wind');
   private windOn = false;
   private slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false, rate: -1, cue: '' };
+  private readonly goal = $('goal');
+  private readonly goalName = $('goal-name');
+  private readonly goalScore = $('goal-score');
+  private readonly goalFill = $('goal-fill');
+  private goalLast = { tier: -1, q: -1 };
+  private readonly medalPopEl = $('medal-pop');
+  private readonly medalPopName = $('medal-pop-name');
+  private readonly medalPopSub = $('medal-pop-sub');
+  private medalTimer = 0;
+  private popAt = -1e9; // performance.now() of the last centre pop (delivery, pickup, crash)
   private readonly popMain = $('pop-main');
   private readonly popSub = $('pop-sub');
   private readonly titleScreen = $('title-screen');
@@ -78,8 +114,59 @@ export class Hud {
     if (name === 'over') this.againButton.focus({ preventScroll: true });
   }
 
-  setBest(best: number): void {
-    $('title-best').textContent = best.toLocaleString();
+  /** Title card: the medal ladder (lit up to the best medal ever reached) and the best score with its medal. */
+  setBest(best: number, bestTier = 0): void {
+    $('title-best').textContent = fmt(best);
+    const bt = $('title-best-tier');
+    bt.textContent = bestTier > 0 ? tierName(bestTier) : '';
+    bt.dataset.m = String(bestTier);
+    const row = $('title-medals');
+    row.innerHTML = GOALS.tiers
+      .map((t, i) => `<li data-m="${i + 1}" class="${i < bestTier ? 'won' : ''}"><i class="medal" aria-hidden="true"></i><b>${t.name}</b><span>${fmt(t.score)}</span></li>`)
+      .join('');
+  }
+
+  /** In-run goal: the next medal, its score and a thin progress bar from the last medal to it. */
+  setGoal(score: number): void {
+    const g = nextGoal(score);
+    const tier = g ? g.tier : GOALS.tiers.length + 1;
+    const q = g ? Math.round(g.progress * 100) / 100 : 1;
+    if (tier !== this.goalLast.tier) {
+      this.goalLast.tier = tier;
+      this.goal.dataset.m = String(g ? g.tier : GOALS.tiers.length);
+      this.goal.classList.toggle('done', !g);
+      this.goalName.textContent = g ? g.name : `${tierName(GOALS.tiers.length)} medal`;
+      this.goalScore.textContent = g ? fmt(g.score) : 'won';
+    }
+    if (q !== this.goalLast.q) {
+      this.goalLast.q = q;
+      this.goalFill.style.transform = `scaleX(${q})`;
+    }
+  }
+
+  /**
+   * Medal moment: a big medal banner where the delivery pop shows. If a delivery pop is still up (a drop is the usual way
+   * across a line), the banner waits until that pop has been read, then takes its place. The goal row flashes too.
+   */
+  medalPop(tier: number): number {
+    const next = nextGoal(GOALS.tiers[tier - 1].score);
+    this.medalPopName.textContent = `${tierName(tier)}!`;
+    this.medalPopSub.textContent = next ? `Next: ${next.name} ${fmt(next.score)}` : 'Top medal';
+    this.medalPopEl.dataset.m = String(tier);
+    this.goal.classList.remove('flash');
+    void this.goal.offsetWidth;
+    this.goal.classList.add('flash');
+    window.clearTimeout(this.medalTimer);
+    const wait = Math.max(0, 1050 - (performance.now() - this.popAt));
+    const show = () => {
+      this.pop.classList.remove('show');
+      this.medalPopEl.classList.remove('show');
+      void this.medalPopEl.offsetWidth;
+      this.medalPopEl.classList.add('show');
+    };
+    if (wait > 0) this.medalTimer = window.setTimeout(show, wait);
+    else show();
+    return wait / 1000;
   }
 
   setScore(v: number): void {
@@ -313,20 +400,49 @@ export class Hud {
     this.pop.classList.toggle('drop', kind === 'drop');
     this.pop.classList.toggle('pickup', kind === 'pickup');
     this.pop.classList.toggle('crash', kind === 'crash');
+    this.popAt = performance.now();
     this.pop.classList.remove('show');
     void this.pop.offsetWidth;
     this.pop.classList.add('show');
   }
 
-  showOver(score: number, best: number, deliveries: number, topCombo: number, newBest: boolean): void {
-    $('over-score').textContent = score.toLocaleString();
-    $('over-best').textContent = best.toLocaleString();
-    $('over-deliveries').textContent = String(deliveries);
-    $('over-combo').textContent = topCombo > 0 ? `x${(1 + Math.min(topCombo, 5) * 0.5).toFixed(1)}` : '—';
-    $('new-best').hidden = !newBest;
+  /** Game-over card: medal, score, the points to the next medal, a breakdown that sums to the score, and the clock story. */
+  showOver(r: RunSummary): void {
+    $('over-score').textContent = fmt(r.score);
+    $('new-best').hidden = !r.newBest;
+    const medal = $('over-medal');
+    medal.dataset.m = String(r.tier);
+    $('over-medal-name').textContent = r.tier > 0 ? `${tierName(r.tier)} medal` : 'No medal yet';
+    const next = nextGoal(r.score);
+    $('over-next').textContent = next ? `${fmt(next.score - r.score)} more for ${next.name}` : 'Top medal. Nothing left but your best.';
+    const row = (label: string, detail: string, pts: number, cls = '') =>
+      `<div class="${cls}"><dt>${label}${detail ? ` <small>${detail}</small>` : ''}</dt><dd>${pts > 0 ? '+' : ''}${fmt(pts)}</dd></div>`;
+    const rows = [
+      row('Deliveries', `×${r.deliveries}`, r.drops),
+      row('Fast drops', `×${r.fastCount}`, r.fast),
+      row('Combo bonus', r.topCombo > 1 ? `up to x${r.topCombo.toFixed(1)}` : '', r.combo),
+      row('Slipstream', `×${r.slipPayouts}`, r.slip),
+      `<div class="total"><dt>Score</dt><dd>${fmt(r.score)}</dd></div>`,
+    ];
+    $('over-breakdown').innerHTML = rows.join('');
+    // the run's length: the clock only moves by these amounts, so this sums exactly to the seconds flown
+    const flown = r.startTime + r.dropSeconds + r.slipSeconds - r.crashSeconds;
+    const parts = [`${fmt(r.startTime)} s start`, `+${fmt(r.dropSeconds)} s drops`];
+    if (r.slipSeconds > 0) parts.push(`+${r.slipSeconds.toFixed(1).replace(/\.0$/, '')} s slipstream`);
+    if (r.crashSeconds > 0) parts.push(`<em>−${r.crashSeconds.toFixed(1).replace(/\.0$/, '')} s ${r.crashes} crash${r.crashes === 1 ? '' : 'es'}</em>`);
+    const m = Math.floor(flown / 60), sec = Math.round(flown % 60);
+    $('over-time').innerHTML = `Flew ${m}:${String(sec).padStart(2, '0')} <small>${parts.join(' ')}</small>`;
+    $('over-best').textContent = fmt(r.best);
+    const bt = $('over-best-tier');
+    bt.textContent = r.bestTier > 0 ? tierName(r.bestTier) : '';
+    bt.dataset.m = String(r.bestTier);
   }
 
   resetCache(): void {
+    this.goalLast = { tier: -1, q: -1 };
+    this.goal.classList.remove('flash');
+    window.clearTimeout(this.medalTimer);
+    this.medalPopEl.classList.remove('show');
     this.slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false, rate: -1, cue: '' };
     this.slip.classList.remove('on', 'drafting', 'hug', 'hint');
     this.hintLeft = 0;

@@ -62,7 +62,11 @@ export const RUN = {
   deliverRadius: 3.4,
   verticalTolerance: 3.6,
   baseScore: 100,
+  fastBonus: 75, // points for beating the leg's par (before the combo multiplier)
+  parSpeed: 9, // m/s: a leg's par is its street-route length at this speed (a clean street run with corners)...
+  parSlack: 7, // ...plus this many seconds
   maxCombo: 5,
+  comboStep: 0.5, // multiplier added per fast drop in a row
 };
 
 /**
@@ -100,8 +104,8 @@ export const QUALITY = {
  * than a crawl over the same street, the street centre is only partial strength, and a tight line along a facade
  * (`hug`) fills faster still. Each full meter pays `points` (+`chainStep` per chained payout), `boost` of the boost tank
  * and `seconds` on the clock. A chain needs the next payout within `chainWindow` seconds, so only quick, tight flying
- * keeps it climbing. The parcel you are carrying soaks up the chain: a delivery pays `hotStep` extra per chain step
- * held at the drop (the street line's way to make deliveries pay more, shown as "street x1.4").
+ * keeps it climbing. Drafting pays only through these payouts (round 9: no street multiplier on deliveries and no par
+ * pause), so the "Slipstream" line of the game-over breakdown is every point that exists because of drafting.
  */
 export const SLIPSTREAM = {
   maxAlt: 18, // m above the street
@@ -113,7 +117,6 @@ export const SLIPSTREAM = {
   hugBonus: 0.6, // extra fill rate at a full hug (1.6x on top of the full wall factor)
   minSpeed: 4, // m/s: no draft below this
   fullSpeed: 13, // m/s: full speed factor from here (cruise top speed is 17; a touch stick at three quarters gets it)
-  parQuality: 0.55, // while the draft quality is at least this (fast, near a facade), the fast-drop clock (leg par) does not run
   minQuality: 0.08,
   roofSlack: 1.5, // m: a facade whose roof is up to this far below the drone still counts (skimming a roof edge drafts too)
   fill: 1, // meter metres per metre flown at quality 1 (no hug)
@@ -121,15 +124,29 @@ export const SLIPSTREAM = {
   grace: 3, // s out of the draft before the meter drains (crossing an intersection or rounding a corner keeps it)
   chainReset: 6, // s out of the draft before the chain resets (a corner on the 44 m grid does not break it)
   chainWindow: 9, // s: the chain also resets when the next payout takes longer than this (a crawl cannot build a chain)
-  points: 50,
-  chainStep: 30, // x1 50, x2 80, x3 110, x4 140, x5 170 (flat: the delivery combo does not multiply these, the chain is their own multiplier)
+  points: 45,
+  chainStep: 25, // x1 45, x2 70, x3 95, x4 120, x5 145 (flat: the delivery combo does not multiply these, the chain is their own multiplier)
   maxChain: 5,
-  introMeter: 4, // the very first meter of a run is short, so a new player sees a payout within seconds of the first draft
+  introMeter: 4, // the very first meter of a run is short, so a new player sees a payout within seconds of the first draft...
+  introSpeedFloor: 0.6, // ...and on it the speed factor is at least this (above minSpeed), so a slow touch pilot gets it quickly too
   firstMeter: 14, // meter size in draft metres before the first payout of a chain (a quick first payout teaches the rule)...
   meterPerChain: 4, // ...and it grows by this per chain step, so a long chain pays more but less often
   rateGood: 7, // draft metres per second for two HUD chevrons (a crawl is one chevron, the street centre at cruise about 10: two)...
   rateTop: 16, // ...and three for a tight line along a facade at cruise, or boosting
-  hotStep: 0.15, // delivery bonus per slipstream chain step held at the drop (x5 chain: +75%)
   boost: 0.3,
   seconds: 0.5,
+};
+
+/**
+ * Score goals: medals for one run's score, shown on the title, as the next target in the HUD and on game over.
+ * Calibrated on the balance bots (seeds 22, 58, 130): a slow, centred, no-boost flier reaches Bronze at most; a decent
+ * street or roof route reaches Silver most runs; Gold needs a clean, fast run; Ace is above every bot run.
+ */
+export const GOALS = {
+  tiers: [
+    { name: 'Bronze', score: 1000 },
+    { name: 'Silver', score: 2250 },
+    { name: 'Gold', score: 4500 },
+    { name: 'Ace', score: 7500 },
+  ],
 };

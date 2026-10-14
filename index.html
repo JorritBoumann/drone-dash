@@ -18,6 +18,10 @@
         <div class="hud-score">
           <span class="hud-label">Score</span>
           <strong id="score-value">0</strong>
+          <div id="goal" class="goal" data-m="1" title="Next medal">
+            <i class="medal" aria-hidden="true"></i><span class="goal-text"><b id="goal-name">Bronze</b> <span id="goal-score">1,000</span></span>
+            <span class="goal-track" aria-hidden="true"><span id="goal-fill" class="goal-fill"></span></span>
+          </div>
           <div id="combo-chip" class="combo-chip" hidden><span id="combo-value">x1.5</span> combo</div>
         </div>
 
@@ -74,6 +78,12 @@
 
         <div id="slip-pop" class="slip-pop" data-chain="1"><strong id="slip-pop-main"></strong><span id="slip-pop-sub"></span></div>
 
+        <div id="medal-pop" class="medal-pop" data-m="1" aria-live="polite">
+          <i class="medal" aria-hidden="true"></i>
+          <strong id="medal-pop-name">Bronze!</strong>
+          <span id="medal-pop-sub">Next: Silver</span>
+        </div>
+
         <div id="pop" class="pop">
           <svg class="pop-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></svg>
           <strong id="pop-main"></strong><span id="pop-sub"></span>
@@ -110,7 +120,8 @@
           </ul>
           <p class="controls-touch">Stick to fly · buttons to climb, dive &amp; boost</p>
           <button id="play-button" class="primary-button" type="button">Play</button>
-          <p class="best-line">Best <strong id="title-best">0</strong></p>
+          <ul id="title-medals" class="medal-row" aria-label="Medals for one run's score"></ul>
+          <p class="best-line">Best <strong id="title-best">0</strong> <span id="title-best-tier" class="best-tier"></span></p>
         </div>
       </section>
 
@@ -125,16 +136,20 @@
 
       <!-- Game over -->
       <section id="over-screen" class="screen screen-modal" hidden>
-        <div class="modal-card">
-          <span class="over-kicker">Time's up</span>
-          <h2 id="over-score">0</h2>
-          <span id="new-best" class="new-best" hidden>New best!</span>
-          <dl class="over-stats">
-            <div><dt>Best</dt><dd id="over-best">0</dd></div>
-            <div><dt>Deliveries</dt><dd id="over-deliveries">0</dd></div>
-            <div><dt>Top combo</dt><dd id="over-combo">0</dd></div>
-          </dl>
-          <button id="again-button" class="primary-button" type="button">Fly again</button>
+        <div class="modal-card over-card">
+          <div class="over-head">
+            <span class="over-kicker">Time's up</span>
+            <div id="over-medal" class="over-medal" data-m="0"><i class="medal" aria-hidden="true"></i><span id="over-medal-name">No medal yet</span></div>
+            <h2 id="over-score">0</h2>
+            <span id="new-best" class="new-best" hidden>New best!</span>
+            <span id="over-next" class="over-next"></span>
+          </div>
+          <div class="over-body">
+            <dl id="over-breakdown" class="over-breakdown"></dl>
+            <p id="over-time" class="over-time"></p>
+            <p class="over-best">Best <strong id="over-best">0</strong> <span id="over-best-tier" class="best-tier"></span></p>
+            <button id="again-button" class="primary-button" type="button">Fly again</button>
+          </div>
         </div>
       </section>
     </main>

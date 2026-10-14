@@ -13,6 +13,8 @@ interface ThreeGameDiagnostics {
   combo: number;
   crashes?: number;
   leg?: { time: number; par: number };
+  breakdown?: { drops: number; fast: number; combo: number; slip: number; fastCount: number; dropSeconds: number; slipSeconds: number; crashSeconds: number; total: number };
+  goals?: { tier: number; tierName: string; next: number; passes: number; passList: { tier: number; name: string; score: number; t: number }[]; best: number; bestTier: number; thresholds: number[] };
   slipstream?: { level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number };
   /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
   /** Debug: this frame's contacts (wall impact speed, ledge hop impact, crash-relevant speed loss). */
@@ -71,6 +73,8 @@ interface DroneDashApi {
   advance(seconds: number, render?: boolean): ThreeGameDiagnostics | undefined;
   /** When true the rAF loop keeps simulating but stops rendering (tests render via advance). */
   manualRender(on: boolean): void;
+  externalClock?(on: boolean): void;
+  tune?(patch: Record<string, Record<string, unknown>>): void;
   readonly state: string;
   diagnostics(): ThreeGameDiagnostics | undefined;
   /** Debug: move the drone (yaw 0 faces -z) and set its horizontal speed along the heading. */

@@ -26,7 +26,7 @@ export class Slipstream {
   chain = 0;
   payouts = 0;
   points = 0;
-  hotPoints = 0; // delivery points earned by carrying a chain to the drop (counted in the delivery, tracked here)
+  hotPoints = 0; // always 0 since round 9 (the street multiplier on deliveries was removed); kept for older scripts
   seconds = 0;
   drafting = false;
   private since = 99;
@@ -74,9 +74,13 @@ export class Slipstream {
       q = this.wall * this.speedFactor;
     }
     this.quality = q;
-    this.rate = q > S.minQuality ? S.fill * q * speed * (1 + S.hugBonus * this.hug) : 0;
+    // the first meter of a run counts speed once, not twice: a new (often touch) pilot drafting at 6 m/s still sees a
+    // payout within a couple of seconds, while every later meter needs real speed
+    const intro = this.payouts === 0 && speed > S.minSpeed;
+    const qFill = intro ? Math.max(q, this.wall * S.introSpeedFloor) : q;
+    this.rate = qFill > S.minQuality ? S.fill * qFill * speed * (1 + S.hugBonus * this.hug) : 0;
     this.intensity += (q - this.intensity) * (1 - Math.exp(-6 * dt));
-    this.drafting = q > S.minQuality;
+    this.drafting = qFill > S.minQuality;
     let ev: SlipEvent = null;
     if (this.draftClock >= 0) this.draftClock += dt;
     this.sincePayout += dt;

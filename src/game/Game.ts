@@ -17,11 +17,13 @@ import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { createSky, Environment, LightingRig, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
-import { CRASH, FLIGHT, QUALITY, RUN, SLIPSTREAM } from './config';
+import { CRASH, FLIGHT, GOALS, QUALITY, RUN, SLIPSTREAM } from './config';
+import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
 const BEST_KEY = 'drone-dash-best-v1';
+const MEDAL_COLORS = [new THREE.Color('#e0955a'), new THREE.Color('#eef2f7'), new THREE.Color('#ffd166'), new THREE.Color('#5ff5d4')];
 const DEFAULT_SEED = 7;
 
 function readBest(): number {
@@ -64,7 +66,10 @@ export class Game {
   private readonly delivery: DeliverySystem;
   private readonly blob: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   private readonly debug: DebugTools;
-  private readonly loop = new Loop((dt) => this.update(dt), () => this.renderFromLoop());
+  private readonly loop = new Loop((dt) => {
+    if (!this.externalClock) this.update(dt);
+  }, () => this.renderFromLoop());
+  private externalClock = false; // test hook: only `advance` moves the game (fully deterministic sims)
 
   private state: GameState = 'title';
   private readonly seed: number;
@@ -77,6 +82,11 @@ export class Game {
   private readonly titleFocus = new THREE.Vector3(0, 8, 0);
   private startYaw = 0;
   private best = readBest();
+  private bestTier = Math.max(readBestTier(), tierFor(readBest()));
+  // medals this run: the tier reached so far and every crossing (diagnostics count them for scripts)
+  private tier = 0;
+  private tierPasses: { tier: number; name: string; score: number; t: number }[] = [];
+  private runTime = 0;
   private topCombo = 0;
   private lastTick = -1;
   private wasBoosting = false;
@@ -187,7 +197,7 @@ export class Game {
     document.addEventListener('visibilitychange', this.onVisibility);
     window.addEventListener('keydown', this.onMenuKey);
 
-    this.hud.setBest(this.best);
+    this.hud.setBest(this.best, this.bestTier);
     this.hud.showScreen('title');
     this.debug = new DebugTools(() => {
       this.renderer.toneMappingExposure = QUALITY.exposure;
@@ -234,6 +244,9 @@ export class Game {
     const tgt = this.delivery.target.pos;
     this.drone.reset(this.startPos, Math.atan2(-(tgt.x - this.startPos.x), -(tgt.z - this.startPos.z)));
     this.topCombo = 0;
+    this.tier = 0;
+    this.tierPasses = [];
+    this.runTime = 0;
     this.hitLoss = 0;
     this.hitPending = false;
     this.sinceContact = 99;
@@ -249,6 +262,7 @@ export class Game {
     this.setMarkerFromDelivery();
     this.hud.setDeliveries(0);
     this.hud.setScore(0);
+    this.hud.setGoal(0);
     this.hud.setCombo(1, 0);
     this.input.clear();
     this.input.enabled = true;
@@ -294,9 +308,33 @@ export class Game {
     if (newBest) {
       this.best = score;
       writeBest(score);
-      this.hud.setBest(score);
     }
-    this.hud.showOver(score, this.best, this.delivery.deliveries, this.topCombo, newBest && score > 0);
+    if (this.tier > this.bestTier) {
+      this.bestTier = this.tier;
+      writeBestTier(this.tier);
+    }
+    this.hud.setBest(this.best, this.bestTier);
+    const T = this.delivery.tally;
+    this.hud.showOver({
+      score,
+      best: this.best,
+      bestTier: this.bestTier,
+      newBest: newBest && score > 0,
+      tier: tierFor(score),
+      deliveries: this.delivery.deliveries,
+      fastCount: T.fastCount,
+      topCombo: 1 + Math.min(this.topCombo, RUN.maxCombo) * RUN.comboStep,
+      drops: T.drops,
+      fast: T.fast,
+      combo: T.combo,
+      slip: T.slip,
+      slipPayouts: this.slip.payouts,
+      startTime: RUN.startTime,
+      dropSeconds: T.dropSeconds,
+      slipSeconds: T.slipSeconds,
+      crashSeconds: T.crashSeconds,
+      crashes: this.crashes,
+    });
     this.hud.showScreen('over');
     this.marker.hide();
     this.drone.hasGuide = false;
@@ -375,6 +413,7 @@ export class Game {
   private updatePlaying(realDt: number): void {
     // brief hit-stop after hard impacts sells the collision
     const dt = this.hitStop > 0 ? realDt * 0.08 : realDt;
+    this.runTime += dt;
     this.hitStop = Math.max(0, this.hitStop - realDt);
     this.input.read(this.intent);
     const d = this.drone;
@@ -408,11 +447,8 @@ export class Game {
     this.emitRotorWash();
     this.emitWindStreaks();
 
-    // objectives
-    // drafting fast along a facade holds the fast-drop clock; a slow crawl does not. A slipstream chain held at the drop
-    // makes the delivery pay more (the street line's reward lands on the delivery, not beside it)
-    const hot = 1 + SLIPSTREAM.hotStep * this.slip.chain;
-    const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius, this.slip.quality >= SLIPSTREAM.parQuality, hot);
+    // objectives (drafting never changes delivery points or the fast-drop clock: the slipstream pays its own payouts)
+    const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius);
     if (ev?.type === 'picked') {
       d.setCarrying(true);
       this.audio.pickup();
@@ -427,11 +463,7 @@ export class Game {
       this.vfx.burst(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 1), MARKER_COLORS.drop, 56, 12, 0.22, this.fxRng);
       this.vfx.ring(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 0.3), MARKER_COLORS.drop, 9);
       this.cameraRig.addShake(0.2);
-      let sub = ev.fast ? (ev.combo > 1 ? `Fast drop · x${this.delivery.multiplier.toFixed(1)} combo` : 'Fast drop!') : 'Delivered';
-      if (ev.hot > 1.001) {
-        sub += ` · street x${ev.hot.toFixed(1)}`;
-        this.slip.hotPoints += this.delivery.lastHotPoints;
-      }
+      const sub = ev.fast ? (ev.combo > 1 ? `Fast drop · x${this.delivery.multiplier.toFixed(1)} combo` : 'Fast drop!') : 'Delivered';
       this.hud.popText(`+${ev.points}`, sub, 'drop');
       this.hud.flashTimeBonus(ev.timeBonus);
       this.setMarkerFromDelivery();
@@ -448,6 +480,7 @@ export class Game {
     this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80), d.headwind);
 
     this.hud.setScore(this.delivery.score);
+    this.checkMedal();
     this.hud.setCombo(this.delivery.multiplier, this.delivery.combo);
     this.hud.setDeliveries(this.delivery.deliveries);
     this.hud.setTime(tl, RUN.startTime);
@@ -540,6 +573,20 @@ export class Game {
     const p = d.group.position;
     this.vfx.burst(p, new THREE.Color('#ff8a3d'), 22 + Math.round(s * 18), 6 + s * 6, 0.16, this.fxRng);
     this.vfx.burst(p, new THREE.Color('#fff1c9'), 10, 9 + s * 4, 0.1, this.fxRng);
+  }
+
+  /** Medals: crossing a tier's score is a moment (banner, fanfare, sparkle) and is counted for scripts. */
+  private checkMedal(): void {
+    const score = this.delivery.score;
+    this.hud.setGoal(score);
+    const t = tierFor(score);
+    if (t <= this.tier) return;
+    for (let k = this.tier + 1; k <= t; k++) this.tierPasses.push({ tier: k, name: tierName(k), score, t: Math.round(this.runTime * 10) / 10 });
+    this.tier = t;
+    this.audio.medal(t, this.hud.medalPop(t));
+    const c = MEDAL_COLORS[Math.min(t, MEDAL_COLORS.length) - 1];
+    this.vfx.burst(this.drone.group.position, c, 26 + t * 6, 8 + t, 0.16, this.fxRng);
+    this.cameraRig.addShake(0.12);
   }
 
   /** HUD chevrons: how fast the slipstream meter is filling right now (0 none, 1 slow, 2 good, 3 fast and tight). */
@@ -708,6 +755,8 @@ export class Game {
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
       slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds },
+      breakdown: { ...this.delivery.tally, total: this.delivery.score },
+      goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
       lastCrash: this.lastCrash,
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
@@ -757,6 +806,14 @@ export class Game {
       key: (code: string, down: boolean) => this.input.setKey(code, down),
       manualRender: (on: boolean) => {
         this.manualRender = on;
+      },
+      // test hook: patch tunables, e.g. tune({ SLIPSTREAM: { points: 40 } }) (builder balance sims)
+      tune: (patch: Record<string, Record<string, unknown>>) => {
+        const all: Record<string, object> = { CRASH, FLIGHT, GOALS, RUN, SLIPSTREAM };
+        for (const [k, v] of Object.entries(patch)) if (all[k]) Object.assign(all[k], v);
+      },
+      externalClock: (on: boolean) => {
+        this.externalClock = on;
       },
       advance: (seconds: number, render = true) => {
         // deterministic fixed-step simulation for slow (software GL) test runs

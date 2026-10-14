@@ -77,6 +77,19 @@ export class DeliverySystem {
     return pts;
   }
 
+  /** Slow clock: drafting adds clock time (no points). Returns the seconds added; they count as slipstream seconds. */
+  addClock(seconds: number): number {
+    if (seconds <= 0 || this.timeLeft <= 0) return 0;
+    this.timeLeft += seconds;
+    this.tally.slipSeconds += seconds;
+    return seconds;
+  }
+
+  /** Clock bonuses shrink as the run goes on: drop time and the slipstream's slow clock scale by this. */
+  get clockDecay(): number {
+    return Math.max(0.55, 1 - this.deliveries * 0.035);
+  }
+
   get multiplier(): number {
     return 1 + Math.min(this.combo, RUN.maxCombo) * RUN.comboStep;
   }
@@ -145,7 +158,7 @@ export class DeliverySystem {
     // delivered
     const fast = this.legTime <= this.legPar;
     this.combo = fast ? this.combo + 1 : 0;
-    const decay = Math.max(0.55, 1 - this.deliveries * 0.035);
+    const decay = this.clockDecay;
     const timeBonus = Math.round(Math.max(RUN.minTimeBonus, Math.min(20, 5 + this.legDistance / 11)) * decay);
     const plain = Math.round(RUN.baseScore + this.legDistance * 1.2);
     const fastPts = fast ? RUN.fastBonus : 0;

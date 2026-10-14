@@ -103,7 +103,7 @@ export const QUALITY = {
  * little) x speed factor (nothing below `minSpeed`, full from `fullSpeed`). So a fast pass fills it several times faster
  * than a crawl over the same street, the street centre is only partial strength, and a tight line along a facade
  * (`hug`) fills faster still. Each full meter pays `points` (+`chainStep` per chained payout), `boost` of the boost tank
- * and `seconds` on the clock. A chain needs the next payout within `chainWindow` seconds, so only quick, tight flying
+ * and points; drafting itself slows the clock (see `clockRate`). A chain needs the next payout within `chainWindow` seconds, so only quick, tight flying
  * keeps it climbing. Drafting pays only through these payouts (round 9: no street multiplier on deliveries and no par
  * pause), so the "Slipstream" line of the game-over breakdown is every point that exists because of drafting.
  */
@@ -134,7 +134,15 @@ export const SLIPSTREAM = {
   rateGood: 7, // draft metres per second for two HUD chevrons (a crawl is one chevron, the street centre at cruise about 10: two)...
   rateTop: 16, // ...and three for a tight line along a facade at cruise, or boosting
   boost: 0.3,
-  seconds: 0.5,
+  // Slow clock (round 12b): while the drone drafts, the run clock drains slower. It gains `clockRate` seconds per
+  // second at full draft (the clock runs at 1 - clockRate speed), scaled by draft pace: the meter's own fill rate in draft
+  // metres a second (speed x wall closeness, the HUD chevron measure). Nothing at or below `clockLow` (a slow, centred
+  // crawl), all of it from `clockFull` (fast and close to a facade). It also shrinks with the run like the drop time bonus.
+  // This replaces the old 0.5 s per payout: payouts now pay points only, and the street line's clock income is smooth.
+  // clockRate is set so a good street pilot's clock income a minute matches the roof line's income from deliveries.
+  clockLow: 5,
+  clockFull: 10,
+  clockRate: 0.7,
 };
 
 /**

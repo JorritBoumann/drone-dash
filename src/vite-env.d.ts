@@ -15,7 +15,7 @@ interface ThreeGameDiagnostics {
   leg?: { time: number; par: number };
   breakdown?: { drops: number; fast: number; combo: number; slip: number; fastCount: number; dropSeconds: number; slipSeconds: number; crashSeconds: number; total: number };
   goals?: { tier: number; tierName: string; next: number; passes: number; passList: { tier: number; name: string; score: number; t: number }[]; best: number; bestTier: number; thresholds: number[] };
-  slipstream?: { level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number };
+  slipstream?: { level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number; clockK: number; clockGain: number };
   /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
   /** Debug: this frame's contacts (wall impact speed, ledge hop impact, crash-relevant speed loss). */
   contact?: { bump: number; ledge: number; wallLoss: number };

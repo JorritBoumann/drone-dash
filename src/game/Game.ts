@@ -54,6 +54,8 @@ export class Game {
   private readonly drone = new Drone();
   private readonly marker = new ObjectiveMarker();
   private readonly slip = new Slipstream();
+  private slipClockK = 0; // 0..1 draft pace this frame for the slow clock (see SLIPSTREAM.clockRate)
+  private slipClockGain = 0; // clock seconds gained per second this frame (the clock runs at 1 - this speed)
   private readonly slipColor = new THREE.Color('#ffe7b0');
   private readonly slipHot = new THREE.Color('#fff6e8');
   private readonly windColor = new THREE.Color('#e6f2ff');
@@ -260,6 +262,8 @@ export class Game {
     this.lastCrash = null;
     this.crashes = 0;
     this.slip.reset();
+    this.slipClockK = 0;
+    this.slipClockGain = 0;
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
@@ -639,20 +643,30 @@ export class Game {
     return '';
   }
 
+  /** 0..1 draft pace for the slow clock: the meter's fill rate, nothing for a slow centred crawl, all of it fast and tight. */
+  private slipClockPace(): number {
+    const S = SLIPSTREAM;
+    if (!this.slip.drafting) return 0;
+    return Math.max(0, Math.min(1, (this.slip.rate - S.clockLow) / (S.clockFull - S.clockLow)));
+  }
+
   /** Low street line reward: draft meter, payouts, wind streaks and the rising whistle. */
   private updateSlipstream(dt: number): void {
     const d = this.drone;
     const ev = this.slip.update(dt, d.group.position, d.speed, this.world);
     this.audio.setDraft(this.slip.intensity, this.slip.level);
+    // slow clock: good drafting earns clock time smoothly, every frame, instead of in lumps per payout
+    this.slipClockK = this.slipClockPace();
+    this.slipClockGain = SLIPSTREAM.clockRate * this.slipClockK * this.delivery.clockDecay;
+    if (this.slipClockGain > 0) this.slip.seconds += this.delivery.addClock(this.slipClockGain * dt);
+    this.hud.setSlowClock(this.slipClockGain, dt);
     if (ev?.type === 'tick') this.audio.slipTick(ev.step);
     else if (ev?.type === 'payout') {
-      const pts = this.delivery.addBonus(ev.points, SLIPSTREAM.seconds, false);
+      const pts = this.delivery.addBonus(ev.points, 0, false);
       this.slip.points += pts;
-      this.slip.seconds += SLIPSTREAM.seconds;
       d.boost = Math.min(1, d.boost + SLIPSTREAM.boost);
       this.audio.slipPayout(ev.chain);
-      this.hud.slipPop(`+${pts}`, ev.chain);
-      this.hud.flashTimeBonus(SLIPSTREAM.seconds);
+      this.hud.slipPop(`+${pts}`, ev.chain, this.delivery.tally.slipSeconds);
       this.cameraRig.addShake(0.06 + 0.03 * ev.chain);
       this.vfx.burst(d.group.position, this.slipColor, 12 + ev.chain * 6, 6 + ev.chain, 0.12, this.fxRng);
       if (ev.chain >= 3) this.vfx.burst(d.group.position, this.slipHot, 6 + ev.chain * 3, 9 + ev.chain, 0.1, this.fxRng);
@@ -785,7 +799,7 @@ export class Game {
       combo: this.delivery.combo,
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
-      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds },
+      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain },
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
       lastCrash: this.lastCrash,

@@ -162,6 +162,31 @@ body { background: #f0b98a; }
 }
 .time-bonus.show { animation: bonus-rise 1.4s ease-out; }
 
+/* slow clock: while drafting slows the clock, the timer glows teal and a tag under it shows the clock speed */
+.timer.slow { box-shadow: var(--shadow), 0 0 0 2px var(--teal), 0 0 16px rgba(47, 240, 196, 0.55); }
+.timer.slow .timer-ring-fg { stroke: #14b894; }
+.timer.low.slow .timer-ring-fg { stroke: white; }
+.timer-slow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-top: 4px;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--teal);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.timer.slow .timer-slow { opacity: 1; }
+
 /* crash cost: coral seconds fall out of the timer, the timer shudders */
 .time-penalty {
   position: absolute;

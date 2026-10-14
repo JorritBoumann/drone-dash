@@ -25,6 +25,8 @@ export type RunSummary = {
 };
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+/** Clock seconds: whole numbers plain, halves with one decimal (2, 2.5). */
+const fmtSec = (n: number) => (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '');
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -70,6 +72,9 @@ export class Hud {
   private readonly slipPopEl = $('slip-pop');
   private readonly slipPopMain = $('slip-pop-main');
   private readonly slipPopSub = $('slip-pop-sub');
+  private readonly timerSlow = $('timer-slow');
+  private slowShown = false;
+  private slowOff = 0; // s since the slow clock last ran (the marker lingers briefly so it does not flicker)
   private hintLeft = 0; // s of first-time hint still to show while the meter is up
   private hintRuns = 0;
   private hintArmed = false;
@@ -115,7 +120,7 @@ export class Hud {
     this.musicLabel.textContent = st === 'locked' ? (this.app.classList.contains('touch') ? 'Tap for sound' : 'Click or press a key for sound') : st === 'on' ? 'Music on' : 'Music off';
   }
 
-  private last = { score: -1, time: '', combo: -1, deliveries: -1, boost: -1, speed: -1, alt: -1, dist: -1, low: false, boostState: '' };
+  private last = { score: -1, time: '', combo: -1, deliveries: -1, boost: -1, speed: -1, alt: -1, dist: -1, low: false, boostState: '', slow: '' };
 
   setTouch(touch: boolean): void {
     this.app.classList.toggle('touch', touch);
@@ -223,8 +228,29 @@ export class Hud {
     this.timerRing.style.strokeDashoffset = String(113.1 * (1 - frac));
   }
 
+  /**
+   * Slow clock marker: while drafting slows the clock, the timer glows teal and a small tag under it shows the clock's
+   * speed (x0.5 = half speed). `gain` is clock seconds gained per second.
+   */
+  setSlowClock(gain: number, dt = 1 / 60): void {
+    const on = gain >= 0.03;
+    this.slowOff = on ? 0 : this.slowOff + dt;
+    const show = on || (this.slowShown && this.slowOff < 0.35);
+    if (show !== this.slowShown) {
+      this.slowShown = show;
+      this.timer.classList.toggle('slow', show);
+    }
+    if (on) {
+      const text = `clock x${Math.max(0, 1 - gain).toFixed(1)}`;
+      if (text !== this.last.slow) {
+        this.last.slow = text;
+        this.timerSlow.textContent = text;
+      }
+    }
+  }
+
   flashTimeBonus(sec: number): void {
-    this.timeBonus.textContent = `+${sec}s`;
+    this.timeBonus.textContent = `+${fmtSec(sec)}s`;
     this.timeBonus.classList.remove('show');
     void this.timeBonus.offsetWidth;
     this.timeBonus.classList.add('show');
@@ -393,10 +419,14 @@ export class Hud {
     this.windEl.classList.toggle('on', on);
   }
 
-  /** Payout pop near the drone: grows, brightens and gets a chain tag as the chain climbs. */
-  slipPop(points: string, chain: number): void {
+  /**
+   * Payout pop near the drone: grows, brightens and gets a chain tag as the chain climbs. Once the slow clock has banked
+   * a second or more, the tag also shows the run's total clock time from the slipstream so far.
+   */
+  slipPop(points: string, chain: number, clockTotal = 0): void {
     this.slipPopMain.textContent = points;
-    this.slipPopSub.textContent = chain > 1 ? `Slipstream chain x${chain}` : 'Slipstream';
+    const tag = chain > 1 ? `Slipstream chain x${chain}` : 'Slipstream';
+    this.slipPopSub.textContent = clockTotal >= 1 ? `${tag} · clock +${Math.round(clockTotal)}s` : tag;
     this.slipPopEl.dataset.chain = String(Math.min(chain, 5));
     this.slipPopEl.classList.remove('show');
     void this.slipPopEl.offsetWidth;
@@ -438,14 +468,14 @@ export class Hud {
       row('Deliveries', `×${r.deliveries}`, r.drops),
       row('Fast drops', `×${r.fastCount}`, r.fast),
       row('Combo bonus', r.topCombo > 1 ? `up to x${r.topCombo.toFixed(1)}` : '', r.combo),
-      row('Slipstream', `×${r.slipPayouts}`, r.slip),
+      row('Slipstream', `×${r.slipPayouts}${r.slipSeconds > 0 ? ` · +${fmtSec(r.slipSeconds)} s clock` : ''}`, r.slip),
       `<div class="total"><dt>Score</dt><dd>${fmt(r.score)}</dd></div>`,
     ];
     $('over-breakdown').innerHTML = rows.join('');
     // the run's length: the clock only moves by these amounts, so this sums exactly to the seconds flown
     const flown = r.startTime + r.dropSeconds + r.slipSeconds - r.crashSeconds;
     const parts = [`${fmt(r.startTime)} s start`, `+${fmt(r.dropSeconds)} s drops`];
-    if (r.slipSeconds > 0) parts.push(`+${r.slipSeconds.toFixed(1).replace(/\.0$/, '')} s slipstream`);
+    if (r.slipSeconds > 0) parts.push(`+${fmtSec(r.slipSeconds)} s slipstream`);
     if (r.crashSeconds > 0) parts.push(`<em>−${r.crashSeconds.toFixed(1).replace(/\.0$/, '')} s ${r.crashes} crash${r.crashes === 1 ? '' : 'es'}</em>`);
     const m = Math.floor(flown / 60), sec = Math.round(flown % 60);
     $('over-time').innerHTML = `Flew ${m}:${String(sec).padStart(2, '0')} <small>${parts.join(' ')}</small>`;
@@ -462,6 +492,8 @@ export class Hud {
     this.medalPopEl.classList.remove('show');
     this.slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false, rate: -1, cue: '' };
     this.slip.classList.remove('on', 'drafting', 'hug', 'hint');
+    this.slowShown = false;
+    this.timer.classList.remove('slow');
     this.hintLeft = 0;
     this.windOn = false;
     this.windEl.classList.remove('on');
@@ -470,6 +502,6 @@ export class Hud {
     this.comboChip.classList.remove('broken');
     this.timePenalty.classList.remove('show');
     this.timer.classList.remove('hit');
-    this.last = { score: -1, time: '', combo: -1, deliveries: -1, boost: -1, speed: -1, alt: -1, dist: -1, low: false, boostState: '' };
+    this.last = { score: -1, time: '', combo: -1, deliveries: -1, boost: -1, speed: -1, alt: -1, dist: -1, low: false, boostState: '', slow: '' };
   }
 }

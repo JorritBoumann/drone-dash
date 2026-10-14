@@ -9,10 +9,9 @@ dist-single
 .env.*
 *.key
 
-# From round 12: keep reports and scripts in git, media local only (force-add key images)
+# Progress media: originals stay local; scripts/compress-progress-media.sh makes WebP and Ogg copies, which go to Git LFS
 progress/**/*.png
 progress/**/*.jpg
 progress/**/*.jpeg
 progress/**/*.wav
 progress/**/*.webm
-progress/**/logs/

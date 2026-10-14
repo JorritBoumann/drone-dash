@@ -20,7 +20,12 @@ const sections = rounds.map((round) => {
       : '';
   };
   const shotDir = join(dir, 'critic');
-  const shots = existsSync(shotDir) ? readdirSync(shotDir).filter((f) => f.endsWith('.png')).sort() : [];
+  // Prefer the committed WebP copy; fall back to a local original (png/jpg) when no WebP exists yet.
+  const files = existsSync(shotDir) ? readdirSync(shotDir) : [];
+  const shots = files
+    .filter((f) => /\.(webp|png|jpe?g)$/.test(f))
+    .filter((f) => f.endsWith('.webp') || !files.includes(f.replace(/\.(png|jpe?g)$/, '.webp')))
+    .sort();
   const grid = shots
     .map((f) => `<figure><a href="progress/${round}/critic/${f}"><img loading="lazy" src="progress/${round}/critic/${f}" alt="${f}"></a><figcaption>${f}</figcaption></figure>`)
     .join('\n');

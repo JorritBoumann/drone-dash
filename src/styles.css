@@ -186,6 +186,11 @@ body { background: #f0b98a; }
   pointer-events: none;
 }
 .timer.slow .timer-slow { opacity: 1; }
+/* round 13: the leg's slow clock budget is spent; drafting still pays points, a pickup or drop refills the budget */
+.timer.slow.spent { box-shadow: var(--shadow); }
+.timer.slow.spent .timer-ring-fg { stroke: var(--ink); }
+.timer.low.slow.spent .timer-ring-fg { stroke: white; }
+.timer.spent .timer-slow { color: rgba(255, 255, 255, 0.72); }
 
 /* crash cost: coral seconds fall out of the timer, the timer shudders */
 .time-penalty {

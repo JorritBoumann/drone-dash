@@ -143,6 +143,14 @@ export const SLIPSTREAM = {
   clockLow: 5,
   clockFull: 10,
   clockRate: 1,
+  // Round 13: the slow clock serves deliveries, not farming. (1) It only runs while the drone flies toward its current
+  // objective (pickup or drop): heading within about 80 degrees of the target gives all of it, flying away gives none.
+  // (2) Each leg has a budget of `clockBudget` clock seconds. Picking a parcel up or delivering it refills the budget to
+  // this cap (it does not stack), so a run with no deliveries gets at most two budgets (start + one pickup) in total.
+  // A routed street pilot used 5 to 9 s of slow clock per pickup-and-drop cycle in round 12, so honest runs keep it.
+  clockBudget: 8,
+  towardLow: -0.1, // cos(heading to target): at or below this the slow clock is off...
+  towardFull: 0.2, // ...and full from here
 };
 
 /**

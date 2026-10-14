@@ -56,6 +56,8 @@ export class Game {
   private readonly slip = new Slipstream();
   private slipClockK = 0; // 0..1 draft pace this frame for the slow clock (see SLIPSTREAM.clockRate)
   private slipClockGain = 0; // clock seconds gained per second this frame (the clock runs at 1 - this speed)
+  private slipBudget: number = SLIPSTREAM.clockBudget; // slow clock seconds left on this leg (refilled on pickup and drop)
+  private slipToward = 1; // 0..1 heading toward the current objective this frame (the slow clock only helps on the way)
   private readonly slipColor = new THREE.Color('#ffe7b0');
   private readonly slipHot = new THREE.Color('#fff6e8');
   private readonly windColor = new THREE.Color('#e6f2ff');
@@ -264,6 +266,8 @@ export class Game {
     this.slip.reset();
     this.slipClockK = 0;
     this.slipClockGain = 0;
+    this.slipBudget = SLIPSTREAM.clockBudget;
+    this.slipToward = 1;
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
@@ -481,6 +485,7 @@ export class Game {
 
     // objectives (drafting never changes delivery points or the fast-drop clock: the slipstream pays its own payouts)
     const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius);
+    if (ev) this.slipBudget = SLIPSTREAM.clockBudget; // a new leg: the slow clock budget refills (to the cap, no stacking)
     if (ev?.type === 'picked') {
       d.setCarrying(true);
       this.audio.pickup();
@@ -650,16 +655,36 @@ export class Game {
     return Math.max(0, Math.min(1, (this.slip.rate - S.clockLow) / (S.clockFull - S.clockLow)));
   }
 
+  /** 0..1: is the drone flying toward its current objective? The slow clock only helps on the way to a pickup or drop. */
+  private slipTowardTarget(): number {
+    const S = SLIPSTREAM;
+    const v = this.drone.velocity;
+    const sp = Math.hypot(v.x, v.z);
+    const p = this.drone.group.position, t = this.delivery.target.pos;
+    const dx = t.x - p.x, dz = t.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    if (sp < 0.5 || dist < 1) return 1;
+    const cos = (v.x * dx + v.z * dz) / (sp * dist);
+    return Math.max(0, Math.min(1, (cos - S.towardLow) / (S.towardFull - S.towardLow)));
+  }
+
   /** Low street line reward: draft meter, payouts, wind streaks and the rising whistle. */
   private updateSlipstream(dt: number): void {
     const d = this.drone;
     const ev = this.slip.update(dt, d.group.position, d.speed, this.world);
     this.audio.setDraft(this.slip.intensity, this.slip.level);
     // slow clock: good drafting earns clock time smoothly, every frame, instead of in lumps per payout
+    // (round 13: only on the way to the objective, and at most `clockBudget` seconds per leg, so it pays delivering)
     this.slipClockK = this.slipClockPace();
-    this.slipClockGain = SLIPSTREAM.clockRate * this.slipClockK * this.delivery.clockDecay;
-    if (this.slipClockGain > 0) this.slip.seconds += this.delivery.addClock(this.slipClockGain * dt);
-    this.hud.setSlowClock(this.slipClockGain, dt);
+    this.slipToward = this.slipClockK > 0 ? this.slipTowardTarget() : 1;
+    const want = SLIPSTREAM.clockRate * this.slipClockK * this.slipToward * this.delivery.clockDecay * dt;
+    const give = Math.min(want, this.slipBudget);
+    const added = give > 0 ? this.delivery.addClock(give) : 0;
+    this.slipBudget = Math.max(0, this.slipBudget - added);
+    this.slip.seconds += added;
+    this.slipClockGain = dt > 0 ? added / dt : 0;
+    const idle = this.slipClockK < 0.3 || this.slipClockGain >= 0.03 ? '' : this.slipBudget <= 0 ? 'spent' : this.slipToward < 0.05 ? 'away' : '';
+    this.hud.setSlowClock(this.slipClockGain, dt, this.slipBudget, idle);
     if (ev?.type === 'tick') this.audio.slipTick(ev.step);
     else if (ev?.type === 'payout') {
       const pts = this.delivery.addBonus(ev.points, 0, false);
@@ -799,7 +824,7 @@ export class Game {
       combo: this.delivery.combo,
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
-      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain },
+      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward },
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
       lastCrash: this.lastCrash,

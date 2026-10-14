@@ -74,6 +74,7 @@ export class Hud {
   private readonly slipPopSub = $('slip-pop-sub');
   private readonly timerSlow = $('timer-slow');
   private slowShown = false;
+  private slowSpent = false; // drafting with this leg's slow clock budget used up (muted tag)
   private slowOff = 0; // s since the slow clock last ran (the marker lingers briefly so it does not flicker)
   private hintLeft = 0; // s of first-time hint still to show while the meter is up
   private hintRuns = 0;
@@ -230,20 +231,30 @@ export class Hud {
 
   /**
    * Slow clock marker: while drafting slows the clock, the timer glows teal and a small tag under it shows the clock's
-   * speed (x0.5 = half speed, "frozen" at full draft, "+0.1/s" when a perfect draft early in the run runs it back).
-   * `gain` is clock seconds gained per second.
+   * speed (x0.5 = half speed, "frozen" at full draft, "+0.1/s" when a perfect draft early in the run runs it back) and
+   * the slow-clock seconds left on this leg ("· 6s"). A good draft that earns nothing shows a muted tag instead: "slow
+   * clock spent" once the leg's budget is used up (a pickup or a drop refills it), or "slow clock: wrong way" while the
+   * drone flies away from its objective. `gain` is clock seconds gained per second.
    */
-  setSlowClock(gain: number, dt = 1 / 60): void {
+  setSlowClock(gain: number, dt = 1 / 60, budget = 0, idle: '' | 'spent' | 'away' = ''): void {
+    const spent = idle !== '';
     const on = gain >= 0.03;
-    this.slowOff = on ? 0 : this.slowOff + dt;
-    const show = on || (this.slowShown && this.slowOff < 0.35);
+    this.slowOff = on || spent ? 0 : this.slowOff + dt;
+    const show = on || spent || (this.slowShown && this.slowOff < 0.35);
     if (show !== this.slowShown) {
       this.slowShown = show;
       this.timer.classList.toggle('slow', show);
     }
-    if (on) {
+    if (spent !== this.slowSpent) {
+      this.slowSpent = spent;
+      this.timer.classList.toggle('spent', spent);
+    }
+    if (on || spent) {
       const speed = Math.max(0, 1 - gain);
-      const text = gain > 1.05 ? `clock +${(gain - 1).toFixed(1)}/s` : speed < 0.05 ? 'clock frozen' : `clock x${speed.toFixed(1)}`;
+      const left = `${Math.ceil(budget - 0.05)}s`;
+      const text = spent
+        ? idle === 'spent' ? 'slow clock spent' : 'slow clock: wrong way'
+        : `${gain > 1.05 ? `clock +${(gain - 1).toFixed(1)}/s` : speed < 0.05 ? 'clock frozen' : `clock x${speed.toFixed(1)}`} · ${left}`;
       if (text !== this.last.slow) {
         this.last.slow = text;
         this.timerSlow.textContent = text;
@@ -495,7 +506,8 @@ export class Hud {
     this.slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false, rate: -1, cue: '' };
     this.slip.classList.remove('on', 'drafting', 'hug', 'hint');
     this.slowShown = false;
-    this.timer.classList.remove('slow');
+    this.slowSpent = false;
+    this.timer.classList.remove('slow', 'spent');
     this.hintLeft = 0;
     this.windOn = false;
     this.windEl.classList.remove('on');

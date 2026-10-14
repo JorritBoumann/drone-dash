@@ -409,7 +409,10 @@ export class Game {
     this.emitWindStreaks();
 
     // objectives
-    const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius, SLIPSTREAM.holdsPar && this.slip.drafting);
+    // drafting fast along a facade holds the fast-drop clock; a slow crawl does not. A slipstream chain held at the drop
+    // makes the delivery pay more (the street line's reward lands on the delivery, not beside it)
+    const hot = 1 + SLIPSTREAM.hotStep * this.slip.chain;
+    const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius, this.slip.quality >= SLIPSTREAM.parQuality, hot);
     if (ev?.type === 'picked') {
       d.setCarrying(true);
       this.audio.pickup();
@@ -424,7 +427,11 @@ export class Game {
       this.vfx.burst(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 1), MARKER_COLORS.drop, 56, 12, 0.22, this.fxRng);
       this.vfx.ring(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 0.3), MARKER_COLORS.drop, 9);
       this.cameraRig.addShake(0.2);
-      const sub = ev.fast ? (ev.combo > 1 ? `Fast drop · x${this.delivery.multiplier.toFixed(1)} combo` : 'Fast drop!') : 'Delivered';
+      let sub = ev.fast ? (ev.combo > 1 ? `Fast drop · x${this.delivery.multiplier.toFixed(1)} combo` : 'Fast drop!') : 'Delivered';
+      if (ev.hot > 1.001) {
+        sub += ` · street x${ev.hot.toFixed(1)}`;
+        this.slip.hotPoints += this.delivery.lastHotPoints;
+      }
       this.hud.popText(`+${ev.points}`, sub, 'drop');
       this.hud.flashTimeBonus(ev.timeBonus);
       this.setMarkerFromDelivery();
@@ -450,7 +457,7 @@ export class Game {
     this.hud.setSpeedLines(Math.max(d.boosting ? Math.min(1, d.speed / 24) : 0, this.slip.intensity * 0.5));
     // the wind chip only matters while the drone is actually trying to go somewhere up high (not while it hovers at a rooftop pad)
     const windy = d.headwind > 0.35 && d.speed > 7;
-    this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, windy, this.slip.hug > 0.4, dt);
+    this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, windy, this.slip.hug > 0.4, dt, this.slipRateTier(), this.slipCue());
     this.hud.setWind(windy);
     this.updateNav();
 
@@ -533,6 +540,25 @@ export class Game {
     const p = d.group.position;
     this.vfx.burst(p, new THREE.Color('#ff8a3d'), 22 + Math.round(s * 18), 6 + s * 6, 0.16, this.fxRng);
     this.vfx.burst(p, new THREE.Color('#fff1c9'), 10, 9 + s * 4, 0.1, this.fxRng);
+  }
+
+  /** HUD chevrons: how fast the slipstream meter is filling right now (0 none, 1 slow, 2 good, 3 fast and tight). */
+  private slipRateTier(): number {
+    const r = this.slip.rate;
+    return r <= 0 ? 0 : r < SLIPSTREAM.rateGood ? 1 : r < SLIPSTREAM.rateTop ? 2 : 3;
+  }
+
+  /** HUD cue naming the one thing that would fill the meter faster, or praising a wall hug. */
+  private slipCue(): string {
+    const s = this.slip, d = this.drone;
+    const t = this.delivery.target;
+    const nearPad = t ? Math.hypot(t.pos.x - d.group.position.x, t.pos.z - d.group.position.z) < 25 : false;
+    if (nearPad) return '';
+    if (s.wall > 0.3 && d.speed > 3 && s.speedFactor < 0.6) return 'faster';
+    if (!s.drafting) return '';
+    if (s.hug > 0.4) return 'hug';
+    if (s.wall < 0.75 && s.speedFactor > 0.8) return 'closer';
+    return '';
   }
 
   /** Low street line reward: draft meter, payouts, wind streaks and the rising whistle. */
@@ -681,7 +707,7 @@ export class Game {
       combo: this.delivery.combo,
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
-      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds },
+      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds },
       lastCrash: this.lastCrash,
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },

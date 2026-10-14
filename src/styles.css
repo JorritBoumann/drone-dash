@@ -332,6 +332,34 @@ body { background: #f0b98a; }
 .slip.on { opacity: 1; transform: none; }
 .slip-label { display: block; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); }
 .slip-label b { margin-left: 4px; color: var(--amber); letter-spacing: 0.04em; }
+/* fill-speed chevrons: light up with speed and wall distance, so the meter's rule is visible while flying */
+.slip-rate { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle; }
+.slip-rate s {
+  width: 7px;
+  height: 9px;
+  background: rgba(255, 246, 232, 0.28);
+  clip-path: polygon(0 0, 55% 0, 100% 50%, 55% 100%, 0 100%, 45% 50%);
+  transition: background 0.15s ease;
+}
+.slip-rate[data-rate='1'] s:nth-child(-n + 1),
+.slip-rate[data-rate='2'] s:nth-child(-n + 2),
+.slip-rate[data-rate='3'] s { background: var(--amber); }
+.slip-rate[data-rate='3'] s { background: #fff3d6; filter: drop-shadow(0 0 4px rgba(255, 200, 100, 0.95)); }
+.slip-cue {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 3px);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--cream);
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+}
+.slip-cue[data-cue='faster'], .slip-cue[data-cue='closer'] { color: #ffd27a; }
+.slip-cue[data-cue='hug'] { color: #fff3d6; text-shadow: 0 0 8px rgba(255, 190, 80, 0.95); }
 .slip-track {
   position: relative;
   height: 7px;
@@ -367,6 +395,7 @@ body { background: #f0b98a; }
   transition: opacity 0.3s ease;
 }
 .slip.hint .slip-hint { opacity: 0.95; }
+.slip.hint .slip-cue { opacity: 0; }
 /* payout pop: near the drone, between the delivery pop and the drone, bigger and brighter as the chain climbs */
 .slip-pop {
   position: absolute;

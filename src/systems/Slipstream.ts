@@ -5,22 +5,28 @@ import type { CollisionWorld } from './CollisionWorld';
 export type SlipEvent = { type: 'payout'; points: number; chain: number } | { type: 'tick'; step: number } | null;
 
 /**
- * Slipstream: flying low and fast along building faces builds a draft meter. Each full meter pays out
- * points, a slice of boost and a second on the clock, and consecutive payouts without leaving the street chain up.
- * Quality of the draft = how close the nearest facade is (a second facade across the street adds a canyon bonus)
- * times how fast the drone is moving; a street centre at cruise is full quality. Hugging a facade (`hug`) fills
- * faster still. Above `maxAlt` or well above the roofs there is no draft.
+ * Slipstream: flying low and fast along building faces builds a draft meter. The meter fills by distance flown in the
+ * draft, times draft quality = wall factor (how close the nearest facade is, plus a little for a facade across the
+ * street) x speed factor. So speed counts twice (more metres per second, and a stronger draft), a crawl barely fills,
+ * the street centre is partial strength and hugging a facade (`hug`) fills fastest. Each full meter pays out points,
+ * a slice of boost and half a second on the clock; payouts that follow each other quickly chain up.
+ * Above `maxAlt` or well above the roofs there is no draft.
  */
 export class Slipstream {
   level = 0; // 0..1 meter
   intensity = 0; // smoothed draft quality 0..1 (drives VFX, audio, HUD glow)
-  quality = 0; // raw draft quality this frame
+  quality = 0; // raw draft quality this frame (wall factor x speed factor)
+  wall = 0; // 0..1 wall factor this frame (HUD: how close the facade is)
+  speedFactor = 0; // 0..1 speed factor this frame (HUD: fast enough?)
+  rate = 0; // draft metres per second this frame (meter fill speed, HUD rate pips)
+  private sincePayout = 0;
   hug = 0; // 0..1: how tight the drone hugs the nearest facade (fills the meter faster)
   firstPayoutAt = -1; // s since the first draft of the run when the first payout came (debug / bots)
   private draftClock = -1;
   chain = 0;
   payouts = 0;
   points = 0;
+  hotPoints = 0; // delivery points earned by carrying a chain to the drop (counted in the delivery, tracked here)
   seconds = 0;
   drafting = false;
   private since = 99;
@@ -31,12 +37,17 @@ export class Slipstream {
     this.level = 0;
     this.intensity = 0;
     this.quality = 0;
+    this.wall = 0;
+    this.speedFactor = 0;
+    this.rate = 0;
+    this.sincePayout = 0;
     this.hug = 0;
     this.firstPayoutAt = -1;
     this.draftClock = -1;
     this.chain = 0;
     this.payouts = 0;
     this.points = 0;
+    this.hotPoints = 0;
     this.seconds = 0;
     this.drafting = false;
     this.since = 99;
@@ -55,20 +66,27 @@ export class Slipstream {
     const S = SLIPSTREAM;
     let q = 0;
     this.hug = 0;
-    if (p.y - 0.85 <= S.maxAlt && speed > S.minSpeed) {
-      const sf = Math.min(1, (speed - S.minSpeed) / (S.fullSpeed - S.minSpeed));
-      q = this.proximity(p, world) * sf;
+    this.wall = 0;
+    this.speedFactor = 0;
+    if (p.y - 0.85 <= S.maxAlt) {
+      this.speedFactor = Math.max(0, Math.min(1, (speed - S.minSpeed) / (S.fullSpeed - S.minSpeed)));
+      this.wall = this.proximity(p, world);
+      q = this.wall * this.speedFactor;
     }
     this.quality = q;
+    this.rate = q > S.minQuality ? S.fill * q * speed * (1 + S.hugBonus * this.hug) : 0;
     this.intensity += (q - this.intensity) * (1 - Math.exp(-6 * dt));
     this.drafting = q > S.minQuality;
     let ev: SlipEvent = null;
     if (this.draftClock >= 0) this.draftClock += dt;
+    this.sincePayout += dt;
+    // a chain only climbs while payouts come quickly: a slow pass loses it
+    if (this.chain > 0 && this.sincePayout > S.chainWindow) this.chain = 0;
     if (this.drafting) {
       if (this.draftClock < 0) this.draftClock = 0;
       this.since = 0;
-      const size = S.firstMeter + S.meterPerChain * Math.min(this.chain, S.maxChain - 1);
-      this.level += (S.fill * q * (1 + S.hugBonus * this.hug) * dt) / size;
+      const size = this.payouts === 0 ? S.introMeter : S.firstMeter + S.meterPerChain * Math.min(this.chain, S.maxChain - 1);
+      this.level += (this.rate * dt) / size;
     } else {
       this.since += dt;
       if (this.since > S.grace) this.level = Math.max(0, this.level - S.drain * dt);
@@ -77,6 +95,7 @@ export class Slipstream {
     if (this.level >= 1) {
       this.level = 0;
       this.lastStep = 0;
+      this.sincePayout = 0;
       this.chain = Math.min(this.chain + 1, S.maxChain);
       const points = S.points + S.chainStep * (this.chain - 1);
       this.payouts++;

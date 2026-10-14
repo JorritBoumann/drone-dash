@@ -39,6 +39,8 @@ export class Hud {
   private readonly slip = $('slip');
   private readonly slipFill = $('slip-fill');
   private readonly slipChain = $('slip-chain');
+  private readonly slipRate = $('slip-rate');
+  private readonly slipCue = $('slip-cue');
   private readonly slipPopEl = $('slip-pop');
   private readonly slipPopMain = $('slip-pop-main');
   private readonly slipPopSub = $('slip-pop-sub');
@@ -47,7 +49,7 @@ export class Hud {
   private hintArmed = false;
   private readonly windEl = $('wind');
   private windOn = false;
-  private slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false };
+  private slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false, rate: -1, cue: '' };
   private readonly popMain = $('pop-main');
   private readonly popSub = $('pop-sub');
   private readonly titleScreen = $('title-screen');
@@ -220,15 +222,26 @@ export class Hud {
   /**
    * Slipstream meter: shows while drafting or while the meter still holds charge. The fill only glows while it is
    * actually filling (dimmed while it waits out of the draft), glows hotter on a wall hug, and the first two runs on
-   * this device show a one-line hint under it the first time it appears.
+   * this device show a one-line hint under it the first time it appears. `rate` (0..3) lights the fill-speed chevrons
+   * and `cue` names what would fill it faster ("faster", "closer") or praises a tight line ("hug"), so the rule is
+   * learned by flying. A cue also shows the meter while the drone is near walls but too slow to draft.
    */
-  setSlip(level: number, drafting: boolean, chain: number, suppressed = false, hug = false, dt = 0): void {
+  setSlip(level: number, drafting: boolean, chain: number, suppressed = false, hug = false, dt = 0, rate = 0, cue = ''): void {
     const q = Math.round(level * 100) / 100;
     if (q !== this.slipLast.level) {
       this.slipLast.level = q;
       this.slipFill.style.transform = `scaleX(${q})`;
     }
-    const on = !suppressed && (drafting || level > 0.02);
+    const on = !suppressed && (drafting || level > 0.02 || cue === 'faster');
+    if (rate !== this.slipLast.rate) {
+      this.slipLast.rate = rate;
+      this.slipRate.dataset.rate = String(rate);
+    }
+    if (cue !== this.slipLast.cue) {
+      this.slipLast.cue = cue;
+      this.slipCue.textContent = cue === 'faster' ? 'Faster!' : cue === 'closer' ? 'Closer to wall' : cue === 'hug' ? 'Wall hug!' : '';
+      this.slipCue.dataset.cue = cue;
+    }
     if (on !== this.slipLast.on) {
       this.slipLast.on = on;
       this.slip.classList.toggle('on', on);
@@ -314,7 +327,7 @@ export class Hud {
   }
 
   resetCache(): void {
-    this.slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false };
+    this.slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false, rate: -1, cue: '' };
     this.slip.classList.remove('on', 'drafting', 'hug', 'hint');
     this.hintLeft = 0;
     this.windOn = false;

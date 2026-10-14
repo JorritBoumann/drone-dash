@@ -94,33 +94,42 @@ export const QUALITY = {
 };
 
 /**
- * Slipstream: the reward for the low street line. Flying below `maxAlt` and fast along a facade that is taller than
- * the drone fills a meter; each full meter pays `points` (+`chainStep` per chained payout; the delivery combo does not
- * multiply it), `boost` of the boost tank and `seconds` on the clock. Mid-street at cruise fills in about 2 s, a wall
- * hug faster; the meter and chain survive intersections and corners and are lost on a charged crash.
+ * Slipstream: the reward for the low street line, and a skill reward. The meter fills by DISTANCE flown in the draft,
+ * scaled by draft quality: quality = wall factor (how close the nearest facade is; a facade across the street adds a
+ * little) x speed factor (nothing below `minSpeed`, full from `fullSpeed`). So a fast pass fills it several times faster
+ * than a crawl over the same street, the street centre is only partial strength, and a tight line along a facade
+ * (`hug`) fills faster still. Each full meter pays `points` (+`chainStep` per chained payout), `boost` of the boost tank
+ * and `seconds` on the clock. A chain needs the next payout within `chainWindow` seconds, so only quick, tight flying
+ * keeps it climbing. The parcel you are carrying soaks up the chain: a delivery pays `hotStep` extra per chain step
+ * held at the drop (the street line's way to make deliveries pay more, shown as "street x1.4").
  */
 export const SLIPSTREAM = {
   maxAlt: 18, // m above the street
   reach: 16, // m: facades further than this give no draft
-  full: 9.5, // m: at or inside this distance the draft is full strength (a 12 m road + 3 m sidewalks puts the street centre 9 m from each facade)
-  canyon: 0.6, // weight of a second facade across the street
+  full: 4, // m: at or inside this distance the wall factor is full (the street centre, 9 m from each facade, is about 0.7 with both sides)
+  canyon: 0.2, // weight of a second facade across the street
   hugDist: 5, // m: inside this distance a facade gives the hug bonus (fills faster)...
   hugFull: 2.5, // m: ...full bonus at or inside this
-  hugBonus: 0.7, // extra fill rate at a full hug (1.7x)
-  minSpeed: 2.5, // m/s: no draft below this
-  fullSpeed: 8, // m/s: full draft at this speed (touch players cruise slower; rounding a corner at 7 m/s still drafts well)
-  holdsPar: true, // while drafting, the fast-drop clock (leg par) does not run
+  hugBonus: 0.6, // extra fill rate at a full hug (1.6x on top of the full wall factor)
+  minSpeed: 4, // m/s: no draft below this
+  fullSpeed: 13, // m/s: full speed factor from here (cruise top speed is 17; a touch stick at three quarters gets it)
+  parQuality: 0.55, // while the draft quality is at least this (fast, near a facade), the fast-drop clock (leg par) does not run
   minQuality: 0.08,
   roofSlack: 1.5, // m: a facade whose roof is up to this far below the drone still counts (skimming a roof edge drafts too)
-  fill: 0.45, // meter per second at full quality mid-street (2.2 s); a wall hug fills in about 1.3 s
+  fill: 1, // meter metres per metre flown at quality 1 (no hug)
   drain: 0.05, // meter per second once out of the draft
   grace: 3, // s out of the draft before the meter drains (crossing an intersection or rounding a corner keeps it)
   chainReset: 6, // s out of the draft before the chain resets (a corner on the 44 m grid does not break it)
+  chainWindow: 9, // s: the chain also resets when the next payout takes longer than this (a crawl cannot build a chain)
   points: 50,
-  chainStep: 25, // x1 50, x2 75, x3 100, x4 125, x5 150 (flat: the delivery combo does not multiply these, the chain is their own multiplier)
+  chainStep: 30, // x1 50, x2 80, x3 110, x4 140, x5 170 (flat: the delivery combo does not multiply these, the chain is their own multiplier)
   maxChain: 5,
-  firstMeter: 0.65, // size of the meter before the first payout of a chain (a quick first payout teaches the rule)...
-  meterPerChain: 0.1, // ...and it grows by this per chain step (x4 and up: 1.05), so a long chain pays more but less often
+  introMeter: 4, // the very first meter of a run is short, so a new player sees a payout within seconds of the first draft
+  firstMeter: 14, // meter size in draft metres before the first payout of a chain (a quick first payout teaches the rule)...
+  meterPerChain: 4, // ...and it grows by this per chain step, so a long chain pays more but less often
+  rateGood: 7, // draft metres per second for two HUD chevrons (a crawl is one chevron, the street centre at cruise about 10: two)...
+  rateTop: 16, // ...and three for a tight line along a facade at cruise, or boosting
+  hotStep: 0.15, // delivery bonus per slipstream chain step held at the drop (x5 chain: +75%)
   boost: 0.3,
   seconds: 0.5,
 };

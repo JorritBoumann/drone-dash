@@ -52,8 +52,9 @@ export class DeliverySystem {
   }
 
   /** Slipstream payout: points scaled by the running combo, plus a little clock. Returns the points added. */
-  addBonus(points: number, seconds: number): number {
-    const pts = Math.round(points * this.multiplier);
+  /** Bonus points (and clock time) outside a delivery. `useCombo` multiplies the points by the delivery combo. */
+  addBonus(points: number, seconds: number, useCombo = true): number {
+    const pts = Math.round(points * (useCombo ? this.multiplier : 1));
     this.score += pts;
     this.timeLeft += seconds;
     return pts;

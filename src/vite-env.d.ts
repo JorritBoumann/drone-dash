@@ -13,7 +13,7 @@ interface ThreeGameDiagnostics {
   combo: number;
   crashes?: number;
   leg?: { time: number; par: number };
-  slipstream?: { level: number; intensity: number; quality: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number };
+  slipstream?: { level: number; intensity: number; quality: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number };
   /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
   /** Debug: this frame's contacts (wall impact speed, ledge hop impact, crash-relevant speed loss). */
   contact?: { bump: number; ledge: number; wallLoss: number };

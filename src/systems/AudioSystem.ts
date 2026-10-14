@@ -167,14 +167,21 @@ export class AudioSystem {
     this.tone(f, t, 0.12, 'triangle', 0.05, 0.2, f * 1.06);
   }
 
-  /** Meter full: a bright upward whoosh and a two-note chime that climbs with the chain. */
+  /**
+   * Meter full: a bright upward whoosh and a chime that climbs a whole tone per chain step, gets louder and adds one
+   * more arpeggio note per step (x1 two notes, x5 six).
+   */
   slipPayout(chain: number): void {
     if (!this.ready) return;
     const t = this.ctx!.currentTime;
-    const lift = Math.pow(2, (Math.min(chain, 5) - 1) / 12);
-    this.noise(t, 0.4, 0.09, 'bandpass', 900, 4200, 2);
-    this.tone(880 * lift, t + 0.02, 0.3, 'triangle', 0.1, 0.4);
-    this.tone(1318.5 * lift, t + 0.1, 0.45, 'sine', 0.12, 0.5);
+    const c = Math.min(chain, 5);
+    const lift = Math.pow(2, ((c - 1) * 2) / 12);
+    const g = 1 + (c - 1) * 0.12;
+    this.noise(t, 0.4 + c * 0.05, 0.09 * g, 'bandpass', 900, 4200 + c * 500, 2);
+    this.tone(880 * lift, t + 0.02, 0.3, 'triangle', 0.1 * g, 0.4);
+    this.tone(1318.5 * lift, t + 0.1, 0.45, 'sine', 0.12 * g, 0.5);
+    const arp = [1760, 2217.5, 2637, 3520];
+    for (let i = 0; i < c - 1; i++) this.tone(arp[i] * lift * 0.5, t + 0.17 + i * 0.06, 0.3, 'sine', 0.07 * g, 0.5);
   }
 
   private tone(freq: number, start: number, dur: number, type: OscillatorType, gain: number, reverb = 0.6, glideTo?: number): void {

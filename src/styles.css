@@ -348,28 +348,53 @@ body { background: #f0b98a; }
   transform: scaleX(0);
   transform-origin: left center;
 }
+.slip.on:not(.drafting) .slip-fill { filter: saturate(0.45) brightness(0.8); }
 .slip.drafting .slip-fill { box-shadow: 0 0 12px rgba(255, 190, 80, 0.9); }
+.slip.drafting.hug .slip-fill { box-shadow: 0 0 18px rgba(255, 220, 140, 1); background: linear-gradient(90deg, #ffe2a0, #ffc35a, #ffffff); }
 .slip.drafting .slip-label { animation: slip-flutter 0.5s ease-in-out infinite alternate; }
+.slip[data-chain='3'] .slip-label b, .slip[data-chain='4'] .slip-label b, .slip[data-chain='5'] .slip-label b { color: #fff3d6; text-shadow: 0 0 10px rgba(255, 190, 80, 0.95); }
 @keyframes slip-flutter { from { opacity: 0.8; } to { opacity: 1; } }
-.slip-pop {
+.slip-hint {
   position: absolute;
   left: 0;
-  bottom: 100%;
-  margin-bottom: 4px;
-  font-size: 1.35rem;
-  font-weight: 900;
+  bottom: calc(100% + 3px);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--cream);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.slip.hint .slip-hint { opacity: 0.95; }
+/* payout pop: near the drone, between the delivery pop and the drone, bigger and brighter as the chain climbs */
+.slip-pop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
   color: var(--amber);
   -webkit-text-stroke: 5px var(--ink);
   paint-order: stroke fill;
   white-space: nowrap;
   opacity: 0;
+  pointer-events: none;
 }
+.slip-pop strong { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+.slip-pop span { margin-top: 2px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cream); -webkit-text-stroke: 4px var(--ink); }
+.slip-pop[data-chain='2'] strong { font-size: 1.75rem; }
+.slip-pop[data-chain='3'] strong { font-size: 2rem; color: #ffd27a; }
+.slip-pop[data-chain='4'] strong { font-size: 2.25rem; color: #ffe7b0; }
+.slip-pop[data-chain='5'] strong { font-size: 2.5rem; color: #fff3d6; }
 .slip-pop.show { animation: slip-rise 1.3s ease-out; }
 @keyframes slip-rise {
-  0% { opacity: 0; transform: translateY(8px) scale(0.8); }
-  15% { opacity: 1; transform: translateY(0) scale(1.12); }
-  70% { opacity: 1; transform: translateY(-14px) scale(1); }
-  100% { opacity: 0; transform: translateY(-26px) scale(1); }
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, -80%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -110%) scale(1); }
 }
 #app.touch .slip { width: 150px; }
 .wind {

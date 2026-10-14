@@ -53,6 +53,7 @@ export class Game {
   private readonly marker = new ObjectiveMarker();
   private readonly slip = new Slipstream();
   private readonly slipColor = new THREE.Color('#ffe7b0');
+  private readonly slipHot = new THREE.Color('#fff6e8');
   private readonly windColor = new THREE.Color('#e6f2ff');
   private readonly layout: CityLayout;
   private readonly world: CollisionWorld;
@@ -244,6 +245,7 @@ export class Game {
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
+    this.hud.armSlipHint();
     this.setMarkerFromDelivery();
     this.hud.setDeliveries(0);
     this.hud.setScore(0);
@@ -446,8 +448,10 @@ export class Game {
     // true altitude above street level (consistent everywhere, rooftops included)
     this.hud.setTelemetry(d.speed, Math.max(0, dp.y - 0.85));
     this.hud.setSpeedLines(Math.max(d.boosting ? Math.min(1, d.speed / 24) : 0, this.slip.intensity * 0.5));
-    this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, d.headwind > 0.35);
-    this.hud.setWind(d.headwind > 0.35);
+    // the wind chip only matters while the drone is actually trying to go somewhere up high (not while it hovers at a rooftop pad)
+    const windy = d.headwind > 0.35 && d.speed > 7;
+    this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, windy, this.slip.hug > 0.4, dt);
+    this.hud.setWind(windy);
     this.updateNav();
 
     if (tl <= 0) this.endRun();
@@ -538,15 +542,16 @@ export class Game {
     this.audio.setDraft(this.slip.intensity, this.slip.level);
     if (ev?.type === 'tick') this.audio.slipTick(ev.step);
     else if (ev?.type === 'payout') {
-      const pts = this.delivery.addBonus(ev.points, SLIPSTREAM.seconds);
+      const pts = this.delivery.addBonus(ev.points, SLIPSTREAM.seconds, false);
       this.slip.points += pts;
       this.slip.seconds += SLIPSTREAM.seconds;
       d.boost = Math.min(1, d.boost + SLIPSTREAM.boost);
       this.audio.slipPayout(ev.chain);
-      this.hud.slipPop(ev.chain > 1 ? `+${pts} slipstream x${ev.chain}` : `+${pts} slipstream`);
+      this.hud.slipPop(`+${pts}`, ev.chain);
       this.hud.flashTimeBonus(SLIPSTREAM.seconds);
-      this.cameraRig.addShake(0.08);
-      this.vfx.burst(d.group.position, this.slipColor, 14, 6, 0.12, this.fxRng);
+      this.cameraRig.addShake(0.06 + 0.03 * ev.chain);
+      this.vfx.burst(d.group.position, this.slipColor, 12 + ev.chain * 6, 6 + ev.chain, 0.12, this.fxRng);
+      if (ev.chain >= 3) this.vfx.burst(d.group.position, this.slipHot, 6 + ev.chain * 3, 9 + ev.chain, 0.1, this.fxRng);
     }
     // wind streaks peeling off the drone while it drafts
     if (this.slip.intensity > 0.15 && this.fxRng() < this.slip.intensity) {
@@ -676,7 +681,7 @@ export class Game {
       combo: this.delivery.combo,
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
-      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds },
+      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds },
       lastCrash: this.lastCrash,
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },

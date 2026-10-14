@@ -32,7 +32,7 @@ export const FLIGHT = {
   guideLowHeight: 6, // m: below this height above the pad the guide also helps while hovering
   headwindStart: 20, // m: above the roofline the wind picks up...
   headwindFull: 28, // m: ...and is full from here up
-  headwindSlow: 0.3, // fraction of cruise and boost top speed the full headwind takes away
+  headwindSlow: 0.2, // fraction of cruise and boost top speed the full headwind takes away
 };
 
 export const CAMERA = {
@@ -95,25 +95,32 @@ export const QUALITY = {
 
 /**
  * Slipstream: the reward for the low street line. Flying below `maxAlt` and fast along a facade that is taller than
- * the drone fills a meter; each full meter pays `points` (+`chainStep` per chained payout, times the combo
- * multiplier), `boost` of the boost tank and `seconds` on the clock.
+ * the drone fills a meter; each full meter pays `points` (+`chainStep` per chained payout; the delivery combo does not
+ * multiply it), `boost` of the boost tank and `seconds` on the clock. Mid-street at cruise fills in about 2 s, a wall
+ * hug faster; the meter and chain survive intersections and corners and are lost on a charged crash.
  */
 export const SLIPSTREAM = {
   maxAlt: 18, // m above the street
-  reach: 12, // m: facades further than this give no draft
-  full: 4, // m: at or inside this distance the draft is full strength
+  reach: 16, // m: facades further than this give no draft
+  full: 9.5, // m: at or inside this distance the draft is full strength (a 12 m road + 3 m sidewalks puts the street centre 9 m from each facade)
   canyon: 0.6, // weight of a second facade across the street
-  minSpeed: 4, // m/s: no draft below this
-  fullSpeed: 14, // m/s: full draft at this speed
+  hugDist: 5, // m: inside this distance a facade gives the hug bonus (fills faster)...
+  hugFull: 2.5, // m: ...full bonus at or inside this
+  hugBonus: 0.7, // extra fill rate at a full hug (1.7x)
+  minSpeed: 2.5, // m/s: no draft below this
+  fullSpeed: 8, // m/s: full draft at this speed (touch players cruise slower; rounding a corner at 7 m/s still drafts well)
   holdsPar: true, // while drafting, the fast-drop clock (leg par) does not run
   minQuality: 0.08,
-  fill: 0.5, // meter per second at full quality (2 s)
-  drain: 0.15, // meter per second once out of the draft
-  grace: 1.2, // s out of the draft before the meter drains
-  chainReset: 3, // s out of the draft before the chain resets
-  points: 40,
-  chainStep: 15,
+  roofSlack: 1.5, // m: a facade whose roof is up to this far below the drone still counts (skimming a roof edge drafts too)
+  fill: 0.45, // meter per second at full quality mid-street (2.2 s); a wall hug fills in about 1.3 s
+  drain: 0.05, // meter per second once out of the draft
+  grace: 3, // s out of the draft before the meter drains (crossing an intersection or rounding a corner keeps it)
+  chainReset: 6, // s out of the draft before the chain resets (a corner on the 44 m grid does not break it)
+  points: 50,
+  chainStep: 25, // x1 50, x2 75, x3 100, x4 125, x5 150 (flat: the delivery combo does not multiply these, the chain is their own multiplier)
   maxChain: 5,
+  firstMeter: 0.65, // size of the meter before the first payout of a chain (a quick first payout teaches the rule)...
+  meterPerChain: 0.1, // ...and it grows by this per chain step (x4 and up: 1.05), so a long chain pays more but less often
   boost: 0.3,
-  seconds: 1,
+  seconds: 0.5,
 };

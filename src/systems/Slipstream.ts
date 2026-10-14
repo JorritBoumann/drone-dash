@@ -7,13 +7,17 @@ export type SlipEvent = { type: 'payout'; points: number; chain: number } | { ty
 /**
  * Slipstream: flying low and fast along building faces builds a draft meter. Each full meter pays out
  * points, a slice of boost and a second on the clock, and consecutive payouts without leaving the street chain up.
- * Quality of the draft = how close the nearest taller facade is (a second facade across the street adds a canyon
- * bonus) times how fast the drone is moving. Above `maxAlt` or above the roofs there is no draft.
+ * Quality of the draft = how close the nearest facade is (a second facade across the street adds a canyon bonus)
+ * times how fast the drone is moving; a street centre at cruise is full quality. Hugging a facade (`hug`) fills
+ * faster still. Above `maxAlt` or well above the roofs there is no draft.
  */
 export class Slipstream {
   level = 0; // 0..1 meter
   intensity = 0; // smoothed draft quality 0..1 (drives VFX, audio, HUD glow)
   quality = 0; // raw draft quality this frame
+  hug = 0; // 0..1: how tight the drone hugs the nearest facade (fills the meter faster)
+  firstPayoutAt = -1; // s since the first draft of the run when the first payout came (debug / bots)
+  private draftClock = -1;
   chain = 0;
   payouts = 0;
   points = 0;
@@ -27,6 +31,9 @@ export class Slipstream {
     this.level = 0;
     this.intensity = 0;
     this.quality = 0;
+    this.hug = 0;
+    this.firstPayoutAt = -1;
+    this.draftClock = -1;
     this.chain = 0;
     this.payouts = 0;
     this.points = 0;
@@ -47,6 +54,7 @@ export class Slipstream {
   update(dt: number, p: THREE.Vector3, speed: number, world: CollisionWorld): SlipEvent {
     const S = SLIPSTREAM;
     let q = 0;
+    this.hug = 0;
     if (p.y - 0.85 <= S.maxAlt && speed > S.minSpeed) {
       const sf = Math.min(1, (speed - S.minSpeed) / (S.fullSpeed - S.minSpeed));
       q = this.proximity(p, world) * sf;
@@ -55,9 +63,12 @@ export class Slipstream {
     this.intensity += (q - this.intensity) * (1 - Math.exp(-6 * dt));
     this.drafting = q > S.minQuality;
     let ev: SlipEvent = null;
+    if (this.draftClock >= 0) this.draftClock += dt;
     if (this.drafting) {
+      if (this.draftClock < 0) this.draftClock = 0;
       this.since = 0;
-      this.level += S.fill * q * dt;
+      const size = S.firstMeter + S.meterPerChain * Math.min(this.chain, S.maxChain - 1);
+      this.level += (S.fill * q * (1 + S.hugBonus * this.hug) * dt) / size;
     } else {
       this.since += dt;
       if (this.since > S.grace) this.level = Math.max(0, this.level - S.drain * dt);
@@ -69,6 +80,7 @@ export class Slipstream {
       this.chain = Math.min(this.chain + 1, S.maxChain);
       const points = S.points + S.chainStep * (this.chain - 1);
       this.payouts++;
+      if (this.firstPayoutAt < 0) this.firstPayoutAt = this.draftClock;
       return { type: 'payout', points, chain: this.chain };
     }
     const step = Math.floor(this.level * 4);
@@ -89,7 +101,7 @@ export class Slipstream {
     // first pass: nearest face
     for (const i of ids) {
       const b = world.boxes[i];
-      if (b.soft || b.maxY < p.y + 0.5 || b.minY > p.y + 0.5 || b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4) continue;
+      if (b.soft || b.maxY < p.y - S.roofSlack || b.minY > p.y + 0.5 || b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4) continue;
       const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ));
       const dx = cx - p.x, dz = cz - p.z;
       const d = Math.hypot(dx, dz);
@@ -99,13 +111,14 @@ export class Slipstream {
       bz = dz / d;
     }
     if (best >= r) return 0;
+    this.hug = Math.max(0, Math.min(1, (S.hugDist - best) / (S.hugDist - S.hugFull)));
     this.dir.x = bx;
     this.dir.z = bz;
     // second pass: nearest face on the far side of the street
     let across = r;
     for (const i of ids) {
       const b = world.boxes[i];
-      if (b.soft || b.maxY < p.y + 0.5 || b.minY > p.y + 0.5 || b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4) continue;
+      if (b.soft || b.maxY < p.y - S.roofSlack || b.minY > p.y + 0.5 || b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4) continue;
       const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ));
       const dx = cx - p.x, dz = cz - p.z;
       const d = Math.hypot(dx, dz);

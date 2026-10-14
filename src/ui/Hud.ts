@@ -40,9 +40,14 @@ export class Hud {
   private readonly slipFill = $('slip-fill');
   private readonly slipChain = $('slip-chain');
   private readonly slipPopEl = $('slip-pop');
+  private readonly slipPopMain = $('slip-pop-main');
+  private readonly slipPopSub = $('slip-pop-sub');
+  private hintLeft = 0; // s of first-time hint still to show while the meter is up
+  private hintRuns = 0;
+  private hintArmed = false;
   private readonly windEl = $('wind');
   private windOn = false;
-  private slipLast = { level: -1, on: false, drafting: false, chain: -1 };
+  private slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false };
   private readonly popMain = $('pop-main');
   private readonly popSub = $('pop-sub');
   private readonly titleScreen = $('title-screen');
@@ -212,8 +217,12 @@ export class Hud {
     this.speedLines.style.opacity = String(q * 0.85);
   }
 
-  /** Slipstream meter: shows while drafting or while the meter still holds charge. */
-  setSlip(level: number, drafting: boolean, chain: number, suppressed = false): void {
+  /**
+   * Slipstream meter: shows while drafting or while the meter still holds charge. The fill only glows while it is
+   * actually filling (dimmed while it waits out of the draft), glows hotter on a wall hug, and the first two runs on
+   * this device show a one-line hint under it the first time it appears.
+   */
+  setSlip(level: number, drafting: boolean, chain: number, suppressed = false, hug = false, dt = 0): void {
     const q = Math.round(level * 100) / 100;
     if (q !== this.slipLast.level) {
       this.slipLast.level = q;
@@ -223,15 +232,41 @@ export class Hud {
     if (on !== this.slipLast.on) {
       this.slipLast.on = on;
       this.slip.classList.toggle('on', on);
+      if (on && this.hintArmed) {
+        this.hintArmed = false;
+        this.hintLeft = 6;
+        this.slip.classList.add('hint');
+      }
     }
-    if (drafting !== this.slipLast.drafting) {
+    if (this.hintLeft > 0 && on) {
+      this.hintLeft -= dt;
+      if (this.hintLeft <= 0) this.slip.classList.remove('hint');
+    }
+    const h = drafting && hug;
+    if (drafting !== this.slipLast.drafting || h !== this.slipLast.hug) {
       this.slipLast.drafting = drafting;
+      this.slipLast.hug = h;
       this.slip.classList.toggle('drafting', drafting);
+      this.slip.classList.toggle('hug', h);
     }
     if (chain !== this.slipLast.chain) {
       this.slipLast.chain = chain;
       this.slipChain.textContent = chain > 1 ? `x${chain}` : '';
+      this.slip.dataset.chain = String(Math.min(chain, 5));
     }
+  }
+
+  /** Called at the start of a run: arms the first-time slipstream hint for the first two runs on this device. */
+  armSlipHint(): void {
+    if (this.hintRuns === 0) {
+      try {
+        this.hintRuns = 1 + Number(localStorage.getItem('drone-dash-slip-hint') || 0);
+        localStorage.setItem('drone-dash-slip-hint', String(this.hintRuns));
+      } catch {
+        this.hintRuns = 1;
+      }
+    } else this.hintRuns++;
+    this.hintArmed = this.hintRuns <= 2;
   }
 
   /** High-wind chip: shown while the drone flies in the headwind band above the roofline. */
@@ -241,8 +276,11 @@ export class Hud {
     this.windEl.classList.toggle('on', on);
   }
 
-  slipPop(text: string): void {
-    this.slipPopEl.textContent = text;
+  /** Payout pop near the drone: grows, brightens and gets a chain tag as the chain climbs. */
+  slipPop(points: string, chain: number): void {
+    this.slipPopMain.textContent = points;
+    this.slipPopSub.textContent = chain > 1 ? `Slipstream chain x${chain}` : 'Slipstream';
+    this.slipPopEl.dataset.chain = String(Math.min(chain, 5));
     this.slipPopEl.classList.remove('show');
     void this.slipPopEl.offsetWidth;
     this.slipPopEl.classList.add('show');
@@ -276,8 +314,9 @@ export class Hud {
   }
 
   resetCache(): void {
-    this.slipLast = { level: -1, on: false, drafting: false, chain: -1 };
-    this.slip.classList.remove('on', 'drafting');
+    this.slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false };
+    this.slip.classList.remove('on', 'drafting', 'hug', 'hint');
+    this.hintLeft = 0;
     this.windOn = false;
     this.windEl.classList.remove('on');
     this.slipPopEl.classList.remove('show');

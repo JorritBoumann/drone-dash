@@ -8,3 +8,11 @@ dist-single
 .env
 .env.*
 *.key
+
+# From round 12: keep reports and scripts in git, media local only (force-add key images)
+progress/**/*.png
+progress/**/*.jpg
+progress/**/*.jpeg
+progress/**/*.wav
+progress/**/*.webm
+progress/**/logs/

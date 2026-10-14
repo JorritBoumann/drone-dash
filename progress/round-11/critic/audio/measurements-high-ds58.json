@@ -1,0 +1,746 @@
+{
+ "key": "ds58",
+ "sr": 48000,
+ "seconds": 153.2,
+ "mobile": false,
+ "force": false,
+ "latency_ms": {
+  "master": {
+   "ms": 170.67,
+   "match": 1.033
+  },
+  "music": {
+   "ms": 170.67,
+   "match": 0.998
+  },
+  "cues": {
+   "ms": 170.67,
+   "match": 1.0
+  }
+ },
+ "chain3_window_frac": 0,
+ "clips": [
+  {
+   "clip": "title",
+   "ct": [
+    2.15,
+    16.87
+   ],
+   "dur": 14.7,
+   "peak_dbfs": -4.1,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -16.2,
+   "integrated_lufs": -17.4,
+   "short_term_median": -17.5,
+   "short_term_min": -17.8,
+   "short_term_max": -16.7,
+   "below150_pct": 35.2,
+   "above6k_pct": 0.0,
+   "phone_band_rms_dbfs": -18.7,
+   "music_below150_pct": 35.1,
+   "music_rms_dbfs": -25.7,
+   "cues_rms_dbfs": -240.0,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 0,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 0.0,
+   "strict_master_times": [],
+   "strict_master_sizes": [],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "run-chain0",
+   "ct": [
+    29.81,
+    44.81
+   ],
+   "dur": 15.0,
+   "peak_dbfs": -1.8,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.8,
+   "integrated_lufs": -16.5,
+   "short_term_median": -16.5,
+   "short_term_min": -17.4,
+   "short_term_max": -15.4,
+   "below150_pct": 39.7,
+   "above6k_pct": 0.38,
+   "phone_band_rms_dbfs": -18.5,
+   "music_below150_pct": 26.6,
+   "music_rms_dbfs": -34.5,
+   "cues_rms_dbfs": -32.9,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 13,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 0.87,
+   "strict_master_times": [
+    2.974,
+    5.728,
+    5.968,
+    6.855,
+    6.87,
+    6.881,
+    6.918,
+    6.943,
+    7.73,
+    9.248,
+    9.856,
+    11.091,
+    11.878
+   ],
+   "strict_master_sizes": [
+    0.0582,
+    0.0492,
+    0.0582,
+    0.1228,
+    0.1213,
+    0.1476,
+    0.1348,
+    0.1282,
+    0.1057,
+    0.0986,
+    0.0951,
+    0.1043,
+    0.0511
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "last-10s",
+   "ct": [
+    127.02,
+    137.25
+   ],
+   "dur": 10.2,
+   "peak_dbfs": -1.6,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -14.9,
+   "integrated_lufs": -15.9,
+   "short_term_median": -16.1,
+   "short_term_min": -16.5,
+   "short_term_max": -15.4,
+   "below150_pct": 50.6,
+   "above6k_pct": 0.23,
+   "phone_band_rms_dbfs": -18.7,
+   "music_below150_pct": 49.9,
+   "music_rms_dbfs": -31.4,
+   "cues_rms_dbfs": -32.2,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 26,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 2.54,
+   "strict_master_times": [
+    0.019,
+    0.042,
+    0.885,
+    0.934,
+    1.103,
+    1.873,
+    1.892,
+    2.1,
+    2.171,
+    2.794,
+    2.807,
+    3.161,
+    3.177,
+    4.004,
+    4.018
+   ],
+   "strict_master_sizes": [
+    0.0499,
+    0.1338,
+    0.0508,
+    0.0936,
+    0.1215,
+    0.075,
+    0.0621,
+    0.1285,
+    0.0346,
+    0.0381,
+    0.0407,
+    0.123,
+    0.0629,
+    0.0672,
+    0.0793
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "medal-fanfare-1",
+   "ct": [
+    51.33,
+    57.33
+   ],
+   "dur": 6.0,
+   "peak_dbfs": -1.8,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -14.9,
+   "integrated_lufs": -15.5,
+   "short_term_median": -15.2,
+   "short_term_min": -15.9,
+   "short_term_max": -14.6,
+   "below150_pct": 26.0,
+   "above6k_pct": 0.48,
+   "phone_band_rms_dbfs": -17.3,
+   "music_below150_pct": 21.8,
+   "music_rms_dbfs": -35.6,
+   "cues_rms_dbfs": -28.4,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 19,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 3.17,
+   "strict_master_times": [
+    2.048,
+    2.059,
+    2.071,
+    2.168,
+    2.186,
+    2.205,
+    2.278,
+    2.551,
+    2.674,
+    2.972,
+    3.167,
+    3.194,
+    3.243,
+    3.254,
+    3.27
+   ],
+   "strict_master_sizes": [
+    0.091,
+    0.0792,
+    0.057,
+    0.1182,
+    0.089,
+    0.0749,
+    0.0714,
+    0.081,
+    0.0785,
+    0.0919,
+    0.0977,
+    0.0996,
+    0.0973,
+    0.1102,
+    0.1088
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "medal-fanfare-2",
+   "ct": [
+    93.3,
+    99.3
+   ],
+   "dur": 6.0,
+   "peak_dbfs": -1.7,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -14.4,
+   "integrated_lufs": -15.1,
+   "short_term_median": -15.1,
+   "short_term_min": -16.1,
+   "short_term_max": -14.2,
+   "below150_pct": 43.3,
+   "above6k_pct": 0.26,
+   "phone_band_rms_dbfs": -17.3,
+   "music_below150_pct": 32.8,
+   "music_rms_dbfs": -35.5,
+   "cues_rms_dbfs": -26.6,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 12,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 2.0,
+   "strict_master_times": [
+    0.194,
+    2.051,
+    2.062,
+    2.083,
+    2.099,
+    2.171,
+    2.193,
+    2.208,
+    2.224,
+    2.291,
+    3.476,
+    4.388
+   ],
+   "strict_master_sizes": [
+    0.0523,
+    0.1207,
+    0.106,
+    0.0586,
+    0.0492,
+    0.1106,
+    0.1021,
+    0.0604,
+    0.0422,
+    0.1207,
+    0.0394,
+    0.0835
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "crash",
+   "ct": [
+    124.79,
+    128.79
+   ],
+   "dur": 4.0,
+   "peak_dbfs": -1.6,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -14.3,
+   "integrated_lufs": -15.2,
+   "short_term_median": -15.0,
+   "short_term_min": -15.2,
+   "short_term_max": -14.8,
+   "below150_pct": 47.7,
+   "above6k_pct": 0.11,
+   "phone_band_rms_dbfs": -18.1,
+   "music_below150_pct": 37.0,
+   "music_rms_dbfs": -33.5,
+   "cues_rms_dbfs": -25.2,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 11,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 2.75,
+   "strict_master_times": [
+    1.178,
+    2.007,
+    2.02,
+    2.049,
+    2.061,
+    2.253,
+    2.276,
+    3.119,
+    3.168,
+    3.337,
+    4.0
+   ],
+   "strict_master_sizes": [
+    0.0546,
+    0.0527,
+    0.0637,
+    0.0713,
+    0.0715,
+    0.0499,
+    0.1338,
+    0.0508,
+    0.0936,
+    0.1215,
+    0.0392
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "game-over",
+   "ct": [
+    136.75,
+    152.25
+   ],
+   "dur": 15.5,
+   "peak_dbfs": -2.2,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -20.3,
+   "integrated_lufs": -21.5,
+   "short_term_median": -22.6,
+   "short_term_min": -23.4,
+   "short_term_max": -18.8,
+   "below150_pct": 59.5,
+   "above6k_pct": 0.05,
+   "phone_band_rms_dbfs": -24.3,
+   "music_below150_pct": 66.6,
+   "music_rms_dbfs": -31.2,
+   "cues_rms_dbfs": -36.6,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 2,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 0.13,
+   "strict_master_times": [
+    0.265,
+    0.573
+   ],
+   "strict_master_sizes": [
+    0.1179,
+    0.0709
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  }
+ ],
+ "master_lag_behind_buses_ms": 11.98,
+ "master_lag_corr": 0.385,
+ "cue_rows": [
+  {
+   "reason": "slip",
+   "at": 23.78,
+   "depth_db": -6.9,
+   "duck_measured_db": -7.0,
+   "cue_over_music_bus_db": 10.7,
+   "cue_over_music_master_db": 10.7,
+   "cue_over_rest_master_db": -1.6
+  },
+  {
+   "reason": "pickup",
+   "at": 24.31,
+   "depth_db": -4.4,
+   "duck_measured_db": 0.6,
+   "cue_over_music_bus_db": 15.9,
+   "cue_over_music_master_db": 14.2,
+   "cue_over_rest_master_db": 3.3
+  },
+  {
+   "reason": "delivery",
+   "at": 34.1,
+   "depth_db": -6.9,
+   "duck_measured_db": -7.0,
+   "cue_over_music_bus_db": 20.4,
+   "cue_over_music_master_db": 19.9,
+   "cue_over_rest_master_db": 5.0
+  },
+  {
+   "reason": "pickup",
+   "at": 43.04,
+   "depth_db": -4.4,
+   "duck_measured_db": -2.7,
+   "cue_over_music_bus_db": 14.0,
+   "cue_over_music_master_db": 14.5,
+   "cue_over_rest_master_db": 3.7
+  },
+  {
+   "reason": "medal",
+   "at": 53.33,
+   "depth_db": -11.1,
+   "duck_measured_db": -10.3,
+   "cue_over_music_bus_db": 18.7,
+   "cue_over_music_master_db": 17.7,
+   "cue_over_rest_master_db": -3.3
+  },
+  {
+   "reason": "pickup",
+   "at": 61.79,
+   "depth_db": -4.4,
+   "duck_measured_db": -5.9,
+   "cue_over_music_bus_db": 16.6,
+   "cue_over_music_master_db": 16.1,
+   "cue_over_rest_master_db": 3.1
+  },
+  {
+   "reason": "delivery",
+   "at": 72.65,
+   "depth_db": -6.9,
+   "duck_measured_db": -7.0,
+   "cue_over_music_bus_db": 21.0,
+   "cue_over_music_master_db": 19.5,
+   "cue_over_rest_master_db": 5.7
+  },
+  {
+   "reason": "pickup",
+   "at": 83.94,
+   "depth_db": -4.4,
+   "duck_measured_db": -4.2,
+   "cue_over_music_bus_db": 14.7,
+   "cue_over_music_master_db": 14.2,
+   "cue_over_rest_master_db": 2.7
+  },
+  {
+   "reason": "medal",
+   "at": 95.3,
+   "depth_db": -11.1,
+   "duck_measured_db": -11.5,
+   "cue_over_music_bus_db": 21.0,
+   "cue_over_music_master_db": 20.9,
+   "cue_over_rest_master_db": -0.4
+  },
+  {
+   "reason": "slip",
+   "at": 97.32,
+   "depth_db": -6.9,
+   "duck_measured_db": -4.3,
+   "cue_over_music_bus_db": 11.0,
+   "cue_over_music_master_db": 11.5,
+   "cue_over_rest_master_db": -5.8
+  },
+  {
+   "reason": "pickup",
+   "at": 101.77,
+   "depth_db": -4.4,
+   "duck_measured_db": -7.1,
+   "cue_over_music_bus_db": 15.6,
+   "cue_over_music_master_db": 14.6,
+   "cue_over_rest_master_db": 2.5
+  },
+  {
+   "reason": "delivery",
+   "at": 113.88,
+   "depth_db": -6.9,
+   "duck_measured_db": -5.7,
+   "cue_over_music_bus_db": 20.2,
+   "cue_over_music_master_db": 17.8,
+   "cue_over_rest_master_db": 4.4
+  },
+  {
+   "reason": "pickup",
+   "at": 125.6,
+   "depth_db": -4.4,
+   "duck_measured_db": -1.9,
+   "cue_over_music_bus_db": 14.2,
+   "cue_over_music_master_db": 13.8,
+   "cue_over_rest_master_db": 2.2
+  },
+  {
+   "reason": "crash",
+   "at": 126.29,
+   "depth_db": -9.1,
+   "duck_measured_db": -4.9,
+   "cue_over_music_bus_db": 22.4,
+   "cue_over_music_master_db": 21.2,
+   "cue_over_rest_master_db": 1.0
+  },
+  {
+   "reason": "gameover",
+   "at": 137.23,
+   "depth_db": -9.1,
+   "duck_measured_db": -18.1,
+   "cue_over_music_bus_db": 24.8,
+   "cue_over_music_master_db": 22.9,
+   "cue_over_rest_master_db": 8.4
+  }
+ ],
+ "cues": {
+  "slip": {
+   "n": 2,
+   "depth_db": -6.9,
+   "duck_measured_median": -5.7,
+   "bus_median": 10.8,
+   "bus_min": 10.7,
+   "master_median": 11.1,
+   "master_min": 10.7,
+   "over_rest_median": -3.7
+  },
+  "pickup": {
+   "n": 6,
+   "depth_db": -4.4,
+   "duck_measured_median": -3.5,
+   "bus_median": 15.1,
+   "bus_min": 14.0,
+   "master_median": 14.3,
+   "master_min": 13.8,
+   "over_rest_median": 2.9
+  },
+  "delivery": {
+   "n": 3,
+   "depth_db": -6.9,
+   "duck_measured_median": -7.0,
+   "bus_median": 20.4,
+   "bus_min": 20.2,
+   "master_median": 19.5,
+   "master_min": 17.8,
+   "over_rest_median": 5.0
+  },
+  "medal": {
+   "n": 2,
+   "depth_db": -11.1,
+   "duck_measured_median": -10.9,
+   "bus_median": 19.9,
+   "bus_min": 18.7,
+   "master_median": 19.3,
+   "master_min": 17.7,
+   "over_rest_median": -1.8
+  },
+  "crash": {
+   "n": 1,
+   "depth_db": -9.1,
+   "duck_measured_median": -4.9,
+   "bus_median": 22.4,
+   "bus_min": 22.4,
+   "master_median": 21.2,
+   "master_min": 21.2,
+   "over_rest_median": 1.0
+  },
+  "gameover": {
+   "n": 1,
+   "depth_db": -9.1,
+   "duck_measured_median": -18.1,
+   "bus_median": 24.8,
+   "bus_min": 24.8,
+   "master_median": 22.9,
+   "master_min": 22.9,
+   "over_rest_median": 8.4
+  }
+ },
+ "cue_onset_vs_scheduled_ms": {
+  "n": 15,
+  "median": 8.5,
+  "min": 2.1,
+  "max": 38.1
+ },
+ "repetition": {
+  "title": {
+   "span_s": 14.7,
+   "max_lag_tested_s": 5.76,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.101,
+     "max": 0.131,
+     "n": 3
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.068,
+     "max": 0.093,
+     "n": 2
+    },
+    {
+     "lag_s": 5.76,
+     "mean": -0.071,
+     "max": -0.071,
+     "n": 1
+    }
+   ]
+  },
+  "title (below 3 kHz)": {
+   "span_s": 14.7,
+   "max_lag_tested_s": 5.76,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.101,
+     "max": 0.131,
+     "n": 3
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.068,
+     "max": 0.093,
+     "n": 2
+    },
+    {
+     "lag_s": 5.76,
+     "mean": -0.071,
+     "max": -0.071,
+     "n": 1
+    }
+   ]
+  },
+  "game-over": {
+   "span_s": 15.5,
+   "max_lag_tested_s": 7.68,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.348,
+     "max": 0.383,
+     "n": 4
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.163,
+     "max": 0.188,
+     "n": 3
+    },
+    {
+     "lag_s": 7.68,
+     "mean": 0.079,
+     "max": 0.079,
+     "n": 1
+    },
+    {
+     "lag_s": 5.76,
+     "mean": 0.017,
+     "max": 0.017,
+     "n": 2
+    }
+   ]
+  },
+  "game-over (below 3 kHz)": {
+   "span_s": 15.5,
+   "max_lag_tested_s": 7.68,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.348,
+     "max": 0.383,
+     "n": 4
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.163,
+     "max": 0.188,
+     "n": 3
+    },
+    {
+     "lag_s": 7.68,
+     "mean": 0.079,
+     "max": 0.079,
+     "n": 1
+    },
+    {
+     "lag_s": 5.76,
+     "mean": 0.017,
+     "max": 0.017,
+     "n": 2
+    }
+   ]
+  }
+ },
+ "intensity_by_chain": {
+  "0": {
+   "n": 2163,
+   "mean": 0.302
+  },
+  "1": {
+   "n": 343,
+   "mean": 0.484
+  }
+ },
+ "final": {
+  "tracks": [
+   "final"
+  ],
+  "first_final_at": 9.977843999997143,
+  "meanI": 0.884
+ },
+ "limiter_db_min": -4.731
+}

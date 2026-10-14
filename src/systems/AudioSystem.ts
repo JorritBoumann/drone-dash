@@ -1,11 +1,15 @@
-import { ARP_ORDER, BPM, FINAL_PROG, midi, OVER_PROG_MEDAL, OVER_PROG_NONE, RUN_BASS_STEPS, RUN_LEAD, RUN_PROG, STEP, TITLE_PLUCK, TITLE_PROG } from './music';
+import { ARP_ORDER, BPM, FINAL_PROG, midi, OVER_PROG_MEDAL, OVER_PROG_NONE, RUN_ARP_ORDERS, RUN_BASS_VARIANTS, RUN_FORM, RUN_LEAD, RUN_LEAD_ORDER, STEP, TITLE_PLUCK, TITLE_PROG } from './music';
 
 export type MusicScene = 'off' | 'title' | 'run' | 'final' | 'over';
 type Layer = 'pad' | 'bass' | 'drums' | 'arp' | 'lead' | 'urg';
 const LAYERS: Layer[] = ['pad', 'bass', 'drums', 'arp', 'lead', 'urg'];
 
 const MUSIC_KEY = 'drone-dash-music-v1';
-const MUSIC_VOL = 0.5; // music bus level under the 0.8 master: modest, the SFX stay on top
+const MUSIC_VOL = 0.5; // music bus level under the master: modest, the SFX stay on top
+// Master level into the glue compressor and the limiter. Round 11: up from 0.8 (+11.8 dB) so the run sits near -17 LUFS;
+// the trim after the limiter keeps every peak under -1 dBFS (the limiter's automatic make-up gain lifts its ceiling).
+const MASTER_VOL = 3.1;
+const OUT_TRIM = 0.8;
 const LOOKAHEAD = 0.2; // s of notes scheduled ahead on the audio clock
 const TICK_MS = 25; // scheduler wake-up (a main-thread stall up to ~175 ms still lands every note on time)
 const FINAL_IN = 10; // s left on the clock: the tension section starts
@@ -55,7 +59,10 @@ export class AudioSystem {
   private draftGain!: GainNode;
   private draftFilter!: BiquadFilterNode;
   private noiseBuffer!: AudioBuffer;
+  private softSaw: PeriodicWave | null = null;
   private rotorOn = false;
+  private comp: DynamicsCompressorNode | null = null;
+  private limiter: DynamicsCompressorNode | null = null;
   muted = false;
 
   // ----- music -----
@@ -86,6 +93,7 @@ export class AudioSystem {
   private resyncs = 0;
   private notes = 0;
   private duckSeg: DuckSeg | null = null;
+  private forced: { chain: number; final: boolean } | null = null;
   private ducks = 0;
   private lastDuck: { reason: string; depth: number; at: number } | null = null;
   private meterOn = false;
@@ -129,16 +137,20 @@ export class AudioSystem {
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14;
     comp.ratio.value = 4;
-    // brick-wall limiter after the glue compressor: nothing on the master bus can clip
+    // brick-wall limiter after the glue compressor, then a fixed trim: nothing on the master bus can clip
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -2;
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
     limiter.attack.value = 0.002;
     limiter.release.value = 0.12;
+    const trim = ctx.createGain();
+    trim.gain.value = OUT_TRIM;
     this.master = ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.8;
-    this.master.connect(comp).connect(limiter).connect(ctx.destination);
+    this.master.gain.value = this.muted ? 0 : MASTER_VOL;
+    this.master.connect(comp).connect(limiter).connect(trim).connect(ctx.destination);
+    this.comp = comp;
+    this.limiter = limiter;
     this.sfx = ctx.createGain();
     this.sfx.gain.value = 0.9;
     this.sfx.connect(this.master);
@@ -155,6 +167,17 @@ export class AudioSystem {
     this.reverbSend = ctx.createGain();
     this.reverbSend.gain.value = 0.32;
     this.reverbSend.connect(conv).connect(this.master);
+
+    // Round 11: a soft saw (12 harmonics with a Lanczos taper, so no edge ringing) for the boost whine. The plain
+    // 'sawtooth' it used has a one-sample edge every period; at the new master level those edges (220 to 440 a second)
+    // were the only clicks left on the master output.
+    const nH = 12;
+    const im = new Float32Array(nH + 1);
+    for (let n = 1; n <= nH; n++) {
+      const x = (Math.PI * n) / (nH + 1);
+      im[n] = ((Math.sin(x) / x) * 2) / (Math.PI * n);
+    }
+    this.softSaw = ctx.createPeriodicWave(new Float32Array(nH + 1), im, { disableNormalization: true });
 
     this.noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const nd = this.noiseBuffer.getChannelData(0);
@@ -214,7 +237,7 @@ export class AudioSystem {
 
   setMuted(m: boolean): void {
     this.muted = m;
-    if (this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.05);
+    if (this.ctx) this.master.gain.setTargetAtTime(m ? 0 : MASTER_VOL, this.ctx.currentTime, 0.05);
   }
 
   setRotor(on: boolean): void {
@@ -267,10 +290,11 @@ export class AudioSystem {
   slipPayout(chain: number): void {
     if (!this.ready) return;
     const t = this.ctx!.currentTime;
-    this.duck(0.7, t, 0.25, 0.4, 'slip');
+    this.duck(0.45, t, 0.35, 0.4, 'slip');
     const c = Math.min(chain, 5);
     const lift = Math.pow(2, ((c - 1) * 2) / 12);
-    const g = 1 + (c - 1) * 0.12;
+    // Round 11: +2.3 dB (x1.3); the round 10 critic measured the chime only 4.6 dB over the music
+    const g = (1 + (c - 1) * 0.12) * 1.3;
     this.noise(t, 0.4 + c * 0.05, 0.09 * g, 'bandpass', 900, 4200 + c * 500, 2);
     this.tone(880 * lift, t + 0.02, 0.3, 'triangle', 0.1 * g, 0.4);
     this.tone(1318.5 * lift, t + 0.1, 0.45, 'sine', 0.12 * g, 0.5);
@@ -278,13 +302,29 @@ export class AudioSystem {
     for (let i = 0; i < c - 1; i++) this.tone(arp[i] * lift * 0.5, t + 0.17 + i * 0.06, 0.3, 'sine', 0.07 * g, 0.5);
   }
 
-  private tone(freq: number, start: number, dur: number, type: OscillatorType, gain: number, reverb = 0.6, glideTo?: number): void {
+  /**
+   * A gain node for one note's envelope, silent until its first automation event.
+   * Round 11 click fix: a GainNode starts at gain 1. When a note's start time lands a hair after a sample frame (the
+   * step grid accumulates float error), Chromium starts the source on that frame but applies the envelope's first
+   * setValueAtTime one frame later, so one sample of the source passed at full level. On a noise hat that is a
+   * full-scale impulse, which the 7.2 kHz hat filter rings into the 0.07 to 0.1 clicks the critic measured.
+   */
+  private envGain(): GainNode {
+    const g = this.ctx!.createGain();
+    g.gain.value = 0;
+    return g;
+  }
+
+  private tone(freq: number, start: number, dur: number, type: OscillatorType | 'softsaw', gain: number, reverb = 0.6, glideTo?: number): void {
     const ctx = this.ctx!;
     const o = ctx.createOscillator();
-    o.type = type;
+    if (type === 'softsaw') {
+      if (this.softSaw) o.setPeriodicWave(this.softSaw);
+      else o.type = 'sawtooth';
+    } else o.type = type;
     o.frequency.setValueAtTime(freq, start);
     if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, start + dur);
-    const g = ctx.createGain();
+    const g = this.envGain();
     g.gain.setValueAtTime(0.0001, start);
     g.gain.exponentialRampToValueAtTime(gain, start + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
@@ -308,7 +348,7 @@ export class AudioSystem {
     f.Q.value = q;
     f.frequency.setValueAtTime(f0, start);
     f.frequency.exponentialRampToValueAtTime(f1, start + dur);
-    const g = ctx.createGain();
+    const g = this.envGain();
     g.gain.setValueAtTime(0.0001, start);
     g.gain.exponentialRampToValueAtTime(gain, start + Math.min(0.03, dur * 0.2));
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
@@ -370,7 +410,7 @@ export class AudioSystem {
     if (!this.ready) return;
     const t = this.ctx!.currentTime;
     this.noise(t, 0.55, 0.16, 'bandpass', 400, 2600, 1.2);
-    this.tone(220, t, 0.4, 'sawtooth', 0.03, 0, 440);
+    this.tone(220, t, 0.4, 'softsaw', 0.03, 0, 440);
   }
 
   tick(urgent: boolean): void {
@@ -413,14 +453,15 @@ export class AudioSystem {
   gameOver(tier = 0): void {
     if (!this.ready) return;
     const t = this.ctx!.currentTime;
-    this.duck(0.5, t, 1.0, 0.8, 'gameover');
+    this.duck(0.35, t, 1.0, 0.8, 'gameover');
+    // Round 11: the sting is 2.3 dB louder (x1.3) so it stays well clear of the louder music
     if (tier <= 0) {
-      [523.25, 415.3, 349.23, 261.63].forEach((n, i) => this.tone(n, t + i * 0.16, 0.7, 'triangle', 0.14));
+      [523.25, 415.3, 349.23, 261.63].forEach((n, i) => this.tone(n, t + i * 0.16, 0.7, 'triangle', 0.18));
       return;
     }
-    [392, 523.25, 659.25].forEach((n, i) => this.tone(n, t + i * 0.12, 0.3, 'triangle', 0.13));
-    [523.25, 659.25, 783.99].forEach((n) => this.tone(n, t + 0.36, 1.3, 'sine', 0.09, 0.5));
-    this.tone(130.81, t + 0.36, 1.1, 'sine', 0.16, 0.2);
+    [392, 523.25, 659.25].forEach((n, i) => this.tone(n, t + i * 0.12, 0.3, 'triangle', 0.17));
+    [523.25, 659.25, 783.99].forEach((n) => this.tone(n, t + 0.36, 1.3, 'sine', 0.12, 0.5));
+    this.tone(130.81, t + 0.36, 1.1, 'sine', 0.2, 0.2);
     const bells = [2093, 2637, 3136, 4186];
     for (let i = 0; i < Math.min(tier, 4); i++) this.tone(bells[i] * 0.5, t + 0.44 + i * 0.09, 0.7, 'sine', 0.045, 0.7);
   }
@@ -530,10 +571,11 @@ export class AudioSystem {
       const fade = this.musicFade.gain;
       fade.cancelScheduledValues(now);
       fade.setValueAtTime(fade.value, now);
-      fade.setTargetAtTime(0, now, 0.03);
+      // a straight ramp to exactly 0 (no exponential tail that a later setValueAtTime would cut off with a step)
+      const gap = prev === 'off' ? 0.06 : this.scene === 'run' ? 0.24 : 0.14;
+      fade.linearRampToValueAtTime(0, now + 0.04);
       if (this.scene !== 'off') {
         // a short gap lets the old notes die; game over swells in slowly under the sting
-        const gap = prev === 'off' ? 0.06 : this.scene === 'run' ? 0.24 : 0.14;
         this.nextStep = now + gap;
         this.step = 0;
         this.sceneStartAt = now + gap;
@@ -546,6 +588,11 @@ export class AudioSystem {
 
   /** In-run state, every frame: chain level, clock (last-10-s section) and whether the next medal is close. */
   setRunState(chain: number, timeLeft: number, chase: boolean): void {
+    if (this.forced) {
+      chain = this.forced.chain;
+      timeLeft = this.forced.final ? 5 : 60;
+      chase = false;
+    }
     if (this.scene === 'run' && timeLeft <= FINAL_IN && timeLeft > 0) this.setMusicScene('final');
     else if (this.scene === 'final' && timeLeft > FINAL_OUT) this.setMusicScene('run');
     const lv = Math.min(3, Math.max(0, chain));
@@ -649,14 +696,21 @@ export class AudioSystem {
     const ch = prog[Math.floor(bar / 2) % prog.length];
     const two = (bar % 2) * 16 + s; // 0..31 inside the chord
     const o = this.on;
-    if (two === 0 && o.pad) for (const n of ch.pad) this.mNote(this.padFilter, midi(n), t, STEP * 32 + 0.4, 'triangle', 0.03, 0.9);
-    if (s === 0 && o.bass) this.mNote(this.bus.bass, midi(ch.bass), t, 1.8, 'triangle', 0.075, 0.04);
+    if (two === 0 && o.pad) for (const n of ch.pad) this.mNote(this.padFilter, midi(n), t, STEP * 32 + 0.4, 'triangle', over ? 0.03 : 0.075, 0.9);
+    // Round 11: the title was 73% sub-bass. Pad harmonics an octave up (300 to 700 Hz, past the pad filter), a softer
+    // bass and louder plucks with a sine an octave above put most of the title in the band a phone speaker plays.
+    if (two === 0 && o.pad) for (const n of ch.pad) this.mNote(this.bus.pad, midi(n + 12), t, STEP * 32 + 0.4, 'sine', over ? 0.008 : 0.03, 0.9);
+    if (s === 0 && o.bass) this.mNote(this.bus.bass, midi(ch.bass), t, 1.8, 'triangle', over ? 0.075 : 0.092, 0.04);
     if (!over) {
       if (s % 2 === 0 && o.arp) {
         const idx = TITLE_PLUCK[two / 2];
-        if (idx >= 0) this.mNote(this.bus.arp, midi(ch.arp[idx]), t, 0.55, 'triangle', 0.026);
+        if (idx >= 0) {
+          this.mNote(this.bus.arp, midi(ch.arp[idx]), t, 0.55, 'triangle', 0.092);
+          this.mNote(this.bus.arp, midi(ch.arp[idx] + 12), t, 0.35, 'sine', 0.025);
+        }
       }
-      if (two === 20 && o.lead) this.mNote(this.bus.lead, midi(ch.arp[3] + 12), t, 1.4, 'sine', 0.016);
+      if (two === 20 && o.lead) this.mNote(this.bus.lead, midi(ch.arp[3] + 12), t, 1.4, 'sine', 0.058);
+      if (two === 28 && o.lead) this.mNote(this.bus.lead, midi(ch.arp[2] + 12), t, 1.0, 'sine', 0.037);
       return;
     }
     const tier = this.overTier;
@@ -672,22 +726,35 @@ export class AudioSystem {
     if (o.lead && tier >= 3 && two % 4 === 2 && two < 16) this.mNote(this.bus.lead, midi(ch.arp[(two - 2) / 4] + 12), t, 0.7, 'sine', 0.009);
   }
 
-  /** Run: C Am F G, one chord a bar. Layers join with the slipstream chain. */
+  /**
+   * Run: a 32-bar form (eight 4-bar phrases, one chord a bar). The bass rhythm and arpeggio order change every phrase
+   * and cycle every 3 phrases, and the last bar of every other phrase gets a drum fill, so the music only repeats
+   * exactly every 96 bars (184 s). Layers join with the slipstream chain.
+   */
   private stepRun(bar: number, s: number, t: number): void {
-    const ch = RUN_PROG[bar % 4];
+    const fb = bar % RUN_FORM.length;
+    const phrase = Math.floor(bar / 4);
+    const ch = RUN_FORM[fb];
     const lv = this.chainLv;
     const o = this.on;
+    const fill = bar % 4 === 3 && phrase % 2 === 1;
     if (s === 0 && o.pad) for (const n of ch.pad) this.mNote(this.padFilter, midi(n), t, STEP * 16 + 0.15, 'triangle', 0.03, 0.12);
-    if (o.bass && RUN_BASS_STEPS.includes(s)) this.mNote(this.bus.bass, midi(ch.bass + (s === 14 && lv >= 1 ? 12 : 0)), t, 0.3, 'triangle', 0.12);
+    // pad colour above the pad filter: the chord's top note an octave up, so the run still reads on a phone speaker
+    if (s === 0 && o.pad) this.mNote(this.bus.pad, midi(ch.pad[2] + 12), t, STEP * 16 + 0.15, 'sine', 0.012, 0.15);
+    const bassSteps = RUN_BASS_VARIANTS[phrase % RUN_BASS_VARIANTS.length];
+    if (o.bass && bassSteps.includes(s)) this.mNote(this.bus.bass, midi(ch.bass + (s === 14 && lv >= 1 ? 12 : 0)), t, 0.3, 'triangle', 0.12);
     if (o.drums) {
       if (lv >= 2 ? s % 4 === 0 : s === 0 || s === 8) this.kick(t, 0.24);
+      if (fill && (s === 13 || s === 14 || s === 15) && lv >= 2) this.kick(t, s === 15 ? 0.2 : 0.14);
       if (s % 4 === 2) this.hat(t, 0.022, 0.05);
       if (lv >= 3 && (s === 4 || s === 12)) this.clap(t, 0.05);
-      if ((lv >= 3 || this.chase) && s % 2 === 1) this.hat(t, 0.009, 0.03);
+      if (fill && lv >= 3 && s === 14) this.clap(t, 0.035);
+      if ((lv >= 3 || this.chase || fill) && s % 2 === 1) this.hat(t, 0.009, 0.03);
     }
-    if (o.arp && (lv >= 3 || s % 2 === 0)) this.mNote(this.bus.arp, midi(ch.arp[ARP_ORDER[s]]), t, 0.2, 'triangle', lv >= 3 ? 0.022 : 0.028);
+    const order = RUN_ARP_ORDERS[phrase % RUN_ARP_ORDERS.length];
+    if (o.arp && (lv >= 3 || s % 2 === 0)) this.mNote(this.bus.arp, midi(ch.arp[order[s]]), t, 0.2, 'triangle', lv >= 3 ? 0.022 : 0.028);
     if (o.lead) {
-      const line = RUN_LEAD[bar % 4];
+      const line = RUN_LEAD[RUN_LEAD_ORDER[fb]];
       const n = line[s];
       if (n) {
         let len = 1;
@@ -720,7 +787,7 @@ export class AudioSystem {
     const o = ctx.createOscillator();
     o.type = type;
     o.frequency.value = f;
-    const g = ctx.createGain();
+    const g = this.envGain();
     if (swell > 0) {
       const sw = Math.min(swell, dur * 0.45);
       g.gain.setValueAtTime(0, t);
@@ -744,7 +811,7 @@ export class AudioSystem {
     o.type = 'sine';
     o.frequency.setValueAtTime(150, t);
     o.frequency.exponentialRampToValueAtTime(55, t + 0.12);
-    const g = ctx.createGain();
+    const g = this.envGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(gain, t + 0.004);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
@@ -758,7 +825,7 @@ export class AudioSystem {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
     src.buffer = this.noiseBuffer;
-    const g = ctx.createGain();
+    const g = this.envGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(gain, t + 0.002);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
@@ -809,6 +876,11 @@ export class AudioSystem {
     if (t < d.at + 0.04) return d.start + (d.depth - d.start) * ((t - d.at) / 0.04);
     if (t < d.end) return d.depth;
     return d.depth + (1 - d.depth) * ((t - d.end) / d.release);
+  }
+
+  /** Test hook: hold the music at a chain level (and optionally in the last-10-s section) whatever the run does. */
+  forceRunState(chain: number | null, final = false): void {
+    this.forced = chain === null ? null : { chain, final };
   }
 
   /** Test hook: read the music and SFX bus levels every frame and measure the fanfare against the music. */
@@ -893,6 +965,8 @@ export class AudioSystem {
       resyncs: this.resyncs,
       notes: this.notes,
       meter: this.meterOn ? { ...this.meter } : null,
+      compDb: this.comp ? r(this.comp.reduction) : 0,
+      limiterDb: this.limiter ? r(this.limiter.reduction) : 0,
       lastFanfare: this.lastFanfare,
     };
   }

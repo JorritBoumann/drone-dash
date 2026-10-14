@@ -1,0 +1,506 @@
+{
+ "results": [
+  {
+   "clip": "title",
+   "dur": 14.7,
+   "peak_dbfs": -4.1,
+   "samples_over_0_99": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -16.2,
+   "lufs_approx": -17.4,
+   "crest_db": 12.1,
+   "below150_pct": 35.0,
+   "phone_band_rms_dbfs": -18.7,
+   "mid_pct": 65.0,
+   "above6k_pct": 0.0,
+   "above6k_music_pct": 0.0,
+   "centroid_hz": 246,
+   "music_rms_dbfs": -25.7,
+   "cues_rms_dbfs": -180.0,
+   "clicks_music": 0,
+   "clicks_master": 0,
+   "click_times_music_in_clip": [],
+   "click_rate_music_per_s": 0.0,
+   "click_size_music": 0,
+   "click_times_master_in_clip": [],
+   "ct": [
+    1.86,
+    16.58
+   ],
+   "music_state": {
+    "tracks": [
+     "title"
+    ],
+    "layers": [
+     1
+    ],
+    "intensity": [
+     0.144,
+     0.15
+    ],
+    "chain": [
+     0
+    ]
+   }
+  },
+  {
+   "clip": "run-chain0",
+   "dur": 5.9,
+   "peak_dbfs": -2.8,
+   "samples_over_0_99": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.5,
+   "lufs_approx": -16.6,
+   "crest_db": 12.7,
+   "below150_pct": 36.4,
+   "phone_band_rms_dbfs": -17.7,
+   "mid_pct": 63.5,
+   "above6k_pct": 0.03,
+   "above6k_music_pct": 0.0,
+   "centroid_hz": 283,
+   "music_rms_dbfs": -28.8,
+   "cues_rms_dbfs": -44.2,
+   "clicks_music": 0,
+   "clicks_master": 0,
+   "click_times_music_in_clip": [],
+   "click_rate_music_per_s": 0.0,
+   "click_size_music": 0,
+   "click_times_master_in_clip": [],
+   "ct": [
+    16.83,
+    22.68
+   ],
+   "music_state": {
+    "tracks": [
+     "run"
+    ],
+    "layers": [
+     1
+    ],
+    "intensity": [
+     0.202,
+     0.3
+    ],
+    "chain": [
+     0
+    ]
+   }
+  },
+  {
+   "clip": "run-chain3",
+   "dur": 15.0,
+   "peak_dbfs": -1.9,
+   "samples_over_0_99": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.3,
+   "lufs_approx": -15.9,
+   "crest_db": 13.4,
+   "below150_pct": 41.8,
+   "phone_band_rms_dbfs": -17.9,
+   "mid_pct": 57.9,
+   "above6k_pct": 0.22,
+   "above6k_music_pct": 0.01,
+   "centroid_hz": 499,
+   "music_rms_dbfs": -29.9,
+   "cues_rms_dbfs": -32.2,
+   "clicks_music": 0,
+   "clicks_master": 0,
+   "click_times_music_in_clip": [],
+   "click_rate_music_per_s": 0.0,
+   "click_size_music": 0,
+   "click_times_master_in_clip": [],
+   "ct": [
+    40.87,
+    55.87
+   ],
+   "music_state": {
+    "tracks": [
+     "run"
+    ],
+    "layers": [
+     4
+    ],
+    "intensity": [
+     0.688,
+     0.899
+    ],
+    "chain": [
+     3,
+     4,
+     5
+    ]
+   }
+  },
+  {
+   "clip": "last-10s",
+   "dur": 11.1,
+   "peak_dbfs": -2.0,
+   "samples_over_0_99": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -16.0,
+   "lufs_approx": -16.6,
+   "crest_db": 14.0,
+   "below150_pct": 44.3,
+   "phone_band_rms_dbfs": -19.1,
+   "mid_pct": 55.5,
+   "above6k_pct": 0.21,
+   "above6k_music_pct": 0.01,
+   "centroid_hz": 492,
+   "music_rms_dbfs": -31.8,
+   "cues_rms_dbfs": -33.5,
+   "clicks_music": 0,
+   "clicks_master": 0,
+   "click_times_music_in_clip": [],
+   "click_rate_music_per_s": 0.0,
+   "click_size_music": 0,
+   "click_times_master_in_clip": [],
+   "ct": [
+    112.53,
+    123.6
+   ],
+   "music_state": {
+    "tracks": [
+     "final",
+     "over",
+     "run"
+    ],
+    "layers": [
+     1,
+     4,
+     5
+    ],
+    "intensity": [
+     0.85,
+     0.98
+    ],
+    "chain": [
+     5
+    ]
+   }
+  },
+  {
+   "clip": "medal-fanfare-1",
+   "dur": 6.0,
+   "peak_dbfs": -1.8,
+   "samples_over_0_99": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.7,
+   "lufs_approx": -16.2,
+   "crest_db": 13.9,
+   "below150_pct": 33.3,
+   "phone_band_rms_dbfs": -18.3,
+   "mid_pct": 66.0,
+   "above6k_pct": 0.63,
+   "above6k_music_pct": 0.0,
+   "centroid_hz": 585,
+   "music_rms_dbfs": -34.5,
+   "cues_rms_dbfs": -31.8,
+   "clicks_music": 0,
+   "clicks_master": 0,
+   "click_times_music_in_clip": [],
+   "click_rate_music_per_s": 0.0,
+   "click_size_music": 0,
+   "click_times_master_in_clip": [],
+   "ct": [
+    62.37,
+    68.37
+   ],
+   "music_state": {
+    "tracks": [
+     "run"
+    ],
+    "layers": [
+     1,
+     2,
+     3
+    ],
+    "intensity": [
+     0.366,
+     0.76
+    ],
+    "chain": [
+     0,
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "clip": "medal-fanfare-2",
+   "dur": 6.0,
+   "peak_dbfs": -2.0,
+   "samples_over_0_99": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.3,
+   "lufs_approx": -15.5,
+   "crest_db": 13.3,
+   "below150_pct": 32.4,
+   "phone_band_rms_dbfs": -17.4,
+   "mid_pct": 66.9,
+   "above6k_pct": 0.7,
+   "above6k_music_pct": 0.01,
+   "centroid_hz": 716,
+   "music_rms_dbfs": -33.8,
+   "cues_rms_dbfs": -30.3,
+   "clicks_music": 0,
+   "clicks_master": 0,
+   "click_times_music_in_clip": [],
+   "click_rate_music_per_s": 0.0,
+   "click_size_music": 0,
+   "click_times_master_in_clip": [],
+   "ct": [
+    93.41,
+    99.41
+   ],
+   "music_state": {
+    "tracks": [
+     "final",
+     "run"
+    ],
+    "layers": [
+     2,
+     5
+    ],
+    "intensity": [
+     0.545,
+     0.98
+    ],
+    "chain": [
+     1,
+     2,
+     3,
+     4
+    ]
+   }
+  },
+  {
+   "clip": "game-over",
+   "dur": 15.5,
+   "peak_dbfs": -2.2,
+   "samples_over_0_99": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -20.0,
+   "lufs_approx": -20.9,
+   "crest_db": 17.8,
+   "below150_pct": 55.8,
+   "phone_band_rms_dbfs": -23.6,
+   "mid_pct": 44.2,
+   "above6k_pct": 0.07,
+   "above6k_music_pct": 0.0,
+   "centroid_hz": 382,
+   "music_rms_dbfs": -31.3,
+   "cues_rms_dbfs": -35.1,
+   "clicks_music": 0,
+   "clicks_master": 0,
+   "click_times_music_in_clip": [],
+   "click_rate_music_per_s": 0.0,
+   "click_size_music": 0,
+   "click_times_master_in_clip": [],
+   "ct": [
+    123.1,
+    138.6
+   ],
+   "music_state": {
+    "tracks": [
+     "final",
+     "over"
+    ],
+    "layers": [
+     1,
+     5
+    ],
+    "intensity": [
+     0.2,
+     0.98
+    ],
+    "chain": [
+     5
+    ]
+   }
+  }
+ ],
+ "ducks": [
+  {
+   "reason": "slip",
+   "at": 22.72,
+   "nominal_db": -6.9,
+   "measured_db": -5.1,
+   "cue_over_music_db": 9.0
+  },
+  {
+   "reason": "pickup",
+   "at": 26.88,
+   "nominal_db": -4.4,
+   "measured_db": -5.5,
+   "cue_over_music_db": 15.0
+  },
+  {
+   "reason": "slip",
+   "at": 32.51,
+   "nominal_db": -6.9,
+   "measured_db": -4.4,
+   "cue_over_music_db": 8.3
+  },
+  {
+   "reason": "slip",
+   "at": 38.41,
+   "nominal_db": -6.9,
+   "measured_db": -6.3,
+   "cue_over_music_db": 10.1
+  },
+  {
+   "reason": "slip",
+   "at": 40.84,
+   "nominal_db": -6.9,
+   "measured_db": -0.8,
+   "cue_over_music_db": 4.5
+  },
+  {
+   "reason": "delivery",
+   "at": 44.41,
+   "nominal_db": -6.9,
+   "measured_db": -7.6,
+   "cue_over_music_db": 16.0
+  },
+  {
+   "reason": "slip",
+   "at": 48.65,
+   "nominal_db": -6.9,
+   "measured_db": -4.7,
+   "cue_over_music_db": 7.2
+  },
+  {
+   "reason": "slip",
+   "at": 53.22,
+   "nominal_db": -6.9,
+   "measured_db": -4.4,
+   "cue_over_music_db": 7.7
+  },
+  {
+   "reason": "pickup",
+   "at": 58.57,
+   "nominal_db": -4.4,
+   "measured_db": -1.3,
+   "cue_over_music_db": 7.8
+  },
+  {
+   "reason": "medal",
+   "at": 64.33,
+   "nominal_db": -11.1,
+   "measured_db": -5.3,
+   "cue_over_music_db": 12.1
+  },
+  {
+   "reason": "slip",
+   "at": 66.36,
+   "nominal_db": -6.9,
+   "measured_db": -1.1,
+   "cue_over_music_db": 10.2
+  },
+  {
+   "reason": "slip",
+   "at": 68.48,
+   "nominal_db": -6.9,
+   "measured_db": -3.3,
+   "cue_over_music_db": 7.1
+  },
+  {
+   "reason": "delivery",
+   "at": 71.27,
+   "nominal_db": -6.9,
+   "measured_db": -5.2,
+   "cue_over_music_db": 14.9
+  },
+  {
+   "reason": "slip",
+   "at": 74.61,
+   "nominal_db": -6.9,
+   "measured_db": -4.2,
+   "cue_over_music_db": 6.9
+  },
+  {
+   "reason": "slip",
+   "at": 77.23,
+   "nominal_db": -6.9,
+   "measured_db": -4.2,
+   "cue_over_music_db": 7.4
+  },
+  {
+   "reason": "pickup",
+   "at": 83.39,
+   "nominal_db": -4.4,
+   "measured_db": -2.1,
+   "cue_over_music_db": 8.5
+  },
+  {
+   "reason": "slip",
+   "at": 91.21,
+   "nominal_db": -6.9,
+   "measured_db": -4.5,
+   "cue_over_music_db": 8.4
+  },
+  {
+   "reason": "slip",
+   "at": 93.7,
+   "nominal_db": -6.9,
+   "measured_db": 1.7,
+   "cue_over_music_db": 4.0
+  },
+  {
+   "reason": "medal",
+   "at": 95.4,
+   "nominal_db": -11.1,
+   "measured_db": -6.4,
+   "cue_over_music_db": 11.5
+  },
+  {
+   "reason": "slip",
+   "at": 97.85,
+   "nominal_db": -6.9,
+   "measured_db": -3.8,
+   "cue_over_music_db": 9.2
+  },
+  {
+   "reason": "delivery",
+   "at": 101.63,
+   "nominal_db": -6.9,
+   "measured_db": -9.2,
+   "cue_over_music_db": 20.9
+  },
+  {
+   "reason": "slip",
+   "at": 105.74,
+   "nominal_db": -6.9,
+   "measured_db": -1.4,
+   "cue_over_music_db": 4.0
+  },
+  {
+   "reason": "slip",
+   "at": 114.38,
+   "nominal_db": -6.9,
+   "measured_db": -0.2,
+   "cue_over_music_db": 5.6
+  },
+  {
+   "reason": "pickup",
+   "at": 115.7,
+   "nominal_db": -4.4,
+   "measured_db": -2.5,
+   "cue_over_music_db": 11.3
+  },
+  {
+   "reason": "slip",
+   "at": 122.91,
+   "nominal_db": -6.9,
+   "measured_db": -4.4,
+   "cue_over_music_db": 10.0
+  },
+  {
+   "reason": "gameover",
+   "at": 123.58,
+   "nominal_db": -9.1,
+   "measured_db": -1.9,
+   "cue_over_music_db": 8.6
+  }
+ ]
+}

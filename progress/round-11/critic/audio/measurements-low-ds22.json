@@ -1,0 +1,595 @@
+{
+ "key": "ds22",
+ "sr": 48000,
+ "seconds": 140.3,
+ "mobile": false,
+ "force": false,
+ "latency_ms": {
+  "master": {
+   "ms": 170.67,
+   "match": 0.998
+  },
+  "music": {
+   "ms": 170.67,
+   "match": 0.998
+  },
+  "cues": {
+   "ms": 170.67,
+   "match": 1.0
+  }
+ },
+ "chain3_window_frac": 1.0,
+ "clips": [
+  {
+   "clip": "title",
+   "ct": [
+    2.19,
+    16.93
+   ],
+   "dur": 14.7,
+   "peak_dbfs": -4.1,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -16.2,
+   "integrated_lufs": -17.4,
+   "short_term_median": -17.5,
+   "short_term_min": -17.8,
+   "short_term_max": -16.7,
+   "below150_pct": 35.2,
+   "above6k_pct": 0.0,
+   "phone_band_rms_dbfs": -18.7,
+   "music_below150_pct": 35.1,
+   "music_rms_dbfs": -25.7,
+   "cues_rms_dbfs": -240.0,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 0,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 0.0,
+   "strict_master_times": [],
+   "strict_master_sizes": [],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "run-chain0",
+   "ct": [
+    17.18,
+    23.07
+   ],
+   "dur": 5.9,
+   "peak_dbfs": -2.8,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.9,
+   "integrated_lufs": -17.0,
+   "short_term_median": -17.2,
+   "short_term_min": -18.1,
+   "short_term_max": -16.2,
+   "below150_pct": 39.5,
+   "above6k_pct": 0.03,
+   "phone_band_rms_dbfs": -18.3,
+   "music_below150_pct": 9.3,
+   "music_rms_dbfs": -29.9,
+   "cues_rms_dbfs": -53.3,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 2,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 0.34,
+   "strict_master_times": [
+    2.755,
+    5.839
+   ],
+   "strict_master_sizes": [
+    0.0443,
+    0.0828
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "run-chain3",
+   "ct": [
+    47.29,
+    62.29
+   ],
+   "dur": 15.0,
+   "peak_dbfs": -2.1,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.4,
+   "integrated_lufs": -16.1,
+   "short_term_median": -16.4,
+   "short_term_min": -17.1,
+   "short_term_max": -15.1,
+   "below150_pct": 43.6,
+   "above6k_pct": 0.21,
+   "phone_band_rms_dbfs": -18.2,
+   "music_below150_pct": 36.4,
+   "music_rms_dbfs": -29.5,
+   "cues_rms_dbfs": -35.2,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 2,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 0.13,
+   "strict_master_times": [
+    0.369,
+    7.087
+   ],
+   "strict_master_sizes": [
+    0.0691,
+    0.1102
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "last-10s",
+   "ct": [
+    113.38,
+    124.46
+   ],
+   "dur": 11.1,
+   "peak_dbfs": -2.3,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -16.2,
+   "integrated_lufs": -17.0,
+   "short_term_median": -17.1,
+   "short_term_min": -18.1,
+   "short_term_max": -15.7,
+   "below150_pct": 47.0,
+   "above6k_pct": 0.25,
+   "phone_band_rms_dbfs": -19.4,
+   "music_below150_pct": 48.6,
+   "music_rms_dbfs": -31.8,
+   "cues_rms_dbfs": -35.3,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 17,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 1.53,
+   "strict_master_times": [
+    0.068,
+    0.087,
+    1.065,
+    2.068,
+    3.065,
+    3.086,
+    4.068,
+    5.065,
+    5.642,
+    6.068,
+    7.065,
+    8.068,
+    8.177,
+    8.569,
+    8.843
+   ],
+   "strict_master_sizes": [
+    0.1161,
+    0.0461,
+    0.1145,
+    0.1139,
+    0.1192,
+    0.0401,
+    0.1187,
+    0.1741,
+    0.0414,
+    0.1837,
+    0.1685,
+    0.1721,
+    0.081,
+    0.1863,
+    0.1241
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "medal-fanfare-1",
+   "ct": [
+    61.33,
+    67.33
+   ],
+   "dur": 6.0,
+   "peak_dbfs": -1.8,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.5,
+   "integrated_lufs": -16.1,
+   "short_term_median": -15.8,
+   "short_term_min": -16.6,
+   "short_term_max": -15.7,
+   "below150_pct": 34.5,
+   "above6k_pct": 0.52,
+   "phone_band_rms_dbfs": -18.1,
+   "music_below150_pct": 40.6,
+   "music_rms_dbfs": -32.5,
+   "cues_rms_dbfs": -31.9,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 11,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 1.83,
+   "strict_master_times": [
+    1.368,
+    1.381,
+    1.4,
+    1.425,
+    2.901,
+    3.219,
+    3.386,
+    3.825,
+    4.127,
+    5.41,
+    5.662
+   ],
+   "strict_master_sizes": [
+    0.0683,
+    0.1087,
+    0.0835,
+    0.088,
+    0.1192,
+    0.1205,
+    0.1027,
+    0.101,
+    0.1249,
+    0.1135,
+    0.1238
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "medal-fanfare-2",
+   "ct": [
+    92.82,
+    98.82
+   ],
+   "dur": 6.0,
+   "peak_dbfs": -1.6,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -15.2,
+   "integrated_lufs": -15.3,
+   "short_term_median": -15.1,
+   "short_term_min": -15.8,
+   "short_term_max": -14.9,
+   "below150_pct": 32.9,
+   "above6k_pct": 0.71,
+   "phone_band_rms_dbfs": -17.3,
+   "music_below150_pct": 50.6,
+   "music_rms_dbfs": -33.6,
+   "cues_rms_dbfs": -30.3,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 7,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 1.17,
+   "strict_master_times": [
+    0.253,
+    0.298,
+    0.348,
+    3.131,
+    3.731,
+    4.128,
+    5.467
+   ],
+   "strict_master_sizes": [
+    0.1195,
+    0.12,
+    0.1458,
+    0.1517,
+    0.1348,
+    0.177,
+    0.1051
+   ],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  },
+  {
+   "clip": "game-over",
+   "ct": [
+    123.96,
+    139.46
+   ],
+   "dur": 15.5,
+   "peak_dbfs": -2.0,
+   "samples_over_m1dbfs": 0,
+   "samples_at_or_over_1": 0,
+   "rms_dbfs": -20.4,
+   "integrated_lufs": -21.6,
+   "short_term_median": -22.7,
+   "short_term_min": -23.6,
+   "short_term_max": -19.0,
+   "below150_pct": 59.7,
+   "above6k_pct": 0.05,
+   "phone_band_rms_dbfs": -24.4,
+   "music_below150_pct": 67.1,
+   "music_rms_dbfs": -31.2,
+   "cues_rms_dbfs": -36.6,
+   "clicks_r10_music": 0,
+   "clicks_r10_master": 0,
+   "clicks_strict_music": 0,
+   "clicks_strict_master": 0,
+   "rate_r10_master": 0.0,
+   "rate_strict_master": 0.0,
+   "strict_master_times": [],
+   "strict_master_sizes": [],
+   "strict_music_times": [],
+   "strict_music_sizes": [],
+   "r10_master_times": []
+  }
+ ],
+ "master_lag_behind_buses_ms": 12.0,
+ "master_lag_corr": 0.436,
+ "cues": {
+  "slip": {
+   "n": 17,
+   "depth_db": -6.9,
+   "duck_measured_median": -6.0,
+   "bus_median": 10.7,
+   "bus_min": 6.4,
+   "master_median": 9.9,
+   "master_min": 6.0,
+   "over_rest_median": -1.2
+  },
+  "pickup": {
+   "n": 4,
+   "depth_db": -4.4,
+   "duck_measured_median": -3.5,
+   "bus_median": 11.8,
+   "bus_min": 10.0,
+   "master_median": 11.2,
+   "master_min": 10.5,
+   "over_rest_median": 3.8
+  },
+  "delivery": {
+   "n": 3,
+   "depth_db": -6.9,
+   "duck_measured_median": -7.2,
+   "bus_median": 15.8,
+   "bus_min": 15.3,
+   "master_median": 15.3,
+   "master_min": 14.0,
+   "over_rest_median": 6.1
+  },
+  "medal": {
+   "n": 2,
+   "depth_db": -11.1,
+   "duck_measured_median": -11.0,
+   "bus_median": 16.8,
+   "bus_min": 15.5,
+   "master_median": 14.1,
+   "master_min": 12.3,
+   "over_rest_median": -0.3
+  },
+  "gameover": {
+   "n": 1,
+   "depth_db": -9.1,
+   "duck_measured_median": -17.2,
+   "bus_median": 24.3,
+   "bus_min": 24.3,
+   "master_median": 25.2,
+   "master_min": 25.2,
+   "over_rest_median": 8.9
+  }
+ },
+ "cue_onset_vs_scheduled_ms": {
+  "n": 27,
+  "median": 10.8,
+  "min": -95.1,
+  "max": 30.6
+ },
+ "repetition": {
+  "run-chain3": {
+   "span_s": 15.0,
+   "max_lag_tested_s": 5.76,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 3.84,
+     "mean": 0.495,
+     "max": 0.509,
+     "n": 2
+    },
+    {
+     "lag_s": 1.92,
+     "mean": 0.454,
+     "max": 0.489,
+     "n": 3
+    },
+    {
+     "lag_s": 5.76,
+     "mean": 0.383,
+     "max": 0.383,
+     "n": 1
+    }
+   ]
+  },
+  "run-chain3 (below 3 kHz)": {
+   "span_s": 15.0,
+   "max_lag_tested_s": 5.76,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 3.84,
+     "mean": 0.495,
+     "max": 0.509,
+     "n": 2
+    },
+    {
+     "lag_s": 1.92,
+     "mean": 0.454,
+     "max": 0.489,
+     "n": 3
+    },
+    {
+     "lag_s": 5.76,
+     "mean": 0.384,
+     "max": 0.384,
+     "n": 1
+    }
+   ]
+  },
+  "title": {
+   "span_s": 14.7,
+   "max_lag_tested_s": 5.76,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.1,
+     "max": 0.128,
+     "n": 3
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.069,
+     "max": 0.095,
+     "n": 2
+    },
+    {
+     "lag_s": 5.76,
+     "mean": -0.072,
+     "max": -0.072,
+     "n": 1
+    }
+   ]
+  },
+  "title (below 3 kHz)": {
+   "span_s": 14.7,
+   "max_lag_tested_s": 5.76,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.1,
+     "max": 0.128,
+     "n": 3
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.069,
+     "max": 0.095,
+     "n": 2
+    },
+    {
+     "lag_s": 5.76,
+     "mean": -0.072,
+     "max": -0.072,
+     "n": 1
+    }
+   ]
+  },
+  "game-over": {
+   "span_s": 15.5,
+   "max_lag_tested_s": 7.68,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.349,
+     "max": 0.384,
+     "n": 4
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.161,
+     "max": 0.183,
+     "n": 3
+    },
+    {
+     "lag_s": 7.68,
+     "mean": 0.085,
+     "max": 0.085,
+     "n": 1
+    },
+    {
+     "lag_s": 5.76,
+     "mean": 0.019,
+     "max": 0.021,
+     "n": 2
+    }
+   ]
+  },
+  "game-over (below 3 kHz)": {
+   "span_s": 15.5,
+   "max_lag_tested_s": 7.68,
+   "first_lag_mean_over_0_8": null,
+   "first_lag_any_window_over_0_8": null,
+   "top": [
+    {
+     "lag_s": 1.92,
+     "mean": 0.349,
+     "max": 0.384,
+     "n": 4
+    },
+    {
+     "lag_s": 3.84,
+     "mean": 0.161,
+     "max": 0.183,
+     "n": 3
+    },
+    {
+     "lag_s": 7.68,
+     "mean": 0.085,
+     "max": 0.085,
+     "n": 1
+    },
+    {
+     "lag_s": 5.76,
+     "mean": 0.019,
+     "max": 0.021,
+     "n": 2
+    }
+   ]
+  }
+ },
+ "intensity_by_chain": {
+  "0": {
+   "n": 226,
+   "mean": 0.387
+  },
+  "1": {
+   "n": 596,
+   "mean": 0.501
+  },
+  "2": {
+   "n": 120,
+   "mean": 0.634
+  },
+  "3": {
+   "n": 1067,
+   "mean": 0.865
+  }
+ },
+ "final": {
+  "tracks": [
+   "final"
+  ],
+  "first_final_at": 9.958899999999122,
+  "meanI": 0.931
+ },
+ "limiter_db_min": -3.732
+}

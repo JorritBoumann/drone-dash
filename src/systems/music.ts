@@ -33,9 +33,21 @@ const Dm7: Chord = { bass: 38, pad: [57, 60, 65], arp: [62, 65, 69, 72] };
 const Gsus: Chord = { bass: 43, pad: [55, 60, 62], arp: [67, 72, 74, 79] };
 // game over without a medal opens on F minor, the chord the falling sting (C Ab F C) spells
 const Fm: Chord = { bass: 41, pad: [56, 60, 65], arp: [65, 68, 72, 77] };
+// run form colours
+const Dm: Chord = { bass: 38, pad: [57, 62, 65], arp: [62, 65, 69, 74] };
+const Em: Chord = { bass: 40, pad: [59, 64, 67], arp: [64, 67, 71, 76] };
 
-/** one chord a bar */
-export const RUN_PROG: Chord[] = [C, Am, F, G];
+/**
+ * Run form: 32 bars, one chord a bar, eight 4-bar phrases (A A' B A'' then a second pass with new chord orders and a
+ * second B). Each phrase has different chords from the phrase 16 bars later, and the bass and arpeggio variants below
+ * cycle every 3 phrases, so the run music only repeats exactly every 96 bars (3 min 4 s).
+ */
+export const RUN_FORM: Chord[] = [
+  C, Am, F, G, C, Am, Dm, G, F, G, Em, Am, F, G, C, G,
+  Am, F, C, G, C, Em, F, G, Dm, Em, F, G, Am, Dm, G, G,
+];
+/** which RUN_LEAD bar the lead plays over each bar of RUN_FORM (the second pass reuses bars written for the same chord) */
+export const RUN_LEAD_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 1, 2, 14, 3, 4, 10, 12, 13, 6, 10, 8, 9, 5, 6, 7, 15];
 /** one chord a bar: Ab Bb Ab G, the clock is running out */
 export const FINAL_PROG: Chord[] = [Ab, Bb, Ab, G7];
 /** one chord every two bars */
@@ -44,20 +56,46 @@ export const TITLE_PROG: Chord[] = [Fmaj7, Em7, Dm7, Gsus];
 export const OVER_PROG_MEDAL: Chord[] = [C, Fmaj7, Am, G];
 export const OVER_PROG_NONE: Chord[] = [Fm, C, Am, Gsus];
 
-/** run lead melody (chain 3+), one 16-step bar per chord of RUN_PROG; 0 = rest */
+/** run lead melody (chain 3+), 16 bars of 16 steps, picked per bar by RUN_LEAD_ORDER; 0 = rest */
 export const RUN_LEAD: number[][] = [
+  // A
   [76, 0, 0, 79, 0, 0, 76, 0, 74, 0, 72, 0, 74, 0, 0, 0],
   [72, 0, 0, 76, 0, 0, 72, 0, 71, 0, 69, 0, 71, 0, 0, 0],
   [69, 0, 0, 72, 0, 0, 77, 0, 76, 0, 74, 0, 72, 0, 0, 0],
   [71, 0, 0, 74, 0, 0, 79, 0, 77, 0, 76, 0, 74, 0, 71, 0],
+  // A': the answer
+  [79, 0, 0, 76, 0, 0, 72, 0, 74, 0, 76, 0, 79, 0, 0, 0],
+  [81, 0, 0, 79, 0, 0, 76, 0, 72, 0, 74, 0, 76, 0, 0, 0],
+  [77, 0, 0, 74, 0, 0, 69, 0, 72, 0, 74, 0, 77, 0, 0, 0],
+  [79, 0, 0, 0, 0, 0, 74, 0, 71, 0, 74, 0, 67, 0, 0, 0],
+  // B: longer, higher notes
+  [81, 0, 0, 0, 0, 0, 79, 0, 77, 0, 0, 0, 76, 0, 0, 0],
+  [74, 0, 0, 0, 0, 0, 79, 0, 0, 0, 0, 0, 83, 0, 0, 0],
+  [83, 0, 0, 0, 0, 0, 79, 0, 76, 0, 0, 0, 79, 0, 0, 0],
+  [81, 0, 0, 0, 0, 0, 76, 0, 72, 0, 0, 0, 76, 0, 0, 0],
+  // A'': turnaround back to the top
+  [77, 0, 0, 76, 0, 0, 74, 0, 72, 0, 0, 0, 69, 0, 72, 0],
+  [74, 0, 0, 71, 0, 0, 67, 0, 71, 0, 74, 0, 79, 0, 0, 0],
+  [76, 0, 0, 0, 0, 0, 72, 0, 79, 0, 0, 0, 76, 0, 0, 0],
+  [74, 0, 0, 76, 0, 0, 77, 0, 79, 0, 77, 0, 74, 0, 71, 0],
 ];
 
-/** arpeggio order over the four arp tones */
+/** arpeggio order over the four arp tones (the last-10-s section) */
 export const ARP_ORDER = [0, 1, 2, 3, 2, 1, 2, 3, 0, 1, 2, 3, 2, 3, 1, 2];
+/** run arpeggio orders, one per phrase, cycling every 3 phrases */
+export const RUN_ARP_ORDERS: number[][] = [
+  ARP_ORDER,
+  [0, 2, 1, 3, 0, 2, 1, 3, 2, 3, 1, 2, 0, 1, 2, 3],
+  [3, 2, 1, 0, 1, 2, 3, 2, 0, 1, 3, 1, 2, 1, 0, 1],
+];
 /** title pluck: eighth notes over two bars (index into the arp tones, -1 = rest) */
 export const TITLE_PLUCK = [0, 2, 1, 3, -1, 2, 1, -1, 0, 2, 3, 1, -1, 2, -1, -1];
 
-/** run bass: syncopated pattern (steps of the bar) */
-export const RUN_BASS_STEPS = [0, 3, 6, 8, 11, 14];
+/** run bass: syncopated patterns (steps of the bar), one per phrase, cycling every 3 phrases */
+export const RUN_BASS_VARIANTS: number[][] = [
+  [0, 3, 6, 8, 11, 14],
+  [0, 6, 8, 10, 14],
+  [0, 3, 8, 11, 12, 14],
+];
 
 export const midi = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);

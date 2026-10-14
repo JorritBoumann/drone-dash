@@ -861,6 +861,8 @@ export class Game {
       place: (x: number, y: number, z: number, yaw: number, speed = 0) => this.drone.place(new THREE.Vector3(x, y, z), yaw, speed),
       // audio test hooks: per-frame bus meters (fanfare vs music) and the music toggle
       audioMeter: (on: boolean) => this.audio.setMeter(on),
+      // audio test hook: hold the music at a chain level (null releases it), optionally in the last-10-s section
+      musicForce: (chain: number | null, final = false) => this.audio.forceRunState(chain, final),
       music: (on: boolean) => this.audio.setMusicEnabled(on),
       sites: () => this.layout.sites.map((s) => ({ name: s.name, kind: s.kind, x: s.pos.x, y: s.pos.y, z: s.pos.z })),
     };

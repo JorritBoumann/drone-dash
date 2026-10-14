@@ -84,6 +84,7 @@ interface DroneDashApi {
   /** Debug: every delivery site in the city. */
   /** Test: read music/SFX bus levels every frame (fills audio.music.meter and lastFanfare). */
   audioMeter?(on: boolean): void;
+  musicForce?(chain: number | null, final?: boolean): void;
   /** Test: music on/off (same as the music chip, remembered). */
   music?(on: boolean): void;
   sites(): Array<{ name: string; kind: string; x: number; y: number; z: number }>;

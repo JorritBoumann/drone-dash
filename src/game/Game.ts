@@ -184,6 +184,10 @@ export class Game {
     const el = (id: string) => document.getElementById(id) as HTMLElement;
     this.input = new InputController(canvas, el('touch-stick'), el('touch-knob'), el('up-button'), el('down-button'), el('boost-button'));
     this.input.onGesture = () => this.audio.unlock();
+    // any press anywhere (title card included) starts the sound; the title loop plays from the first one
+    for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(type, this.onAnyGesture, true);
+    this.hud.musicButton.addEventListener('click', this.onMusicButton);
+    this.audio.setMusicScene('title');
     this.input.onPauseKey = () => {
       if (this.state === 'playing') this.pause();
       else if (this.state === 'paused') this.resume();
@@ -196,6 +200,7 @@ export class Game {
     window.addEventListener('blur', this.onBlur);
     document.addEventListener('visibilitychange', this.onVisibility);
     window.addEventListener('keydown', this.onMenuKey);
+    this.hud.setMusic(false, this.audio.musicEnabled);
 
     this.hud.setBest(this.best, this.bestTier);
     this.hud.showScreen('title');
@@ -269,6 +274,7 @@ export class Game {
     this.state = 'playing';
     this.hud.showScreen('playing');
     this.audio.resume();
+    this.audio.setMusicScene('run');
     this.audio.setRotor(true);
     this.audio.start();
     this.canvas.focus({ preventScroll: true });
@@ -302,8 +308,9 @@ export class Game {
     this.input.enabled = false;
     this.hud.setSpeedLines(0);
     this.audio.setRotor(false);
-    this.audio.gameOver();
     const score = this.delivery.score;
+    this.audio.gameOver(tierFor(score));
+    this.audio.setMusicScene('over', tierFor(score));
     const newBest = score > this.best;
     if (newBest) {
       this.best = score;
@@ -343,9 +350,28 @@ export class Game {
 
   private readonly onBlur = () => this.pause();
   private readonly onVisibility = () => {
-    if (document.hidden) this.pause();
+    if (document.hidden) {
+      this.pause();
+      // title and game over keep no timers alive in a hidden tab: the music waits for the player to come back
+      if (this.state === 'title' || this.state === 'over') this.audio.suspend();
+    } else if (this.state !== 'paused') this.audio.resume();
+  };
+  private readonly onAnyGesture = () => this.audio.unlock();
+  /** Music chip: the first press only starts the sound (music on); after that it toggles music, separate from SFX. */
+  private readonly onMusicButton = (e: Event) => {
+    e.stopPropagation();
+    const wasLocked = this.hud.musicLocked;
+    this.audio.unlock();
+    this.audio.setMusicEnabled(wasLocked ? true : !this.audio.musicEnabled);
+    this.hud.setMusic(true, this.audio.musicEnabled);
+    if (this.state === 'playing') this.canvas.focus({ preventScroll: true });
   };
   private readonly onMenuKey = (e: KeyboardEvent) => {
+    if (e.code === 'KeyM' && !e.repeat) {
+      this.audio.unlock();
+      this.audio.setMusicEnabled(!this.audio.musicEnabled);
+      return;
+    }
     if ((this.state === 'title' || this.state === 'over') && (e.code === 'Enter' || (e.code === 'Space' && document.activeElement === document.body))) {
       e.preventDefault();
       this.start();
@@ -407,6 +433,8 @@ export class Game {
     }
     this.lighting.follow(this.drone.group.position);
     this.updateBlob();
+    this.audio.musicFrame(dt);
+    this.hud.setMusic(this.audio.started, this.audio.musicEnabled);
     this.publishDiagnostics();
   }
 
@@ -476,6 +504,9 @@ export class Game {
       this.lastTick = whole;
       this.audio.tick(tl <= 5);
     }
+    // music follows the chain, the clock and a close medal (within the last 15% of the way to it)
+    const goal = nextGoal(this.delivery.score);
+    this.audio.setRunState(this.slip.chain, tl, !!goal && goal.progress >= 0.85);
 
     this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80), d.headwind);
 
@@ -758,6 +789,7 @@ export class Game {
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
       lastCrash: this.lastCrash,
+      audio: { state: this.audio.contextState, music: this.audio.musicInfo() },
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
       fps: Math.round(this.fps * 10) / 10,
@@ -827,6 +859,9 @@ export class Game {
       },
       diagnostics: () => window.__THREE_GAME_DIAGNOSTICS__,
       place: (x: number, y: number, z: number, yaw: number, speed = 0) => this.drone.place(new THREE.Vector3(x, y, z), yaw, speed),
+      // audio test hooks: per-frame bus meters (fanfare vs music) and the music toggle
+      audioMeter: (on: boolean) => this.audio.setMeter(on),
+      music: (on: boolean) => this.audio.setMusicEnabled(on),
       sites: () => this.layout.sites.map((s) => ({ name: s.name, kind: s.kind, x: s.pos.x, y: s.pos.y, z: s.pos.z })),
     };
     window.__THREE_GAME_TEST_HOOKS__ = {
@@ -837,6 +872,7 @@ export class Game {
         if (name === 'title') {
           this.state = 'title';
           this.hud.showScreen('title');
+          this.audio.setMusicScene('title');
         } else if (name === 'active-play' || name === 'playing') {
           this.start();
         } else if (name === 'complete' || name === 'over') {
@@ -868,6 +904,7 @@ export class Game {
     window.removeEventListener('blur', this.onBlur);
     document.removeEventListener('visibilitychange', this.onVisibility);
     window.removeEventListener('keydown', this.onMenuKey);
+    for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) window.removeEventListener(type, this.onAnyGesture, true);
     this.renderer.dispose();
     window.__THREE_GAME_DIAGNOSTICS__ = undefined;
     window.__THREE_GAME_TEST_HOOKS__ = undefined;

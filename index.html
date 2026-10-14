@@ -104,6 +104,12 @@
         </div>
       </div>
 
+      <!-- Music toggle (title, pause and game over; M key anywhere). Separate from the effects. -->
+      <button id="music-toggle" class="music-toggle" type="button" data-state="locked" aria-pressed="false" title="Music (M)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="note" d="M9 18V6l10-2v12" /><circle cx="6.5" cy="18" r="2.5" /><circle cx="16.5" cy="16" r="2.5" /><path class="slash" d="M4 4l16 16" /></svg>
+        <span id="music-label">Tap for sound</span>
+      </button>
+
       <!-- Title -->
       <section id="title-screen" class="screen screen-title">
         <div class="title-card">

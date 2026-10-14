@@ -97,6 +97,23 @@ export class Hud {
   readonly restartButton = $<HTMLButtonElement>('restart-button');
   readonly againButton = $<HTMLButtonElement>('again-button');
   readonly pauseButton = $<HTMLButtonElement>('pause-button');
+  readonly musicButton = $<HTMLButtonElement>('music-toggle');
+  private readonly musicLabel = $('music-label');
+  private musicState = '';
+  /** True while the chip still invites the first press (no sound yet). */
+  get musicLocked(): boolean {
+    return this.musicState === 'locked';
+  }
+
+  /** Music chip: "Tap for sound" until the audio starts, then Music on / off. */
+  setMusic(ready: boolean, enabled: boolean): void {
+    const st = !ready ? 'locked' : enabled ? 'on' : 'off';
+    if (st === this.musicState) return;
+    this.musicState = st;
+    this.musicButton.dataset.state = st;
+    this.musicButton.setAttribute('aria-pressed', String(st === 'on'));
+    this.musicLabel.textContent = st === 'locked' ? (this.app.classList.contains('touch') ? 'Tap for sound' : 'Click or press a key for sound') : st === 'on' ? 'Music on' : 'Music off';
+  }
 
   private last = { score: -1, time: '', combo: -1, deliveries: -1, boost: -1, speed: -1, alt: -1, dist: -1, low: false, boostState: '' };
 

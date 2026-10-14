@@ -1019,3 +1019,41 @@ kbd {
   .medal-pop span { justify-self: start; margin-top: 4px; }
   .medal-pop::before { top: 50%; left: 22px; margin-top: -63px; }
 }
+
+/* ---------- Music chip (title, pause, game over) ---------- */
+.music-toggle {
+  position: absolute;
+  z-index: 20;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(29, 34, 48, 0.55);
+  color: var(--cream);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow);
+  transition: background 0.2s ease, opacity 0.3s ease;
+}
+.music-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.music-toggle svg circle { fill: currentColor; stroke: none; }
+.music-toggle .slash { display: none; stroke: var(--coral); }
+.music-toggle[data-state='off'] { color: rgba(255, 247, 234, 0.7); }
+.music-toggle[data-state='off'] .slash { display: block; }
+.music-toggle[data-state='on'] svg { color: var(--amber); }
+.music-toggle[data-state='locked'] { background: rgba(242, 129, 29, 0.85); color: var(--ink); animation: music-invite 1.6s ease-in-out infinite; }
+.music-toggle:hover { background: rgba(29, 34, 48, 0.75); }
+.music-toggle[data-state='locked']:hover { background: var(--amber); }
+@keyframes music-invite { 50% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(255, 176, 46, 0.25), var(--shadow); } }
+#app[data-state='playing'] .music-toggle { display: none; }
+/* paused: sit under the HUD's pause button */
+#app[data-state='paused'] .music-toggle { top: calc(max(16px, env(safe-area-inset-top)) + 54px); }
+@media (prefers-reduced-motion: reduce) { .music-toggle[data-state='locked'] { animation: none; } }

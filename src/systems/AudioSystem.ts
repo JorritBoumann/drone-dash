@@ -16,6 +16,8 @@ export class AudioSystem {
   private rotorLfo!: OscillatorNode;
   private windGain!: GainNode;
   private windFilter!: BiquadFilterNode;
+  private draftGain!: GainNode;
+  private draftFilter!: BiquadFilterNode;
   private noiseBuffer!: AudioBuffer;
   private rotorOn = false;
   muted = false;
@@ -102,6 +104,14 @@ export class AudioSystem {
     this.windGain = ctx.createGain();
     this.windGain.gain.value = 0;
     wind.connect(this.windFilter).connect(this.windGain).connect(this.master);
+    // slipstream: a narrow whistling air band whose pitch rises as the draft meter fills
+    this.draftFilter = ctx.createBiquadFilter();
+    this.draftFilter.type = 'bandpass';
+    this.draftFilter.frequency.value = 700;
+    this.draftFilter.Q.value = 6;
+    this.draftGain = ctx.createGain();
+    this.draftGain.gain.value = 0;
+    wind.connect(this.draftFilter).connect(this.draftGain).connect(this.master);
 
     this.rotorOsc1.start();
     this.rotorOsc2.start();
@@ -119,11 +129,14 @@ export class AudioSystem {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.rotorGain.gain.setTargetAtTime(on ? 0.085 : 0, t, 0.25);
-    if (!on) this.windGain.gain.setTargetAtTime(0, t, 0.2);
+    if (!on) {
+      this.windGain.gain.setTargetAtTime(0, t, 0.2);
+      this.draftGain.gain.setTargetAtTime(0, t, 0.1);
+    }
   }
 
   /** speed01: 0..1 of top speed, effort: 0..1 throttle, boosting adds whine. */
-  updateRotor(speed01: number, effort: number, boosting: boolean, altitude01: number): void {
+  updateRotor(speed01: number, effort: number, boosting: boolean, altitude01: number, headwind = 0): void {
     if (!this.ctx || !this.rotorOn) return;
     const t = this.ctx.currentTime;
     const base = 88 + speed01 * 60 + effort * 26 + (boosting ? 40 : 0) + altitude01 * 6;
@@ -132,8 +145,36 @@ export class AudioSystem {
     this.rotorLfo.frequency.setTargetAtTime(base * 0.42, t, 0.08);
     this.rotorFilter.frequency.setTargetAtTime(600 + speed01 * 1300 + (boosting ? 900 : 0), t, 0.1);
     this.rotorGain.gain.setTargetAtTime(0.07 + effort * 0.03 + (boosting ? 0.03 : 0), t, 0.15);
-    this.windGain.gain.setTargetAtTime(Math.pow(speed01, 1.6) * 0.16, t, 0.2);
-    this.windFilter.frequency.setTargetAtTime(400 + speed01 * 1400, t, 0.2);
+    // high wind above the roofs: a louder, lower, gusting rush
+    const gust = headwind * (0.06 + 0.03 * Math.sin(t * 2.3) * Math.sin(t * 0.9));
+    this.windGain.gain.setTargetAtTime(Math.pow(speed01, 1.6) * 0.16 + gust, t, 0.2);
+    this.windFilter.frequency.setTargetAtTime(400 + speed01 * 1400 - headwind * 200, t, 0.2);
+  }
+
+  /** Slipstream layer: intensity 0..1 sets loudness, meter level 0..1 sets the rising pitch. */
+  setDraft(intensity: number, level: number): void {
+    if (!this.ctx || !this.rotorOn) return;
+    const t = this.ctx.currentTime;
+    this.draftGain.gain.setTargetAtTime(intensity * 0.22, t, 0.12);
+    this.draftFilter.frequency.setTargetAtTime(700 + level * 1500 + intensity * 300, t, 0.1);
+  }
+
+  /** Meter quarter reached: a short rising blip (higher each step). */
+  slipTick(step: number): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime;
+    const f = 587.33 * Math.pow(2, (step * 3) / 12);
+    this.tone(f, t, 0.12, 'triangle', 0.05, 0.2, f * 1.06);
+  }
+
+  /** Meter full: a bright upward whoosh and a two-note chime that climbs with the chain. */
+  slipPayout(chain: number): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime;
+    const lift = Math.pow(2, (Math.min(chain, 5) - 1) / 12);
+    this.noise(t, 0.4, 0.09, 'bandpass', 900, 4200, 2);
+    this.tone(880 * lift, t + 0.02, 0.3, 'triangle', 0.1, 0.4);
+    this.tone(1318.5 * lift, t + 0.1, 0.45, 'sine', 0.12, 0.5);
   }
 
   private tone(freq: number, start: number, dur: number, type: OscillatorType, gain: number, reverb = 0.6, glideTo?: number): void {

@@ -30,6 +30,9 @@ export const FLIGHT = {
   guideSpeed: 6, // m/s max guided drift
   guidePull: 3, // 1/s how firmly the guide steers
   guideLowHeight: 6, // m: below this height above the pad the guide also helps while hovering
+  headwindStart: 20, // m: above the roofline the wind picks up...
+  headwindFull: 28, // m: ...and is full from here up
+  headwindSlow: 0.3, // fraction of cruise and boost top speed the full headwind takes away
 };
 
 export const CAMERA = {
@@ -88,4 +91,29 @@ export const QUALITY = {
   bloom: true,
   shadowMapSize: 2048,
   shadowExtent: 75,
+};
+
+/**
+ * Slipstream: the reward for the low street line. Flying below `maxAlt` and fast along a facade that is taller than
+ * the drone fills a meter; each full meter pays `points` (+`chainStep` per chained payout, times the combo
+ * multiplier), `boost` of the boost tank and `seconds` on the clock.
+ */
+export const SLIPSTREAM = {
+  maxAlt: 18, // m above the street
+  reach: 12, // m: facades further than this give no draft
+  full: 4, // m: at or inside this distance the draft is full strength
+  canyon: 0.6, // weight of a second facade across the street
+  minSpeed: 4, // m/s: no draft below this
+  fullSpeed: 14, // m/s: full draft at this speed
+  holdsPar: true, // while drafting, the fast-drop clock (leg par) does not run
+  minQuality: 0.08,
+  fill: 0.5, // meter per second at full quality (2 s)
+  drain: 0.15, // meter per second once out of the draft
+  grace: 1.2, // s out of the draft before the meter drains
+  chainReset: 3, // s out of the draft before the chain resets
+  points: 40,
+  chainStep: 15,
+  maxChain: 5,
+  boost: 0.3,
+  seconds: 1,
 };

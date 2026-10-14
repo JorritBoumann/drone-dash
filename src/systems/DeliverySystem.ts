@@ -21,6 +21,7 @@ export class DeliverySystem {
   legTime = 0;
   legPar = 0;
   legDistance = 0;
+  legRoute = 0;
   private lastSiteId = -1;
   private isClear?: (from: THREE.Vector3, to: THREE.Vector3) => boolean;
   private readonly glideFrom = new THREE.Vector3();
@@ -48,6 +49,14 @@ export class DeliverySystem {
     const comboLost = breakCombo && this.combo > 0 ? this.multiplier : 0;
     if (breakCombo) this.combo = 0;
     return { seconds: taken, comboLost };
+  }
+
+  /** Slipstream payout: points scaled by the running combo, plus a little clock. Returns the points added. */
+  addBonus(points: number, seconds: number): number {
+    const pts = Math.round(points * this.multiplier);
+    this.score += pts;
+    this.timeLeft += seconds;
+    return pts;
   }
 
   get multiplier(): number {
@@ -87,9 +96,10 @@ export class DeliverySystem {
   }
 
   /** Check arrival at the active objective. */
-  update(dt: number, rng: Rng, drone: THREE.Vector3, droneRadius: number): DeliveryEvent {
+  update(dt: number, rng: Rng, drone: THREE.Vector3, droneRadius: number, holdPar = false): DeliveryEvent {
     this.timeLeft = Math.max(0, this.timeLeft - dt);
-    this.legTime += dt;
+    // slipstream: drafting along the street holds the fast-drop window open
+    if (!holdPar) this.legTime += dt;
     const t = this.target;
     const dx = drone.x - t.pos.x, dz = drone.z - t.pos.z;
     const dy = drone.y - droneRadius - t.pos.y;
@@ -107,7 +117,9 @@ export class DeliverySystem {
       const kinds: Site['kind'][] = rng() < 0.45 ? ['doorstep'] : ['rooftop', 'doorstep', 'park', 'depot'];
       this.target = this.choose(rng, t.pos, minD, maxD, kinds, this.approachable(t.pos));
       this.legDistance = Math.hypot(this.target.pos.x - t.pos.x, this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
-      this.legPar = this.legDistance / 12.5 + 5;
+      // par is judged on the street route (grid distance), so following the streets is not a slow drop by definition
+      this.legRoute = Math.abs(this.target.pos.x - t.pos.x) + Math.abs(this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
+      this.legPar = this.legRoute / 12.5 + 5;
       this.legTime = 0;
       return { type: 'picked', site: picked };
     }

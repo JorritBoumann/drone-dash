@@ -1,0 +1,38 @@
+{"seed":"11","phase":"pickup","name":"Bay Lofts Rooftop","ty":19.7,"t0":0.005,"t30":4.702,"bumpsFinal":1,"stallsFinal":0,"finalSamples":65,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":4.7,"final":4.3}
+{"seed":"11","phase":"deliver","name":"Café · Copper & 4th Ave","ty":0.4,"t0":8.979,"t30":15.999,"bumpsFinal":0,"stallsFinal":0,"finalSamples":53,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":7,"final":3.5}
+{"seed":"11","phase":"pickup","name":"Bay Lofts Rooftop","ty":19.7,"t0":19.468,"t30":26.042,"bumpsFinal":0,"stallsFinal":0,"finalSamples":53,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":6.6,"final":3.5}
+{"seed":"11","phase":"deliver","name":"Florist · Orchard & 5th Ave","ty":0.4,"t0":29.512,"t30":35.83,"bumpsFinal":0,"stallsFinal":0,"finalSamples":48,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":6.3,"final":3.2}
+{"seed":"11","phase":"pickup","name":"Harbor Lofts Rooftop","ty":26.1,"t0":38.991,"t30":43.109,"bumpsFinal":0,"stallsFinal":0,"finalSamples":56,"finalOffscreen":4,"finalOnRoof":0,"end":"arrived","cruise":4.1,"final":3.7}
+{"seed":"11","phase":"deliver","name":"Union Lofts Rooftop","ty":13.3,"t0":46.767,"t30":59.369,"bumpsFinal":0,"stallsFinal":0,"finalSamples":61,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":12.6,"final":4}
+{"seed":"11","phase":"pickup","name":"Dash Depot North · Pad 1","ty":0.5,"t0":63.355,"t30":69.79,"bumpsFinal":0,"stallsFinal":0,"finalSamples":51,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":6.4,"final":3.3}
+{"seed":"11","phase":"deliver","name":"Juniper Lofts Rooftop","ty":32.5,"t0":73.108,"t30":79.674,"bumpsFinal":0,"stallsFinal":0,"finalSamples":56,"finalOffscreen":12,"finalOnRoof":0,"end":"arrived","cruise":6.6,"final":3.6}
+{"seed":"22","phase":"pickup","name":"Bay Lofts Rooftop","ty":6.9,"t0":0.003,"t30":1.488,"bumpsFinal":0,"stallsFinal":0,"finalSamples":51,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":1.5,"final":3.3}
+{"seed":"22","phase":"deliver","name":"Bookshop · Juniper & 7th Ave","ty":0.4,"t0":4.815,"t30":12.929,"bumpsFinal":0,"stallsFinal":0,"finalSamples":54,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":8.1,"final":3.5}
+{"seed":"22","phase":"pickup","name":"Noodle Bar · Union & 6th Ave","ty":0.4,"t0":16.458,"t30":23.94,"bumpsFinal":0,"stallsFinal":0,"finalSamples":52,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":7.5,"final":3.4}
+{"seed":"22","phase":"deliver","name":"Café · Copper & 6th Ave","ty":0.4,"t0":27.354,"t30":36.645,"bumpsFinal":0,"stallsFinal":0,"finalSamples":51,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":9.3,"final":3.3}
+{"seed":"22","phase":"pickup","name":"Fountain Park · Orchard & 6th Ave","ty":0.5,"t0":39.992,"t30":47.083,"bumpsFinal":0,"stallsFinal":0,"finalSamples":51,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":7.1,"final":3.3}
+{"seed":"22","phase":"deliver","name":"Gallery · Orchard & 2nd Ave","ty":0.4,"t0":50.41,"t30":62.706,"bumpsFinal":0,"stallsFinal":0,"finalSamples":53,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":12.3,"final":3.5}
+{"seed":"22","phase":"pickup","name":"Café · Bay & 2nd Ave","ty":0.4,"t0":66.165,"t30":70.613,"bumpsFinal":0,"stallsFinal":0,"finalSamples":49,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":4.4,"final":3.2}
+{"seed":"22","phase":"deliver","name":"Studio · Copper & 2nd Ave","ty":0.4,"t0":73.825,"t30":81.311,"bumpsFinal":0,"stallsFinal":0,"finalSamples":52,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":7.5,"final":3.4}
+{"seed":"22","phase":"pickup","name":"Bakery · Juniper & 1st Ave","ty":0.4,"t0":84.71,"t30":87.675,"bumpsFinal":0,"stallsFinal":0,"finalSamples":48,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":3,"final":3.2}
+{"seed":"33","phase":"pickup","name":"Juniper Lofts Rooftop","ty":13.3,"t0":0.004,"t30":5.566,"bumpsFinal":0,"stallsFinal":0,"finalSamples":48,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":5.6,"final":3.1}
+{"seed":"33","phase":"deliver","name":"Studio · Linden & 7th Ave","ty":0.4,"t0":8.707,"t30":15.173,"bumpsFinal":0,"stallsFinal":0,"finalSamples":52,"finalOffscreen":1,"finalOnRoof":0,"end":"arrived","cruise":6.5,"final":3.4}
+{"seed":"33","phase":"pickup","name":"Bay Lofts Rooftop","ty":6.9,"t0":18.578,"t30":23.984,"bumpsFinal":0,"stallsFinal":0,"finalSamples":58,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":5.4,"final":3.8}
+{"seed":"33","phase":"deliver","name":"Deli · Juniper & 8th Ave","ty":0.4,"t0":27.776,"t30":38.677,"bumpsFinal":0,"stallsFinal":0,"finalSamples":50,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":10.9,"final":3.3}
+{"seed":"33","phase":"pickup","name":"Studio · Maple & 7th Ave","ty":0.4,"t0":41.947,"t30":49.878,"bumpsFinal":0,"stallsFinal":0,"finalSamples":55,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":7.9,"final":3.6}
+{"seed":"33","phase":"deliver","name":"Noodle Bar · Orchard & 7th Ave","ty":0.4,"t0":53.467,"t30":65.579,"bumpsFinal":0,"stallsFinal":0,"finalSamples":53,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":12.1,"final":3.5}
+{"seed":"33","phase":"pickup","name":"Maple Lofts Rooftop","ty":16.4,"t0":69.047,"t30":74.318,"bumpsFinal":1,"stallsFinal":0,"finalSamples":54,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":5.3,"final":3.5}
+{"seed":"33","phase":"deliver","name":"Bakery · Linden & 4th Ave","ty":0.4,"t0":77.863,"t30":86.502,"bumpsFinal":0,"stallsFinal":0,"finalSamples":60,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":8.6,"final":3.9}
+{"seed":"44","phase":"pickup","name":"Orchard Lofts Rooftop","ty":29.3,"t0":0.005,"t30":4.255,"bumpsFinal":0,"stallsFinal":0,"finalSamples":58,"finalOffscreen":8,"finalOnRoof":0,"end":"arrived","cruise":4.3,"final":3.8}
+{"seed":"44","phase":"deliver","name":"Florist · Union & 6th Ave","ty":0.4,"t0":8.06,"t30":15.601,"bumpsFinal":0,"stallsFinal":0,"finalSamples":48,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":7.5,"final":3.1}
+{"seed":"44","phase":"pickup","name":"Union Lofts Rooftop","ty":10.1,"t0":18.728,"t30":23.281,"bumpsFinal":1,"stallsFinal":0,"finalSamples":54,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":4.6,"final":3.5}
+{"seed":"44","phase":"deliver","name":"Deli · Copper & 4th Ave","ty":0.4,"t0":26.819,"t30":38.398,"bumpsFinal":0,"stallsFinal":0,"finalSamples":51,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":11.6,"final":3.3}
+{"seed":"44","phase":"pickup","name":"Dash Depot South · Pad 2","ty":0.5,"t0":41.722,"t30":49.387,"bumpsFinal":0,"stallsFinal":0,"finalSamples":50,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":7.7,"final":3.3}
+{"seed":"44","phase":"deliver","name":"Deli · Bay & 3rd Ave","ty":0.4,"t0":52.68,"t30":65.621,"bumpsFinal":0,"stallsFinal":0,"finalSamples":50,"finalOffscreen":1,"finalOnRoof":0,"end":"arrived","cruise":12.9,"final":3.3}
+{"seed":"44","phase":"pickup","name":"Studio · Orchard & 1st Ave","ty":0.4,"t0":68.905,"t30":70.647,"bumpsFinal":0,"stallsFinal":0,"finalSamples":50,"finalOffscreen":0,"finalOnRoof":0,"end":"arrived","cruise":1.7,"final":3.3}
+{"seed":"44","phase":"deliver","name":"Studio · Copper & 2nd Ave","ty":0.4,"t0":73.909,"t30":82.858,"bumpsFinal":0,"stallsFinal":0,"finalSamples":51,"finalOffscreen":1,"finalOnRoof":0,"end":"arrived","cruise":8.9,"final":3.3}
+legs 33 arrived 33 timeouts 0
+median cruise s 7 median final-30m s 3.4 sum cruise 236.5 sum final 114.2
+street (y<2) n 22 median final 3.3 stalls 0
+raised (y>=2) n 11 median final 3.6 stalls 0
+final-approach samples 1746 nav marker offscreen 27 1.5% slow (<3 m/s) and >4 m above target 0 0.0%

@@ -44,6 +44,8 @@ export class Drone {
   boosting = false;
   carrying = false;
   speed = 0;
+  /** 0..1 headwind strength at the drone's altitude (see FLIGHT.headwind*). */
+  headwind = 0;
 
   private readonly tilt = new THREE.Group();
   private readonly body = new THREE.Group();
@@ -358,15 +360,18 @@ export class Drone {
     // Horizontal thrust & drag (terminal velocity = thrust / drag)
     const thrustIn = this.boosting ? Math.max(intent.thrust, 0.0) || 1 : intent.thrust;
     const thrust = this.boosting ? F.boostThrust : F.thrust;
-    const top = this.boosting ? F.boostSpeed : F.maxSpeed;
+    // headwind high above the roofs: cruising over the city is slower than threading the streets
+    this.headwind = THREE.MathUtils.smoothstep(this.group.position.y, F.headwindStart, F.headwindFull);
+    const top = (this.boosting ? F.boostSpeed : F.maxSpeed) * (1 - F.headwindSlow * this.headwind);
     // over the current top speed (e.g. just after a boost) speed bleeds off gently instead of collapsing
     // ...except when dropping toward a nearby pad: then leftover boost speed airbrakes so the drone does not sail past it
     const hSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const p0 = this.group.position;
     const diving = this.hasGuide && intent.lift < 0 && p0.y - this.guide.y > 2 && Math.hypot(this.guide.x - p0.x, this.guide.z - p0.z) < F.guideBrakeRange;
-    const drag = (thrust / top) * (hSpeed > top + 0.5 && !diving ? 0.35 : 1);
+    const drag = (thrust / top) * (hSpeed > top + 0.5 && !diving ? 0.35 + 0.65 * this.headwind : 1); // the headwind eats carried speed too
     const v = this.velocity;
     this.prevVel.copy(v);
+    const thrustDv = Math.max(0, thrustIn) * thrust * dt;
     v.x += this.forward.x * thrustIn * thrust * dt;
     v.z += this.forward.z * thrustIn * thrust * dt;
     // reversing is weaker than going forward
@@ -537,7 +542,9 @@ export class Drone {
     }
     this.brushing = brushed && touched;
     // crash severity: net horizontal speed the collisions took off this frame (thrust, drag and guide ran before the loop)
-    if (wallHit) events.wallLoss = Math.max(0, hStart - Math.hypot(v.x, v.z));
+    // forward thrust added this frame is taken out again, so holding forward into a wall never makes a hit count as
+    // harder than the same impact with the key released (severity = what the wall took off the incoming speed)
+    if (wallHit) events.wallLoss = Math.max(0, hStart - Math.hypot(v.x, v.z) - thrustDv);
     // ledge hop carry: once over the ledge (no contact this frame), give back the forward speed it absorbed
     if (this.hopCarry > 0 && !touched && p.y - F.radius > this.hopTop + 0.05) {
       if (!this.guiding && intent.thrust > 0.2) {

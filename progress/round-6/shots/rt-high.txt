@@ -1,0 +1,5 @@
+{"seed":"22","line":"high","simT":124,"deliveries":5,"score":3962,"crashes":0,"perMin":0,"meanAlt":26.7,"meanSpeed":10.4,"slipPayouts":0,"meanQ":0.02,"draftFrac":0.06,"slipPoints":0,"slipSeconds":0,"crashList":[]}
+{"seed":"58","line":"high","simT":121,"deliveries":5,"score":4033,"crashes":1,"perMin":0.5,"meanAlt":31.2,"meanSpeed":9.8,"slipPayouts":0,"meanQ":0.01,"draftFrac":0.04,"slipPoints":0,"slipSeconds":0,"crashList":[{"t":119.8,"sp03":14.8,"y":12.7,"hd":168,"loss":7.2,"wallTop":36.2,"unstick":false,"timeLost":1.3,"comboLost":5}]}
+{"seed":"130","line":"high","simT":128,"deliveries":5,"score":2955,"crashes":2,"perMin":0.9,"meanAlt":28.7,"meanSpeed":10.7,"slipPayouts":0,"meanQ":0.03,"draftFrac":0.07,"slipPoints":0,"slipSeconds":0,"crashList":[{"t":57.7,"sp03":23.7,"y":29.9,"hd":73,"loss":9.7,"wallTop":33,"unstick":false,"timeLost":3,"comboLost":2},{"t":80.2,"sp03":16.2,"y":40.6,"hd":98,"loss":9.8,"wallTop":52.2,"unstick":false,"timeLost":3,"comboLost":1}]}
+slipstream payouts 0 (0.0/min), slip points 0, score/min 1761
+LINE high: seeds 3, sim 373 s, deliveries 15 (2.41/min), crashes 3 (0.5/min), score 10950

@@ -319,6 +319,83 @@ body { background: #f0b98a; }
 }
 .boost.active .boost-fill { background: linear-gradient(90deg, #8ff7ff, #ffffff); box-shadow: 0 0 14px var(--teal); }
 .boost.empty .boost-fill { background: var(--coral); }
+/* slipstream: the low street line's draft meter, sits above the boost bar and only shows while it matters */
+.slip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  width: 200px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.slip.on { opacity: 1; transform: none; }
+.slip-label { display: block; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); }
+.slip-label b { margin-left: 4px; color: var(--amber); letter-spacing: 0.04em; }
+.slip-track {
+  position: relative;
+  height: 7px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(29, 34, 48, 0.45);
+  overflow: hidden;
+}
+.slip-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffd27a, var(--amber), #fff3d6);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.slip.drafting .slip-fill { box-shadow: 0 0 12px rgba(255, 190, 80, 0.9); }
+.slip.drafting .slip-label { animation: slip-flutter 0.5s ease-in-out infinite alternate; }
+@keyframes slip-flutter { from { opacity: 0.8; } to { opacity: 1; } }
+.slip-pop {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 4px;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--amber);
+  -webkit-text-stroke: 5px var(--ink);
+  paint-order: stroke fill;
+  white-space: nowrap;
+  opacity: 0;
+}
+.slip-pop.show { animation: slip-rise 1.3s ease-out; }
+@keyframes slip-rise {
+  0% { opacity: 0; transform: translateY(8px) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1.12); }
+  70% { opacity: 1; transform: translateY(-14px) scale(1); }
+  100% { opacity: 0; transform: translateY(-26px) scale(1); }
+}
+#app.touch .slip { width: 150px; }
+.wind {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 7px;
+  border-radius: 999px;
+  background: rgba(29, 34, 48, 0.55);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #d8ecff;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.wind svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.wind.on { opacity: 1; transform: none; }
+.wind.on svg { animation: wind-gust 0.9s ease-in-out infinite alternate; }
+@keyframes wind-gust { from { transform: translateX(-2px); } to { transform: translateX(2px); } }
 .telemetry {
   font-size: 1.05rem;
   font-weight: 800;
@@ -699,6 +776,7 @@ kbd {
   .timer-ring { width: 28px; height: 28px; }
   .objective { font-size: 0.72rem; max-width: 60vw; }
   .boost { width: 150px; }
+  .slip { width: 150px; }
 }
 @media (max-height: 460px) {
   .title-card { gap: 8px; }

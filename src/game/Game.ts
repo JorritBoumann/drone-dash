@@ -10,13 +10,14 @@ import { CameraRig } from '../systems/CameraRig';
 import { CollisionWorld } from '../systems/CollisionWorld';
 import { DebugTools } from '../systems/DebugTools';
 import { DeliverySystem } from '../systems/DeliverySystem';
+import { Slipstream } from '../systems/Slipstream';
 import { VfxSystem } from '../systems/VfxSystem';
 import { Hud } from '../ui/Hud';
 import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { createSky, Environment, LightingRig, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
-import { CRASH, FLIGHT, QUALITY, RUN } from './config';
+import { CRASH, FLIGHT, QUALITY, RUN, SLIPSTREAM } from './config';
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
@@ -50,6 +51,9 @@ export class Game {
   private readonly cameraRig = new CameraRig(this.camera);
   private readonly drone = new Drone();
   private readonly marker = new ObjectiveMarker();
+  private readonly slip = new Slipstream();
+  private readonly slipColor = new THREE.Color('#ffe7b0');
+  private readonly windColor = new THREE.Color('#e6f2ff');
   private readonly layout: CityLayout;
   private readonly world: CollisionWorld;
   private readonly env: Environment;
@@ -236,6 +240,7 @@ export class Game {
     this.crashCharged = 0;
     this.lastCrash = null;
     this.crashes = 0;
+    this.slip.reset();
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
@@ -373,6 +378,7 @@ export class Game {
     const d = this.drone;
     d.update(dt, this.intent, this.world, this.layout.half + 30, this.events);
     this.checkCrash(realDt);
+    this.updateSlipstream(dt);
     const dp = d.group.position;
     const groundBelow = this.world.surfaceBelow(dp.x, dp.y, dp.z);
     const altAboveGround = Math.max(0, dp.y - groundBelow - 0.85);
@@ -398,9 +404,10 @@ export class Game {
     this.wasBoosting = d.boosting;
     if (d.boosting) this.emitBoostTrail();
     this.emitRotorWash();
+    this.emitWindStreaks();
 
     // objectives
-    const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius);
+    const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius, SLIPSTREAM.holdsPar && this.slip.drafting);
     if (ev?.type === 'picked') {
       d.setCarrying(true);
       this.audio.pickup();
@@ -429,7 +436,7 @@ export class Game {
       this.audio.tick(tl <= 5);
     }
 
-    this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80));
+    this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80), d.headwind);
 
     this.hud.setScore(this.delivery.score);
     this.hud.setCombo(this.delivery.multiplier, this.delivery.combo);
@@ -438,7 +445,9 @@ export class Game {
     this.hud.setBoost(d.boost, d.boosting);
     // true altitude above street level (consistent everywhere, rooftops included)
     this.hud.setTelemetry(d.speed, Math.max(0, dp.y - 0.85));
-    this.hud.setSpeedLines(d.boosting ? Math.min(1, d.speed / 24) : 0);
+    this.hud.setSpeedLines(Math.max(d.boosting ? Math.min(1, d.speed / 24) : 0, this.slip.intensity * 0.5));
+    this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, d.headwind > 0.35);
+    this.hud.setWind(d.headwind > 0.35);
     this.updateNav();
 
     if (tl <= 0) this.endRun();
@@ -510,6 +519,7 @@ export class Game {
     const lost = comboLost > 0 ? `-${seconds} sec · x${comboLost.toFixed(1)} combo lost` : `-${seconds} sec`;
     this.hud.popText(`${label}!`, lost, 'crash');
     if (comboLost > 0) this.hud.breakCombo(comboLost);
+    this.slip.lose();
     if (!fresh) return; // upgraded tier of the same hit: numbers update, effects already played
     this.audio.crash(s, comboLost > 0);
     this.cameraRig.addShake(0.6 + s * 0.4);
@@ -519,6 +529,48 @@ export class Game {
     const p = d.group.position;
     this.vfx.burst(p, new THREE.Color('#ff8a3d'), 22 + Math.round(s * 18), 6 + s * 6, 0.16, this.fxRng);
     this.vfx.burst(p, new THREE.Color('#fff1c9'), 10, 9 + s * 4, 0.1, this.fxRng);
+  }
+
+  /** Low street line reward: draft meter, payouts, wind streaks and the rising whistle. */
+  private updateSlipstream(dt: number): void {
+    const d = this.drone;
+    const ev = this.slip.update(dt, d.group.position, d.speed, this.world);
+    this.audio.setDraft(this.slip.intensity, this.slip.level);
+    if (ev?.type === 'tick') this.audio.slipTick(ev.step);
+    else if (ev?.type === 'payout') {
+      const pts = this.delivery.addBonus(ev.points, SLIPSTREAM.seconds);
+      this.slip.points += pts;
+      this.slip.seconds += SLIPSTREAM.seconds;
+      d.boost = Math.min(1, d.boost + SLIPSTREAM.boost);
+      this.audio.slipPayout(ev.chain);
+      this.hud.slipPop(ev.chain > 1 ? `+${pts} slipstream x${ev.chain}` : `+${pts} slipstream`);
+      this.hud.flashTimeBonus(SLIPSTREAM.seconds);
+      this.cameraRig.addShake(0.08);
+      this.vfx.burst(d.group.position, this.slipColor, 14, 6, 0.12, this.fxRng);
+    }
+    // wind streaks peeling off the drone while it drafts
+    if (this.slip.intensity > 0.15 && this.fxRng() < this.slip.intensity) {
+      const p = this.tmp2.copy(d.group.position);
+      const side = this.fxRng() < 0.5 ? -1 : 1;
+      p.x += d.forward.x * 1.2 - d.forward.z * side * (0.9 + this.fxRng() * 0.6);
+      p.z += d.forward.z * 1.2 + d.forward.x * side * (0.9 + this.fxRng() * 0.6);
+      p.y += (this.fxRng() - 0.4) * 0.8;
+      const v = this.tmp.set(-d.forward.x * d.speed * 0.6, 0, -d.forward.z * d.speed * 0.6).addScaledVector(d.velocity, 0.5);
+      this.vfx.emit(p, v, this.slipColor, 0.1 + this.slip.intensity * 0.1, 0.3, 0);
+    }
+  }
+
+  /** High wind: pale streaks blowing past the drone from ahead while it flies above the roofline. */
+  private emitWindStreaks(): void {
+    const d = this.drone;
+    if (d.headwind < 0.3 || this.fxRng() > d.headwind * 0.7) return;
+    const p = this.tmp2.copy(d.group.position);
+    const side = (this.fxRng() - 0.5) * 7;
+    p.x += d.forward.x * 7 - d.forward.z * side;
+    p.z += d.forward.z * 7 + d.forward.x * side;
+    p.y += (this.fxRng() - 0.3) * 3;
+    const v = this.tmp.set(-d.forward.x * 22, -0.5, -d.forward.z * 22);
+    this.vfx.emit(p, v, this.windColor, 0.12, 0.45, 0);
   }
 
   private emitBoostTrail(): void {
@@ -623,6 +675,8 @@ export class Game {
       deliveries: this.delivery.deliveries,
       combo: this.delivery.combo,
       crashes: this.crashes,
+      leg: { time: this.delivery.legTime, par: this.delivery.legPar },
+      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds },
       lastCrash: this.lastCrash,
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
@@ -633,6 +687,7 @@ export class Game {
         position: { x: p.x, y: p.y, z: p.z },
         speed: this.drone.speed,
         boost: this.drone.boost,
+        headwind: this.drone.headwind,
         carrying: this.drone.carrying,
       },
       renderer: {

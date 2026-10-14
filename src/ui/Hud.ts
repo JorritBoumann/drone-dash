@@ -36,6 +36,13 @@ export class Hud {
   private readonly speedLines = $('speed-lines');
   private readonly hitFlashEl = $('hit-flash');
   private speedLinesLevel = -1;
+  private readonly slip = $('slip');
+  private readonly slipFill = $('slip-fill');
+  private readonly slipChain = $('slip-chain');
+  private readonly slipPopEl = $('slip-pop');
+  private readonly windEl = $('wind');
+  private windOn = false;
+  private slipLast = { level: -1, on: false, drafting: false, chain: -1 };
   private readonly popMain = $('pop-main');
   private readonly popSub = $('pop-sub');
   private readonly titleScreen = $('title-screen');
@@ -205,6 +212,42 @@ export class Hud {
     this.speedLines.style.opacity = String(q * 0.85);
   }
 
+  /** Slipstream meter: shows while drafting or while the meter still holds charge. */
+  setSlip(level: number, drafting: boolean, chain: number, suppressed = false): void {
+    const q = Math.round(level * 100) / 100;
+    if (q !== this.slipLast.level) {
+      this.slipLast.level = q;
+      this.slipFill.style.transform = `scaleX(${q})`;
+    }
+    const on = !suppressed && (drafting || level > 0.02);
+    if (on !== this.slipLast.on) {
+      this.slipLast.on = on;
+      this.slip.classList.toggle('on', on);
+    }
+    if (drafting !== this.slipLast.drafting) {
+      this.slipLast.drafting = drafting;
+      this.slip.classList.toggle('drafting', drafting);
+    }
+    if (chain !== this.slipLast.chain) {
+      this.slipLast.chain = chain;
+      this.slipChain.textContent = chain > 1 ? `x${chain}` : '';
+    }
+  }
+
+  /** High-wind chip: shown while the drone flies in the headwind band above the roofline. */
+  setWind(on: boolean): void {
+    if (on === this.windOn) return;
+    this.windOn = on;
+    this.windEl.classList.toggle('on', on);
+  }
+
+  slipPop(text: string): void {
+    this.slipPopEl.textContent = text;
+    this.slipPopEl.classList.remove('show');
+    void this.slipPopEl.offsetWidth;
+    this.slipPopEl.classList.add('show');
+  }
+
   hitFlash(strength: number, crash = false): void {
     this.hitFlashEl.style.setProperty('--hit', strength.toFixed(2));
     this.hitFlashEl.classList.remove('show');
@@ -233,6 +276,11 @@ export class Hud {
   }
 
   resetCache(): void {
+    this.slipLast = { level: -1, on: false, drafting: false, chain: -1 };
+    this.slip.classList.remove('on', 'drafting');
+    this.windOn = false;
+    this.windEl.classList.remove('on');
+    this.slipPopEl.classList.remove('show');
     window.clearTimeout(this.comboBreakTimer);
     this.comboChip.classList.remove('broken');
     this.timePenalty.classList.remove('show');

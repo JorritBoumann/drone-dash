@@ -160,11 +160,14 @@ export const SLIPSTREAM = {
  * Round 12b: Silver 2250 -> 1775. The slow clock gives a lazy flier almost no clock time (under 1.2 s a run), while a
  * routed street pilot who rarely chains past x3 (seed 58) lands at 1,840 to 1,910. The lazy bot's best is 1,728, so
  * Silver sits between the two. The band is thin: see progress/round-12/builder2.md.
+ * Round 13: Silver 1775 -> 1600. With the slow clock only on the way to the objective, the lazy flier's seed 22 run
+ * misses its second drop (844, was 1,728), so its best is 1,141. The routed street pilot's worst is seed 58 at 1,792.
+ * Silver sits 459 above the first and 192 below the second: see progress/round-13/builder.md.
  */
 export const GOALS = {
   tiers: [
     { name: 'Bronze', score: 1000 },
-    { name: 'Silver', score: 1775 },
+    { name: 'Silver', score: 1600 },
     { name: 'Gold', score: 4500 },
     { name: 'Ace', score: 7500 },
   ],

@@ -428,6 +428,27 @@ export class AudioSystem {
     this.noise(t + 0.1, 0.5, 0.04, 'highpass', 5000, 9000);
   }
 
+  /** Round 17: overtime starts. A rising three-note horn over a duck, then a snare roll into the top layer. */
+  overtimeHorn(): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime;
+    this.duck(0.4, t, 0.8, 0.5, 'rush');
+    [587.33, 739.99, 987.77].forEach((f, i) => {
+      this.tone(f, t + i * 0.13, 0.12, 'square', 0.05, 0.25);
+      this.tone(f, t + i * 0.13, 0.12, 'sine', 0.13, 0.25);
+    });
+    this.tone(987.77 * 1.5, t + 0.42, 0.35, 'square', 0.04, 0.3);
+    for (let i = 0; i < 8; i++) this.noise(t + 0.4 + i * 0.05, 0.04, 0.03 + i * 0.006, 'highpass', 2500, 7000);
+  }
+
+  /** Round 17: overtime holds the last-10-s section at full intensity with the lead on top. */
+  setOvertime(on: boolean): void {
+    if (this.overtime === on) return;
+    this.overtime = on;
+    this.applyLayers();
+  }
+  private overtime = false;
+
   /** Round 15: a rush order is aboard: a quick rising double beep. */
   rushOrder(): void {
     if (!this.ready) return;
@@ -633,13 +654,13 @@ export class AudioSystem {
     o.bass = sc !== 'off';
     o.drums = sc === 'final' || (sc === 'run' && lv >= 1);
     o.arp = sc === 'title' || sc === 'final' || sc === 'over' || (sc === 'run' && lv >= 2);
-    o.lead = sc === 'title' || sc === 'over' || (sc === 'run' && lv >= 3);
+    o.lead = sc === 'title' || sc === 'over' || (sc === 'run' && lv >= 3) || (sc === 'final' && this.overtime);
     o.urg = sc === 'final';
     // intensity: title 0.15, run 0.30 / 0.50 / 0.68 / 0.85 by chain (+0.05 chasing a medal), final 0.92+, over by medal
     this.target =
       sc === 'title' ? 0.15
       : sc === 'run' ? [0.3, 0.5, 0.68, 0.85][lv] + (this.chase ? 0.05 : 0)
-      : sc === 'final' ? 0.92 + 0.02 * lv
+      : sc === 'final' ? (this.overtime ? 1 : 0.92 + 0.02 * lv)
       : sc === 'over' ? 0.1 + 0.05 * this.overTier
       : 0;
     if (!this.ctx) return;
@@ -973,6 +994,7 @@ export class AudioSystem {
       playing,
       track: sc,
       section,
+      overtime: this.overtime,
       layer,
       layers: LAYERS.filter((l) => this.on[l]),
       intensity: r(this.intensity),

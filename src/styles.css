@@ -145,6 +145,13 @@ body { background: #f0b98a; }
 .timer.low .timer-ring-fg { stroke: white; }
 .timer.low .timer-ring-bg { stroke: rgba(255, 255, 255, 0.3); }
 @keyframes timer-pulse { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.07); } }
+/* round 17: overtime. Gold timer with an "OT" count and a quick double pulse; it holds steady once the overtime drop is made */
+.timer.ot, .timer.low.ot { background: linear-gradient(135deg, #ffd34d, #ff9f1c); color: var(--ink); animation: timer-ot 0.5s infinite; box-shadow: var(--shadow), 0 0 0 3px rgba(255, 211, 77, 0.55), 0 0 22px rgba(255, 159, 28, 0.7); }
+.timer.ot .timer-ring-fg { stroke: var(--ink); }
+.timer.ot .timer-ring-bg { stroke: rgba(29, 34, 48, 0.18); }
+.timer.ot-done { background: linear-gradient(135deg, #ffd34d, #ff9f1c); color: var(--ink); animation: none; }
+.timer.ot-done .timer-ring-fg { stroke: var(--ink); }
+@keyframes timer-ot { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.09); } 30% { transform: scale(1); } 45% { transform: scale(1.05); } }
 
 .time-bonus {
   position: absolute;

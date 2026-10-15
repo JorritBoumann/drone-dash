@@ -56,7 +56,7 @@ export const CAMERA = {
 };
 
 export const RUN = {
-  startTime: 50,
+  startTime: 56, // round 17: 50 -> 56 (with the smaller slow clock budget below, a slow but steady run keeps its third drop)
   minTimeBonus: 7,
   pickupRadius: 3.2,
   deliverRadius: 3.4,
@@ -66,7 +66,34 @@ export const RUN = {
   parSpeed: 9, // m/s: a leg's par is its street-route length at this speed (a clean street run with corners)...
   parSlack: 7, // ...plus this many seconds
   maxCombo: 5,
-  comboStep: 0.5, // multiplier added per fast drop in a row
+  // Round 17: 0.5 -> 0.15. At 0.5 the fifth fast drop paid x3.5 and the third x2.5, so every delivery was worth more than
+  // the last and one missed drop near the end cost 40 to 50 percent of the run. At 0.2 the chain still rewards a clean
+  // run (x1.75 at five) but each delivery adds a similar amount.
+  comboStep: 0.15, // multiplier added per fast drop in a row
+  // Round 17: the run's ending. When the clock hits 0 with a parcel aboard, `overtime` seconds of overtime start: finish
+  // that one delivery (its points pay as normal, its street bonus by the share of the leg flown when the clock ran out,
+  // so overtime finishes a parcel that was nearly there but does not cash in a bank farmed far from the drop; it adds no
+  // clock and no new job, and the run ends on it). Overtime happens once a
+  // run. A crash in overtime still costs seconds. If the clock runs out for good (no parcel aboard, or overtime spent),
+  // the street bonus banked on the current leg pays by the share of the leg flown (see Game.timeUp), only on a run that
+  // has delivered at least once, so a no-delivery farm still scores 0.
+  // Overtime is sized to the parcel in hand: the street route left at `overtimeSpeed` m/s plus `overtimeSlack` s, between
+  // `overtimeMin` and `overtime` s (a 30 m rooftop finish gets about 9 s, a 70 m street leg the full 15).
+  overtime: 15,
+  // Overtime and the time-up share are only for a leg on schedule: flown in at most `scheduleSlack` x its par (street
+  // route / parSpeed + parSlack). A parcel that sat aboard while its bank was farmed gets neither.
+  scheduleSlack: 1.6,
+  overtimeMin: 8,
+  overtimeSpeed: 6,
+  overtimeSlack: 4,
+  // Round 17: last call. A parcel picked up with less than `lastCallAt` s on the clock gets a drop that fits the time
+  // left plus overtime at `lastCallSpeed` m/s of street (at least `lastCallMin` m), at street level (no rooftop job).
+  // A last-call drop adds no clock (it pays points as normal), so the end of a run is a run of short jobs on a bleeding
+  // clock, not a cliff and not a loop of short legs that pay for themselves.
+  lastCallAt: 22,
+  lastCallSpeed: 7,
+  lastCallMin: 55,
+  clockDecayStep: 0.06, // drop time bonus and slow clock shrink by this share per delivery (floor 0.55; round 17: 0.035 -> 0.06, so a fast run tops out near six drops instead of snowballing to eight)
 };
 
 /**
@@ -127,7 +154,8 @@ export const SLIPSTREAM = {
   points: 45,
   chainStep: 25, // x1 45, x2 70, x3 95, x4 120, x5 145 (flat: the delivery combo does not multiply these, the chain is their own multiplier)
   maxChain: 5,
-  introMeter: 4, // the very first meter of a run is short, so a new player sees a payout within seconds of the first draft...
+  introMeter: 3, // the very first meter of a run is short, so a new player sees a payout within seconds of the first draft (round 17: 4 -> 3)...
+  introMinSpeed: 3, // ...it counts from this speed (round 17: was minSpeed, 4; the mobile hand-fly first payout was 9.9 s)...
   introSpeedFloor: 0.6, // ...and on it the speed factor is at least this (above minSpeed), so a slow touch pilot gets it quickly too
   firstMeter: 14, // meter size in draft metres before the first payout of a chain (a quick first payout teaches the rule)...
   meterPerChain: 4, // ...and it grows by this per chain step, so a long chain pays more but less often
@@ -148,7 +176,7 @@ export const SLIPSTREAM = {
   // (2) Each leg has a budget of `clockBudget` clock seconds. Picking a parcel up or delivering it refills the budget to
   // this cap (it does not stack), so a run with no deliveries gets at most two budgets (start + one pickup) in total.
   // A routed street pilot used 5 to 9 s of slow clock per pickup-and-drop cycle in round 12, so honest runs keep it.
-  clockBudget: 8,
+  clockBudget: 5, // round 17: 8 -> 5. A fast run earned the full budget every leg and snowballed to 6 to 8 drops; a slow one earned 2 to 4 s
   towardLow: -0.1, // cos(heading to target): at or below this the slow clock is off...
   towardFull: 0.2, // ...and full from here
   // Round 14: the street bonus. Slip payouts no longer score on their own. Each payout is banked on the parcel run
@@ -166,8 +194,8 @@ export const SLIPSTREAM = {
   bankPaceLow: 2.5,
   bankPaceFull: 6,
   bankPaceMin: 0.2,
-  bankPaceMax: 2.5,
-  bankPerMetre: 7, // honest street legs banked up to 6 points per metre of street route on the balance bots
+  bankPaceMax: 1.8, // round 17: 2.5 -> 1.8 (a fast run's street bonus no longer runs away from a steady one)
+  bankPerMetre: 7, // round 17: unchanged (3.5 was tried: the carry farm then filled its share fast and delivered like an honest run). Honest street legs banked up to 6 points per metre of street route on the balance bots
   bankLegMin: 150, // points: every leg can bank at least this much (very short legs)
   bankCrashKeep: 0.5,
   bankCrashTier: 1, // CRASH.tiers index from which a crash cuts the bank (1 = Hard crash)
@@ -209,12 +237,16 @@ export const RUSH = {
  * rooftop every third drop), so runs no longer die on a tower-heavy first leg. The street bot now makes 4 to 5 drops
  * (4,945 to 8,891 on the four hardest round 15 cities) and the lazy bot 2 (1,210 to 1,637). Silver 1650 -> 2500,
  * Gold 4500 -> 6000, Ace 8500 -> 10000. See progress/round-16/builder.md.
+ * Round 17: a flatter score (combo step 0.15, street bonus pace max 1.8 and 3.5 points per metre, time bonus decay
+ * 0.06 per drop) and a softer ending (overtime, last call, time-up share of the bank). The deterministic street bot
+ * scores 2,047 to 7,108 on 23 of 24 cities (1,291 on 62367). Silver 2500 -> 2000, Gold 6000 -> 4500, Ace 10000 -> 9000.
+ * See progress/round-17/builder.md.
  */
 export const GOALS = {
   tiers: [
     { name: 'Bronze', score: 1000 },
-    { name: 'Silver', score: 2500 },
-    { name: 'Gold', score: 6000 },
-    { name: 'Ace', score: 10000 },
+    { name: 'Silver', score: 2000 },
+    { name: 'Gold', score: 4500 },
+    { name: 'Ace', score: 9000 },
   ],
 };

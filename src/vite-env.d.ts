@@ -16,6 +16,8 @@ interface ThreeGameDiagnostics {
   breakdown?: { drops: number; fast: number; combo: number; slip: number; fastCount: number; rush?: number; dropSeconds: number; slipSeconds: number; crashSeconds: number; total: number };
   /** Round 15: which city this load built, and the daily city's own best. */
   city?: { mode: string; seed: number; date: string; dailyBest: number; dailyTier: number; mood?: string; parks?: number };
+  /** Round 17: the run's ending: overtime running / done, last-call drop, overtime seconds, time-up share of the bank. */
+  ending?: { overtime: boolean; finished: boolean; lastCall: boolean; overtimeSeconds: number; partial: number; partialShare: number; legRoute: number };
   /** Round 15: mid-run escalation (rush hour): stage 0 before RUSH.startAt, 1 every second parcel, 2 every parcel. */
   escalation?: { kind: string; on: boolean; startedAt: number; stage: number; orders: number; made: number; missed: number; points: number; active: boolean; left: number; window: number };
   goals?: { tier: number; tierName: string; next: number; passes: number; passList: { tier: number; name: string; score: number; t: number }[]; best: number; bestTier: number; thresholds: number[] };

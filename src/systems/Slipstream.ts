@@ -80,7 +80,7 @@ export class Slipstream {
     this.quality = q;
     // the first meter of a run counts speed once, not twice: a new (often touch) pilot drafting at 6 m/s still sees a
     // payout within a couple of seconds, while every later meter needs real speed
-    const intro = this.payouts === 0 && speed > S.minSpeed;
+    const intro = this.payouts === 0 && speed > S.introMinSpeed;
     const qFill = intro ? Math.max(q, this.wall * S.introSpeedFloor) : q;
     this.rate = qFill > S.minQuality ? S.fill * qFill * speed * (1 + S.hugBonus * this.hug) : 0;
     this.intensity += (q - this.intensity) * (1 - Math.exp(-6 * dt));

@@ -12,7 +12,7 @@ import { DebugTools } from '../systems/DebugTools';
 import { DeliverySystem } from '../systems/DeliverySystem';
 import { Slipstream } from '../systems/Slipstream';
 import { VfxSystem } from '../systems/VfxSystem';
-import { Hud } from '../ui/Hud';
+import { Hud, fmtX } from '../ui/Hud';
 import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
@@ -67,6 +67,13 @@ export class Game {
   private bankPaid = 0; // deliveries that paid a street bonus
   private bankLost = 0; // points cut from the bank by hard crashes
   private bankShownPay = false; // the run's first payout has been banked (it banks at least SLIPSTREAM.bankFirstMin)
+  // round 17: the run's ending (overtime, last call, time-up share of the bank)
+  private readonly legFrom = new THREE.Vector3(); // where the current leg started
+  private legRoute3 = 0; // its street route plus height change (the partial share is measured on this)
+  private finishHold = 0; // s: after the overtime delivery the run ends after this short beat
+  private partialShare = 0; // share of the leg flown at time-up (0..1), for the game-over row
+  private legClock = 0; // s since the current leg started
+  private otShare = 1; // share of the leg flown when overtime started: the overtime delivery pays this share of the bank
   // round 15 escalation: rush hour. From RUSH.startAt s some parcels are rush orders: deliver inside a short window for a flat bonus
   private rushOn = false;
   private rushAt = -1;
@@ -314,6 +321,12 @@ export class Game {
     this.bankPaid = 0;
     this.bankLost = 0;
     this.bankShownPay = false;
+    this.finishHold = 0;
+    this.partialShare = 0;
+    this.otShare = 1;
+    this.legClock = 0;
+    this.hud.setOvertime(false);
+    this.audio.setOvertime(false);
     this.rushOn = false;
     this.rushAt = -1;
     this.rushActive = false;
@@ -372,8 +385,41 @@ export class Game {
     this.canvas.focus({ preventScroll: true });
   }
 
+  /**
+   * Round 17: the clock is out for good. The street bonus banked on the current leg is not all lost: it pays by the share
+   * of the leg already flown (street route plus height), so ending 18 m short of a 150 m drop keeps nearly all of it.
+   * Only on a run that has delivered at least once, so a no-delivery farm still scores 0.
+   */
+  private timeUp(): void {
+    if (this.bank > 0 && this.delivery.deliveries > 0 && this.legRoute3 > 1 && this.onSchedule()) {
+      const share = this.legShare();
+      const pts = this.delivery.addPartial(this.bank * share);
+      this.partialShare = share;
+      this.scoreLog.push({ t: this.rt(), k: 'partial', v: pts, c: Math.round(share * 100) });
+      this.bank -= pts;
+    }
+    this.endRun();
+  }
+
+  /**
+   * Round 17: is the current leg on schedule (flown in at most RUN.scheduleSlack x its par)? Overtime and the time-up
+   * share of the bank are for a parcel in flight, not for one that sat aboard while its bank was farmed.
+   */
+  private onSchedule(): boolean {
+    return this.legClock <= RUN.scheduleSlack * (this.legRoute3 / RUN.parSpeed + RUN.parSlack);
+  }
+
+  /** Round 17: share of the current leg flown (street route left, plus any climb still needed), 0..1. */
+  private legShare(): number {
+    const p = this.drone.group.position, t = this.delivery.target.pos;
+    const left = Math.abs(t.x - p.x) + Math.abs(t.z - p.z) + Math.max(0, t.y - (p.y - FLIGHT.radius));
+    return this.legRoute3 > 1 ? Math.max(0, Math.min(1, 1 - left / this.legRoute3)) : 0;
+  }
+
   private endRun(): void {
     this.state = 'over';
+    this.hud.setOvertime(false);
+    this.audio.setOvertime(false);
     this.input.enabled = false;
     this.hud.setSpeedLines(0);
     this.audio.setRotor(false);
@@ -424,6 +470,10 @@ export class Game {
       rush: T.rush,
       rushMade: this.rushMade,
       rushOrders: this.rushOrders,
+      partial: T.partial,
+      partialShare: this.partialShare,
+      overtimeSeconds: T.overtimeSeconds,
+      overtimeDrop: T.overtimeDrop > 0,
       dailyNew: dailyNew && score > 0,
     });
     this.hud.showScreen('over');
@@ -532,6 +582,7 @@ export class Game {
     // brief hit-stop after hard impacts sells the collision
     const dt = this.hitStop > 0 ? realDt * 0.08 : realDt;
     this.runTime += dt;
+    this.legClock += dt;
     this.hitStop = Math.max(0, this.hitStop - realDt);
     this.input.read(this.intent);
     const d = this.drone;
@@ -582,6 +633,7 @@ export class Game {
       const bannerUp = this.rushAt >= 0 && this.runTime - this.rushAt < 3.2;
       if (this.rushActive && bannerUp) { /* tag in the pill shows the window */ }
       else if (this.rushActive) this.hud.popText('Rush order!', `Deliver in ${Math.ceil(this.rushWindow)} s for +${RUSH.bonus}`, 'rush');
+      else if (this.delivery.lastCall) this.hud.popText('Last call!', 'Short job · no time bonus', 'pickup');
       else this.hud.popText('Parcel secured!', 'Now deliver it', 'pickup');
       this.setMarkerFromDelivery();
     } else if (ev?.type === 'delivered') {
@@ -591,7 +643,16 @@ export class Game {
       this.vfx.burst(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 1), MARKER_COLORS.drop, 56, 12, 0.22, this.fxRng);
       this.vfx.ring(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 0.3), MARKER_COLORS.drop, 9);
       this.cameraRig.addShake(0.2);
-      const sub = ev.fast ? (ev.combo > 1 ? `Fast drop · x${this.delivery.multiplier.toFixed(1)} combo` : 'Fast drop!') : 'Delivered';
+      const sub = ev.fast ? (ev.combo > 1 ? `Fast drop · ${fmtX(this.delivery.multiplier)} combo` : 'Fast drop!') : 'Delivered';
+      // round 17: an overtime delivery pays the bank by the share of the leg flown when the clock ran out (so overtime
+      // finishes a parcel that was nearly there; it does not cash in a bank farmed far from the drop)
+      let otCut = 0;
+      if (ev.final && this.bank > 0) {
+        otCut = this.bank - Math.round(this.bank * this.otShare);
+        this.bank -= otCut;
+        this.bankLost += otCut;
+        if (otCut > 0) this.scoreLog.push({ t: this.rt(), k: 'otcut', v: otCut, c: Math.round(this.otShare * 100) });
+      }
       // the street bonus banked on this parcel run is paid now (the breakdown's "Street bonus" line is exactly these)
       const paid = this.bank > 0 ? this.delivery.addBonus(this.bank, 0, false) : 0;
       // round 15: a rush order delivered inside its window adds a flat bonus (no combo; counted in the fast drops line)
@@ -611,11 +672,23 @@ export class Game {
       this.newLeg(ev.site.pos);
       this.hud.setBank(0, false);
       const subs = [rush > 0 ? `Rush +${rush}` : sub];
-      if (paid > 0) subs.push(`street bonus +${paid}`);
+      if (paid > 0) subs.push(otCut > 0 ? `street bonus +${paid} (${Math.round(this.otShare * 100)}%)` : `street bonus +${paid}`);
       this.hud.popText(`+${ev.points + paid + rush}`, subs.join(' · '), 'drop');
       if (paid > 0) this.hud.slipPop(`+${paid}`, 1, 'Street bonus paid', true);
-      this.hud.flashTimeBonus(ev.timeBonus);
-      this.setMarkerFromDelivery();
+      if (ev.final) {
+        // round 17: the overtime delivery ends the run on a high: no new job, a short beat, then the game-over card
+        this.finishHold = 1.6;
+        this.scoreLog.push({ t: this.rt(), k: 'otdrop', v: ev.points + paid + rush });
+        this.hud.popText(`+${ev.points + paid + rush}`, 'Made it! · overtime delivery', 'drop');
+        this.hud.setObjective('drop', 'Run complete');
+        this.hud.setOvertime(false, true);
+        this.audio.setOvertime(false);
+        this.marker.hide();
+        d.hasGuide = false;
+      } else {
+        this.hud.flashTimeBonus(ev.timeBonus);
+        this.setMarkerFromDelivery();
+      }
     }
 
     this.updateRush(dt);
@@ -630,7 +703,8 @@ export class Game {
     }
     // music follows the chain, the clock and a close medal (within the last 15% of the way to it)
     const goal = nextGoal(this.delivery.score);
-    this.audio.setRunState(this.slip.chain, tl, !!goal && goal.progress >= 0.85);
+    // round 17: overtime stays in the last-10-s section (an overtime clock can start above it)
+    this.audio.setRunState(this.slip.chain, this.delivery.overtime ? Math.min(tl, 5) : tl, !!goal && goal.progress >= 0.85);
 
     this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80), d.headwind);
 
@@ -638,7 +712,7 @@ export class Game {
     this.checkMedal();
     this.hud.setCombo(this.delivery.multiplier, this.delivery.combo);
     this.hud.setDeliveries(this.delivery.deliveries);
-    this.hud.setTime(tl, RUN.startTime);
+    this.hud.setTime(tl, this.delivery.overtime ? this.delivery.overtimeGiven : RUN.startTime);
     this.hud.setBoost(d.boost, d.boosting);
     // true altitude above street level (consistent everywhere, rooftops included)
     this.hud.setTelemetry(d.speed, Math.max(0, dp.y - 0.85));
@@ -649,7 +723,27 @@ export class Game {
     this.hud.setWind(windy);
     this.updateNav();
 
-    if (tl <= 0) this.endRun();
+    // round 17: the clock hitting 0 with a parcel aboard starts overtime (once); otherwise the run is over
+    if (this.finishHold > 0) {
+      this.finishHold -= realDt;
+      if (this.finishHold <= 0) this.endRun();
+    } else if (tl <= 0) {
+      if (this.onSchedule() && this.delivery.startOvertime(d.group.position)) this.beginOvertime();
+      else this.timeUp();
+    }
+  }
+
+  /** Round 17: overtime starts. Banner, horn, the timer turns to an overtime count, the music goes to its top layer. */
+  private beginOvertime(): void {
+    this.otShare = this.legShare();
+    this.scoreLog.push({ t: this.rt(), k: 'overtime', v: this.delivery.overtimeGiven, c: Math.round(Math.hypot(this.delivery.target.pos.x - this.drone.group.position.x, this.delivery.target.pos.z - this.drone.group.position.z)) });
+    this.hud.eventPop('Overtime', `${this.delivery.overtimeGiven} s to finish this delivery · no new jobs`);
+    this.scoreLog.push({ t: this.rt(), k: 'otshare', v: Math.round(this.otShare * 100), c: this.bank });
+    this.hud.setOvertime(true);
+    this.audio.setOvertime(true);
+    this.audio.overtimeHorn();
+    this.cameraRig.addShake(0.15);
+    this.lastTick = -1;
   }
 
   /**
@@ -725,7 +819,7 @@ export class Game {
   private crashFeedback(label: string, seconds: number, comboLost: number, s: number, fresh: boolean, bankCut = 0): void {
     const d = this.drone;
     this.hud.flashTimePenalty(seconds);
-    let lost = comboLost > 0 ? `-${seconds} sec · x${comboLost.toFixed(1)} combo lost` : `-${seconds} sec`;
+    let lost = comboLost > 0 ? `-${seconds} sec · ${fmtX(comboLost)} combo lost` : `-${seconds} sec`;
     if (bankCut > 0) lost += ` · bonus -${bankCut}`;
     this.hud.popText(`${label}!`, lost, 'crash');
     if (comboLost > 0) this.hud.breakCombo(comboLost);
@@ -763,6 +857,9 @@ export class Game {
   private newLeg(from: THREE.Vector3): void {
     const t = this.delivery.target.pos;
     const route = Math.abs(t.x - from.x) + Math.abs(t.z - from.z);
+    this.legFrom.copy(from);
+    this.legRoute3 = route + Math.max(0, t.y - from.y);
+    this.legClock = 0;
     this.legCap = Math.max(SLIPSTREAM.bankLegMin, Math.round(route * SLIPSTREAM.bankPerMetre));
     this.legBanked = 0;
     this.scoreLog.push({ t: this.rt(), k: 'leg', v: Math.round(route), c: this.legCap });
@@ -863,13 +960,14 @@ export class Game {
     // (round 13: only on the way to the objective, and at most `clockBudget` seconds per leg, so it pays delivering)
     this.slipClockK = this.slipClockPace();
     this.slipToward = this.slipClockK > 0 ? this.slipTowardTarget() : 1;
-    const want = SLIPSTREAM.clockRate * this.slipClockK * this.slipToward * this.delivery.clockDecay * dt;
+    // round 17: no slow clock in overtime (overtime is a fixed window)
+    const want = this.delivery.overtime ? 0 : SLIPSTREAM.clockRate * this.slipClockK * this.slipToward * this.delivery.clockDecay * dt;
     const give = Math.min(want, this.slipBudget);
     const added = give > 0 ? this.delivery.addClock(give) : 0;
     this.slipBudget = Math.max(0, this.slipBudget - added);
     this.slip.seconds += added;
     this.slipClockGain = dt > 0 ? added / dt : 0;
-    const idle = this.slipClockK < 0.3 || this.slipClockGain >= 0.03 ? '' : this.slipBudget <= 0 ? 'spent' : this.slipToward < 0.05 ? 'away' : '';
+    const idle = this.delivery.overtime || this.slipClockK < 0.3 || this.slipClockGain >= 0.03 ? '' : this.slipBudget <= 0 ? 'spent' : this.slipToward < 0.05 ? 'away' : '';
     this.hud.setSlowClock(this.slipClockGain, dt, this.slipBudget, idle);
     if (ev?.type === 'tick') this.audio.slipTick(ev.step);
     else if (ev?.type === 'payout') {
@@ -1020,6 +1118,7 @@ export class Game {
       complete: this.state === 'over',
       timeLeft: this.delivery.timeLeft,
       deliveries: this.delivery.deliveries,
+      ending: { overtime: this.delivery.overtime, finished: this.delivery.finished, lastCall: this.delivery.lastCall, overtimeSeconds: this.delivery.tally.overtimeSeconds, partial: this.delivery.tally.partial, partialShare: this.partialShare, legRoute: this.legRoute3 },
       combo: this.delivery.combo,
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },

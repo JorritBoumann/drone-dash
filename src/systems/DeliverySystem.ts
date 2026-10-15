@@ -43,7 +43,7 @@ export function jobSpec(phase: 'pickup' | 'drop', n: number, roofSlot: boolean, 
 export type DeliveryPhase = 'pickup' | 'deliver';
 export type DeliveryEvent =
   | { type: 'picked'; site: Site }
-  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number }
+  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number; final: boolean }
   | null;
 
 export type Tally = {
@@ -56,8 +56,11 @@ export type Tally = {
   dropSeconds: number; // clock seconds earned by deliveries
   slipSeconds: number; // clock seconds earned by slipstream payouts
   crashSeconds: number; // clock seconds lost to crashes
+  partial: number; // round 17: street bonus paid at time-up by the share of the leg flown (a part of `slip`, its own game-over row)
+  overtimeSeconds: number; // round 17: seconds flown in overtime
+  overtimeDrop: number; // round 17: 1 if the run ended on a delivery made in overtime
 };
-export const newTally = (): Tally => ({ drops: 0, fast: 0, combo: 0, slip: 0, fastCount: 0, rush: 0, dropSeconds: 0, slipSeconds: 0, crashSeconds: 0 });
+export const newTally = (): Tally => ({ drops: 0, fast: 0, combo: 0, slip: 0, fastCount: 0, rush: 0, dropSeconds: 0, slipSeconds: 0, crashSeconds: 0, partial: 0, overtimeSeconds: 0, overtimeDrop: 0 });
 
 /** Objective loop: pick a parcel up, drop it off before the clock runs out; fast drops chain combos. */
 export class DeliverySystem {
@@ -72,6 +75,12 @@ export class DeliverySystem {
   legPar = 0;
   legDistance = 0;
   legRoute = 0;
+  /** Round 17: overtime is running (the clock hit 0 with a parcel aboard). Once a run. */
+  overtime = false;
+  /** Round 17: the overtime delivery is made; the run is over (no new job, the clock stops). */
+  finished = false;
+  /** Round 17: the current drop was assigned on last call (short, street level). */
+  lastCall = false;
   /** Where every point and second of the run came from (game-over breakdown). The point lines sum exactly to `score`. */
   readonly tally = newTally();
   private lastSiteId = -1;
@@ -85,6 +94,10 @@ export class DeliverySystem {
     this.score = 0;
     this.combo = 0;
     this.deliveries = 0;
+    this.overtime = false;
+    this.overtimeGiven = 0;
+    this.finished = false;
+    this.lastCall = false;
     this.lastSiteId = -1;
     Object.assign(this.tally, newTally());
     this.isClear = isClear;
@@ -126,15 +139,37 @@ export class DeliverySystem {
 
   /** Slow clock: drafting adds clock time (no points). Returns the seconds added; they count as slipstream seconds. */
   addClock(seconds: number): number {
-    if (seconds <= 0 || this.timeLeft <= 0) return 0;
+    if (seconds <= 0 || this.timeLeft <= 0 || this.overtime) return 0;
     this.timeLeft += seconds;
     this.tally.slipSeconds += seconds;
     return seconds;
   }
 
+  /** Round 17: the clock hit 0 with a parcel aboard: start overtime (once a run). Returns false if it cannot start. */
+  startOvertime(drone: THREE.Vector3): boolean {
+    if (this.overtime || this.finished || this.phase !== 'deliver') return false;
+    const t = this.target.pos;
+    const left = Math.abs(t.x - drone.x) + Math.abs(t.z - drone.z) + Math.abs(t.y - drone.y);
+    this.overtime = true;
+    this.timeLeft = Math.round(Math.max(RUN.overtimeMin, Math.min(RUN.overtime, left / RUN.overtimeSpeed + RUN.overtimeSlack)));
+    this.overtimeGiven = this.timeLeft;
+    return true;
+  }
+  /** Round 17: the overtime seconds given (shown in the banner). */
+  overtimeGiven = 0;
+
+  /** Round 17: time-up share of the banked street bonus (a part of the street bonus line). */
+  addPartial(points: number): number {
+    const pts = Math.max(0, Math.round(points));
+    this.score += pts;
+    this.tally.slip += pts;
+    this.tally.partial += pts;
+    return pts;
+  }
+
   /** Clock bonuses shrink as the run goes on: drop time and the slipstream's slow clock scale by this. */
   get clockDecay(): number {
-    return Math.max(0.55, 1 - this.deliveries * 0.035);
+    return Math.max(0.55, 1 - this.deliveries * RUN.clockDecayStep);
   }
 
   get multiplier(): number {
@@ -191,6 +226,8 @@ export class DeliverySystem {
 
   /** Check arrival at the active objective. */
   update(dt: number, rng: Rng, drone: THREE.Vector3, droneRadius: number): DeliveryEvent {
+    if (this.finished) return null;
+    if (this.overtime) this.tally.overtimeSeconds += Math.min(dt, this.timeLeft);
     this.timeLeft = Math.max(0, this.timeLeft - dt);
     this.legTime += dt;
     const t = this.target;
@@ -208,7 +245,16 @@ export class DeliverySystem {
       // Round 16: every city gets the same kind of drop sequence: street distance in a fixed band that grows slowly,
       // street-level drops except a rooftop on every third drop (height capped), whatever the city's pad mix.
       const roofSlot = n % JOBS.roofEvery === JOBS.roofEvery - 1;
-      const spec = jobSpec('drop', n, roofSlot, rng());
+      const roll = rng();
+      // Round 17: last call. With little clock left the drop must fit the time left plus overtime, at street level, so a
+      // late pickup never hands out a long rooftop job that cannot be finished. Same rng draws, so earlier legs are unchanged.
+      this.lastCall = this.timeLeft < RUN.lastCallAt;
+      let spec = jobSpec('drop', n, roofSlot && !this.lastCall, roll);
+      if (this.lastCall) {
+        const reach = Math.max(RUN.lastCallMin, (this.timeLeft + RUN.overtimeMin) * RUN.lastCallSpeed);
+        const hi = Math.min(spec.streetMax, reach);
+        spec = { ...spec, streetMax: hi, streetMin: Math.min(spec.streetMin, hi * 0.6) };
+      }
       this.target = this.pickLeg(rng, t.pos, spec, this.approachable(t.pos));
       this.legDistance = Math.hypot(this.target.pos.x - t.pos.x, this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
       // par is judged on the street route (grid distance) at a clean street pace with corners, so a pilot who follows the
@@ -224,7 +270,10 @@ export class DeliverySystem {
     const fast = this.legTime <= this.legPar;
     this.combo = fast ? this.combo + 1 : 0;
     const decay = this.clockDecay;
-    const timeBonus = Math.round(Math.max(RUN.minTimeBonus, Math.min(20, 5 + this.legDistance / 11)) * decay);
+    // Round 17: a delivery made in overtime adds no clock and ends the run (overtime cannot chain)
+    const final = this.overtime;
+    // Round 17: a last-call drop is short and adds no clock either, so short late legs cannot keep a run alive forever
+    const timeBonus = final || this.lastCall ? 0 : Math.round(Math.max(RUN.minTimeBonus, Math.min(20, 5 + this.legDistance / 11)) * decay);
     const plain = Math.round(RUN.baseScore + this.legDistance * 1.2);
     const fastPts = fast ? RUN.fastBonus : 0;
     const points = Math.round((RUN.baseScore + this.legDistance * 1.2 + fastPts) * this.multiplier);
@@ -239,9 +288,19 @@ export class DeliverySystem {
     this.timeLeft += timeBonus;
     const site = t;
     this.phase = 'pickup';
-    // next pickup reasonably close so the loop keeps moving (round 16: a street-distance band, low pads only)
-    this.target = this.pickLeg(rng, t.pos, jobSpec('pickup', this.deliveries, false, 0), this.approachable(t.pos));
+    this.lastCall = false;
+    if (final) {
+      this.finished = true;
+      T.overtimeDrop = 1;
+      return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final };
+    }
+    // next pickup reasonably close so the loop keeps moving (round 16: a street-distance band, low pads only).
+    // Round 17: never further than the clock left can reach (at last-call pace), so the last pickup is a real chance.
+    const pspec = jobSpec('pickup', this.deliveries, false, 0);
+    const preach = Math.max(30, this.timeLeft * RUN.lastCallSpeed);
+    if (preach < pspec.streetMax) Object.assign(pspec, { streetMax: preach, streetMin: Math.min(pspec.streetMin, preach * 0.6) });
+    this.target = this.pickLeg(rng, t.pos, pspec, this.approachable(t.pos));
     this.legTime = 0;
-    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar };
+    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final };
   }
 }

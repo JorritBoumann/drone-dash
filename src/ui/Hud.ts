@@ -28,12 +28,18 @@ export type RunSummary = {
   rush: number; // rush order bonus points (part of `fast`)
   rushMade: number;
   rushOrders: number;
+  partial: number; // round 17: street bonus paid at time-up by the share of the leg flown (part of `slip`)
+  partialShare: number; // 0..1
+  overtimeSeconds: number; // round 17: seconds flown in overtime
+  overtimeDrop: boolean; // round 17: the run ended on a delivery made in overtime
   dailyNew: boolean;
 };
 
 export type CityInfo = { mode: 'seed' | 'random' | 'daily'; label: string; best: number; tier: number };
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+/** Round 17: combo multipliers step by 0.15 (x1.15, x1.3, x1.45 ...): up to two decimals, no trailing zero. */
+export const fmtX = (m: number) => `x${Math.round(m * 100) / 100}`;
 /** Clock seconds: whole numbers plain, halves with one decimal (2, 2.5). */
 const fmtSec = (n: number) => (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '');
 /** Game-over detail for the street bonus row: how many drops paid one, and what was lost (not part of the sum). */
@@ -293,12 +299,21 @@ export class Hud {
     if (combo > 0 || !this.comboChip.classList.contains('broken')) this.comboChip.hidden = combo <= 0;
     if (combo > 0) this.comboChip.classList.remove('broken');
     // a breaking chip keeps showing the multiplier that was lost
-    if (combo > 0 || !this.comboChip.classList.contains('broken')) this.comboValue.textContent = `x${mult.toFixed(1)}`;
+    if (combo > 0 || !this.comboChip.classList.contains('broken')) this.comboValue.textContent = fmtX(mult);
   }
+
+  /** Round 17: overtime look for the timer (gold, "OT 9", fast pulse); `done` holds it on a finished overtime run. */
+  setOvertime(on: boolean, done = false): void {
+    this.overtime = on || done;
+    this.timer.classList.toggle('ot', on);
+    this.timer.classList.toggle('ot-done', done);
+    this.last.time = '';
+  }
+  private overtime = false;
 
   setTime(seconds: number, startTime: number): void {
     const s = Math.ceil(seconds);
-    const text = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const text = this.overtime ? `OT ${s}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     if (text !== this.last.time) {
       this.last.time = text;
       this.timerValue.textContent = text;
@@ -374,7 +389,7 @@ export class Hud {
   /** The combo chip cracks and falls away instead of silently disappearing. */
   breakCombo(lost: number): void {
     window.clearTimeout(this.comboBreakTimer);
-    this.comboValue.textContent = `x${lost.toFixed(1)}`;
+    this.comboValue.textContent = fmtX(lost);
     this.comboChip.hidden = false;
     this.comboChip.classList.remove('broken');
     void this.comboChip.offsetWidth;
@@ -609,15 +624,17 @@ export class Hud {
       row('Deliveries', `×${r.deliveries}`, r.drops),
       row('Fast drops', `×${r.fastCount}`, r.fast - r.rush),
       ...(r.rushOrders > 0 ? [row('Rush orders', `${r.rushMade} of ${r.rushOrders} in time`, r.rush)] : []),
-      row('Combo bonus', r.topCombo > 1 ? `up to x${r.topCombo.toFixed(1)}` : '', r.combo),
-      row('Street bonus', bankDetail(r), r.slip),
+      row('Combo bonus', r.topCombo > 1 ? `up to ${fmtX(r.topCombo)}` : '', r.combo),
+      row('Street bonus', bankDetail(r), r.slip - r.partial),
+      ...(r.partial > 0 ? [row('Last leg', `${Math.round(r.partialShare * 100)}% flown at time-up`, r.partial)] : []),
       `<div class="total"><dt>Score</dt><dd>${fmt(r.score)}</dd></div>`,
     ];
     $('over-breakdown').innerHTML = rows.join('');
     // the run's length: the clock only moves by these amounts, so this sums exactly to the seconds flown
-    const flown = r.startTime + r.dropSeconds + r.slipSeconds - r.crashSeconds;
+    const flown = r.startTime + r.dropSeconds + r.slipSeconds - r.crashSeconds + r.overtimeSeconds;
     const parts = [`${fmt(r.startTime)} s start`, `+${fmt(r.dropSeconds)} s drops`];
     if (r.slipSeconds > 0) parts.push(`+${fmtSec(r.slipSeconds)} s slipstream`);
+    if (r.overtimeSeconds > 0) parts.push(`+${fmtSec(r.overtimeSeconds)} s overtime${r.overtimeDrop ? ' (delivered)' : ''}`);
     if (r.crashSeconds > 0) parts.push(`<em>−${r.crashSeconds.toFixed(1).replace(/\.0$/, '')} s ${r.crashes} crash${r.crashes === 1 ? '' : 'es'}</em>`);
     const m = Math.floor(flown / 60), sec = Math.round(flown % 60);
     $('over-time').innerHTML = `Flew ${m}:${String(sec).padStart(2, '0')} <small>${parts.join(' ')}</small>`;

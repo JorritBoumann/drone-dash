@@ -83,3 +83,15 @@ export function writeDaily(v: DailyBest): void {
     /* storage unavailable */
   }
 }
+
+/**
+ * Round 16: a city's look, from its seed (a separate hash, so it never touches the layout or parcel random numbers):
+ * the light mood (index into Environment.MOODS) and how many parks it has (2 to 4; 3 was every city before).
+ */
+export type CityLook = { mood: number; parks: number };
+export function cityLook(seed: number): CityLook {
+  let h = Math.imul((seed ^ 0x9e3779b9) >>> 0, 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  return { mood: h % 4, parks: 2 + ((h >>> 8) % 3) };
+}

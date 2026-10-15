@@ -3,6 +3,43 @@ import type { Rng } from '../core/random';
 import { RUN } from '../game/config';
 import type { Site } from '../world/CityGenerator';
 
+/**
+ * Round 16 job sequence. The same street pilot scored 1,178 to 7,208 on nine cities because the city roll set the
+ * legs: tower-heavy cities sent the first parcels up 30 to 42 m roofs, and some cities opened with 300 m of street before
+ * the first drop. Legs now follow one spec on every city (street distance = grid distance from the last stop):
+ * - first pickup: 45 to 95 m of street, a pad at most 12 m up;
+ * - pickups: 45 to 105 m, at most 16 m up;
+ * - drops: 105 to 165 m, growing 6 m per delivery up to 150 to 225 m; street level, except every third drop is a
+ *   rooftop between 9 and 24 m up (+4 m per delivery, at most 40 m).
+ */
+export const JOBS = {
+  first: { kinds: ['depot', 'park', 'rooftop', 'doorstep'], minY: -1, maxY: 12, streetMin: 45, streetMax: 95 } as LegSpec,
+  pickupMin: 45,
+  pickupMax: 105,
+  pickupMaxY: 16,
+  dropMin: 105,
+  dropMax: 165,
+  dropGrow: 6,
+  dropMinCap: 150,
+  dropMaxCap: 225,
+  roofEvery: 3,
+  roofMinY: 9,
+  roofMaxY: 24,
+  roofGrow: 4,
+  roofMaxCap: 40,
+  doorstepShare: 0.7, // street-level drops: this share goes to a shop doorstep, the rest to a park or depot pad
+};
+export type LegSpec = { kinds: Site['kind'][]; minY: number; maxY: number; streetMin: number; streetMax: number };
+
+export function jobSpec(phase: 'pickup' | 'drop', n: number, roofSlot: boolean, roll: number): LegSpec {
+  const J = JOBS;
+  if (phase === 'pickup') return { kinds: ['rooftop', 'doorstep', 'park', 'depot'], minY: -1, maxY: J.pickupMaxY, streetMin: J.pickupMin, streetMax: J.pickupMax };
+  const streetMin = Math.min(J.dropMin + n * J.dropGrow, J.dropMinCap);
+  const streetMax = Math.min(J.dropMax + n * J.dropGrow * 1.5, J.dropMaxCap);
+  if (roofSlot) return { kinds: ['rooftop'], minY: J.roofMinY, maxY: Math.min(J.roofMaxY + n * J.roofGrow, J.roofMaxCap), streetMin, streetMax };
+  return { kinds: roll < J.doorstepShare ? ['doorstep'] : ['park', 'depot', 'doorstep'], minY: -1, maxY: 3, streetMin, streetMax };
+}
+
 export type DeliveryPhase = 'pickup' | 'deliver';
 export type DeliveryEvent =
   | { type: 'picked'; site: Site }
@@ -52,8 +89,8 @@ export class DeliverySystem {
     Object.assign(this.tally, newTally());
     this.isClear = isClear;
     this.phase = 'pickup';
-    // first objective: prefer one reachable in a straight, unobstructed line from the spawn
-    this.target = this.choose(rng, from, 35, 110, ['depot', 'park', 'rooftop'], isClear ? (s) => isClear(from, s.pos) : undefined);
+    // Round 16: the first pickup is a short, low hop on every city (no tower roof), preferably in a clear straight line.
+    this.target = this.pickLeg(rng, from, JOBS.first, isClear ? (s) => isClear(from, s.pos) : undefined);
     this.pickupSite = this.target;
     this.legTime = 0;
   }
@@ -121,19 +158,35 @@ export class DeliverySystem {
     };
   }
 
-  private choose(rng: Rng, from: THREE.Vector3, minD: number, maxD: number, kinds?: Site['kind'][], ok?: (s: Site) => boolean): Site {
-    const base = this.sites.filter((s) => {
-      if (s.id === this.lastSiteId) return false;
-      if (kinds && !kinds.includes(s.kind)) return false;
-      const d = Math.hypot(s.pos.x - from.x, s.pos.z - from.z);
-      return d >= minD && d <= maxD;
-    });
-    const preferred = ok ? base.filter(ok) : base;
-    const pool = preferred.length ? preferred : base;
-    const list = pool.length ? pool : this.sites.filter((s) => s.id !== this.lastSiteId);
-    const s = list[Math.floor(rng() * list.length) % list.length];
-    this.lastSiteId = s.id;
-    return s;
+  /**
+   * Round 16: pick the next objective to a leg spec, so the city roll does not decide how long or how high the legs
+   * are. Candidates must be of an allowed kind, inside the height range and inside the street-distance band (grid
+   * distance, the route a street pilot flies). If none fits, the band widens step by step, then the height rule goes,
+   * then any site will do. `ok` (clear approach) is a preference inside each step, as before.
+   */
+  private pickLeg(rng: Rng, from: THREE.Vector3, spec: LegSpec, ok?: (s: Site) => boolean): Site {
+    const street = (s: Site) => Math.abs(s.pos.x - from.x) + Math.abs(s.pos.z - from.z);
+    const pickFrom = (list: Site[]): Site => {
+      const preferred = ok ? list.filter(ok) : list;
+      const pool = preferred.length ? preferred : list;
+      const s = pool[Math.floor(rng() * pool.length) % pool.length];
+      this.lastSiteId = s.id;
+      return s;
+    };
+    const others = this.sites.filter((s) => s.id !== this.lastSiteId);
+    for (const strict of [true, false]) {
+      for (let widen = 0; widen <= 4; widen++) {
+        const lo = spec.streetMin * (1 - widen * 0.15), hi = spec.streetMax * (1 + widen * 0.15);
+        const list = others.filter((s) => {
+          if (strict && (!spec.kinds.includes(s.kind) || s.pos.y < spec.minY || s.pos.y > spec.maxY)) return false;
+          if (!strict && s.pos.y > spec.maxY + 15) return false;
+          const d = street(s);
+          return d >= lo && d <= hi;
+        });
+        if (list.length) return pickFrom(list);
+      }
+    }
+    return pickFrom(others);
   }
 
   /** Check arrival at the active objective. */
@@ -150,12 +203,13 @@ export class DeliverySystem {
     if (this.phase === 'pickup') {
       this.phase = 'deliver';
       const n = this.deliveries;
-      const minD = Math.min(70 + n * 6, 150);
-      const maxD = Math.min(150 + n * 10, 260);
       const picked = t;
       this.pickupSite = t;
-      const kinds: Site['kind'][] = rng() < 0.45 ? ['doorstep'] : ['rooftop', 'doorstep', 'park', 'depot'];
-      this.target = this.choose(rng, t.pos, minD, maxD, kinds, this.approachable(t.pos));
+      // Round 16: every city gets the same kind of drop sequence: street distance in a fixed band that grows slowly,
+      // street-level drops except a rooftop on every third drop (height capped), whatever the city's pad mix.
+      const roofSlot = n % JOBS.roofEvery === JOBS.roofEvery - 1;
+      const spec = jobSpec('drop', n, roofSlot, rng());
+      this.target = this.pickLeg(rng, t.pos, spec, this.approachable(t.pos));
       this.legDistance = Math.hypot(this.target.pos.x - t.pos.x, this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
       // par is judged on the street route (grid distance) at a clean street pace with corners, so a pilot who follows the
       // streets makes it without needing the slipstream (drafting earns its own points, never delivery points)
@@ -185,8 +239,8 @@ export class DeliverySystem {
     this.timeLeft += timeBonus;
     const site = t;
     this.phase = 'pickup';
-    // next pickup reasonably close so the loop keeps moving
-    this.target = this.choose(rng, t.pos, 30, 95 + Math.min(this.deliveries * 5, 60), undefined, this.approachable(t.pos));
+    // next pickup reasonably close so the loop keeps moving (round 16: a street-distance band, low pads only)
+    this.target = this.pickLeg(rng, t.pos, jobSpec('pickup', this.deliveries, false, 0), this.approachable(t.pos));
     this.legTime = 0;
     return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar };
   }

@@ -205,12 +205,16 @@ export const RUSH = {
  * no-delivery farm scores 0 and the lazy flier keeps little of its drafting. Lazy best 1,249; routed street worst 2,046
  * (gap 797). Silver 1600 -> 1650 sits 401 above and 396 below. Ace 7500 -> 8500: the street line now keeps more of
  * a fast run's drafting (best bot 6,927, desktop medal journey 6,903). See progress/round-14/builder.md.
+ * Round 16: legs follow one spec on every city (DeliverySystem.JOBS: bounded street distance, low pickups, a capped
+ * rooftop every third drop), so runs no longer die on a tower-heavy first leg. The street bot now makes 4 to 5 drops
+ * (4,945 to 8,891 on the four hardest round 15 cities) and the lazy bot 2 (1,210 to 1,637). Silver 1650 -> 2500,
+ * Gold 4500 -> 6000, Ace 8500 -> 10000. See progress/round-16/builder.md.
  */
 export const GOALS = {
   tiers: [
     { name: 'Bronze', score: 1000 },
-    { name: 'Silver', score: 1650 },
-    { name: 'Gold', score: 4500 },
-    { name: 'Ace', score: 8500 },
+    { name: 'Silver', score: 2500 },
+    { name: 'Gold', score: 6000 },
+    { name: 'Ace', score: 10000 },
   ],
 };

@@ -15,10 +15,10 @@ import { VfxSystem } from '../systems/VfxSystem';
 import { Hud } from '../ui/Hud';
 import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
-import { createSky, Environment, LightingRig, PALETTE } from '../world/Environment';
+import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
 import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
-import { cityUrl, dateLabel, readDaily, resolveCity, writeDaily, type CityPick } from './cities';
+import { cityLook, cityUrl, dateLabel, readDaily, resolveCity, writeDaily, type CityLook, type CityPick } from './cities';
 import { auditPads } from '../world/padAudit';
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
 
@@ -100,6 +100,7 @@ export class Game {
   private readonly seed: number;
   private readonly city: CityPick; // round 15: which city this load built (seed, random or daily)
   private daily = { date: '', best: 0, tier: 0 };
+  private readonly look: CityLook;
   private rng: Rng;
   private readonly fxRng: Rng;
   private readonly intent: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
@@ -163,7 +164,10 @@ export class Game {
     this.pipeline = new RenderPipeline(this.renderer, this.scene, this.camera, usePost);
 
     // ----- World -----
-    this.layout = generateCity(createSeededRandom(this.seed));
+    // round 16: the city's look (light mood, park count) comes from its seed
+    this.look = cityLook(this.seed);
+    applyMood(MOODS[this.look.mood]);
+    this.layout = generateCity(createSeededRandom(this.seed), 7, this.look.parks);
     this.world = new CollisionWorld(this.layout.colliders, 0);
     this.cityMaterial = createCityMaterial();
     const city = new THREE.Mesh(this.layout.geometry, this.cityMaterial);
@@ -178,7 +182,7 @@ export class Game {
     this.scene.background = PALETTE.horizon.clone();
     this.bakeEnvironment();
 
-    this.lighting = new LightingRig(this.scene, touch ? 1024 : QUALITY.shadowMapSize, QUALITY.shadowExtent);
+    this.lighting = new LightingRig(this.scene, touch ? 1024 : QUALITY.shadowMapSize, QUALITY.shadowExtent, MOODS[this.look.mood]);
     this.env = new Environment(this.layout, this.seed);
     this.scene.add(this.env.group);
 
@@ -1021,7 +1025,7 @@ export class Game {
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
       slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
       scoreLog: this.scoreLog,
-      city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier },
+      city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier, mood: MOODS[this.look.mood].name, parks: this.look.parks },
       escalation: { kind: 'rush', on: this.rushOn, startedAt: this.rushAt, stage: !this.rushOn ? 0 : this.runTime >= RUSH.everyAt ? 2 : 1, orders: this.rushOrders, made: this.rushMade, missed: this.rushMissed, points: this.rushPoints, active: this.rushActive, left: Math.max(0, this.rushLeft), window: this.rushWindow },
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
@@ -1105,7 +1109,7 @@ export class Game {
       // round 15 test hook: build cities for these seeds (no rendering) and audit every pad (see world/padAudit.ts)
       padAudit: (seeds: number[]) =>
         seeds.map((seed) => {
-          const layout = generateCity(createSeededRandom(seed));
+          const layout = generateCity(createSeededRandom(seed), 7, cityLook(seed).parks);
           const issues = auditPads(layout, FLIGHT.maxAltitude, 1.2, FLIGHT.radius);
           layout.geometry.dispose();
           return { seed, sites: layout.sites.length, issues };

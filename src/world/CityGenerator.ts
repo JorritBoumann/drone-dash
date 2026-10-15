@@ -56,7 +56,7 @@ const cyl8 = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
 const cyl16 = new THREE.CylinderGeometry(1, 1, 1, 20, 1);
 const cone8 = new THREE.ConeGeometry(1, 1, 10, 1);
 
-export function generateCity(rng: Rng, blocks = 7): CityLayout {
+export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
   const B = 32;
   const R = 12;
   const size = blocks * B + (blocks + 1) * R;
@@ -102,7 +102,7 @@ export function generateCity(rng: Rng, blocks = 7): CityLayout {
     }
   };
   choose('depot', 2);
-  choose('park', 3);
+  choose('park', parks); // round 16: 2 to 4 parks per city (cities.cityLook); with 3 the layout is unchanged
   let depotNo = 0;
 
   for (let bi = 0; bi < blocks; bi++) {

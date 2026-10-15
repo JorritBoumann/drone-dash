@@ -14,6 +14,32 @@ export const PALETTE = {
 
 export const SUN_DIR = new THREE.Vector3(-0.72, 0.34, -0.6).normalize();
 
+/**
+ * Round 16: each city has a light mood picked from its seed (cities.cityLook), all in the warm painterly style.
+ * `applyMood` rewrites PALETTE and SUN_DIR in place before the sky, fog and lights are built, so every user of the
+ * palette (sky shader uniforms, fog, background, the baked environment light) follows. Golden hour is the original look.
+ */
+export type Mood = {
+  name: string;
+  skyTop: string; skyMid: string; horizon: string; sun: string; fog: string;
+  sunLight: string; sunIntensity: number; hemiSky: string; hemiGround: string; hemiIntensity: number;
+  sunDir: [number, number, number];
+};
+export const MOODS: Mood[] = [
+  { name: 'Golden hour', skyTop: '#3f6fb8', skyMid: '#d79a86', horizon: '#ffbd85', sun: '#ffe0a8', fog: '#eeae80', sunLight: '#ffb36b', sunIntensity: 4.0, hemiSky: '#8fb0ec', hemiGround: '#8a5a40', hemiIntensity: 0.42, sunDir: [-0.72, 0.34, -0.6] },
+  { name: 'Bright morning', skyTop: '#3d7cc9', skyMid: '#9cc3e4', horizon: '#f2dcc0', sun: '#fff2d6', fog: '#dcd3c6', sunLight: '#fff0d8', sunIntensity: 3.5, hemiSky: '#a9c9f0', hemiGround: '#8a6a52', hemiIntensity: 0.55, sunDir: [0.55, 0.62, -0.56] },
+  { name: 'Rose dusk', skyTop: '#33468f', skyMid: '#c4849c', horizon: '#ffa486', sun: '#ffc39a', fog: '#d8978c', sunLight: '#ff9670', sunIntensity: 3.6, hemiSky: '#9b9ddb', hemiGround: '#7a4a48', hemiIntensity: 0.5, sunDir: [0.78, 0.24, 0.58] },
+  { name: 'Hazy noon', skyTop: '#4f8db4', skyMid: '#b4d0cc', horizon: '#f5e2b2', sun: '#fff1c4', fog: '#e4dbb8', sunLight: '#ffe4b0', sunIntensity: 3.7, hemiSky: '#b2d2e0', hemiGround: '#8a7050', hemiIntensity: 0.52, sunDir: [-0.35, 0.72, 0.6] },
+];
+export function applyMood(m: Mood): void {
+  PALETTE.skyTop.set(m.skyTop);
+  PALETTE.skyMid.set(m.skyMid);
+  PALETTE.horizon.set(m.horizon);
+  PALETTE.sun.set(m.sun);
+  PALETTE.fog.set(m.fog);
+  SUN_DIR.set(...m.sunDir).normalize();
+}
+
 /** Gradient sky dome with sun disc, halo and painterly cloud bands. */
 export function createSky(): THREE.Mesh {
   const material = new THREE.ShaderMaterial({
@@ -84,10 +110,10 @@ export class LightingRig {
   readonly hemi: THREE.HemisphereLight;
   private readonly texel: number;
 
-  constructor(scene: THREE.Scene, mapSize: number, extent: number) {
-    this.hemi = new THREE.HemisphereLight('#8fb0ec', '#8a5a40', 0.42);
+  constructor(scene: THREE.Scene, mapSize: number, extent: number, mood: Mood = MOODS[0]) {
+    this.hemi = new THREE.HemisphereLight(mood.hemiSky, mood.hemiGround, mood.hemiIntensity);
     scene.add(this.hemi);
-    this.sun = new THREE.DirectionalLight('#ffb36b', 4.0);
+    this.sun = new THREE.DirectionalLight(mood.sunLight, mood.sunIntensity);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(mapSize, mapSize);
     const cam = this.sun.shadow.camera;

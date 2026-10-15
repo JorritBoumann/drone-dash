@@ -15,11 +15,12 @@ export type Tally = {
   combo: number; // extra points from the delivery combo multiplier
   slip: number; // slipstream payouts
   fastCount: number;
+  rush: number; // round 15: rush order bonuses (a part of `fast`, shown as its own game-over row)
   dropSeconds: number; // clock seconds earned by deliveries
   slipSeconds: number; // clock seconds earned by slipstream payouts
   crashSeconds: number; // clock seconds lost to crashes
 };
-export const newTally = (): Tally => ({ drops: 0, fast: 0, combo: 0, slip: 0, fastCount: 0, dropSeconds: 0, slipSeconds: 0, crashSeconds: 0 });
+export const newTally = (): Tally => ({ drops: 0, fast: 0, combo: 0, slip: 0, fastCount: 0, rush: 0, dropSeconds: 0, slipSeconds: 0, crashSeconds: 0 });
 
 /** Objective loop: pick a parcel up, drop it off before the clock runs out; fast drops chain combos. */
 export class DeliverySystem {
@@ -74,6 +75,15 @@ export class DeliverySystem {
     this.timeLeft += seconds;
     this.tally.slip += pts;
     this.tally.slipSeconds += seconds;
+    return pts;
+  }
+
+  /** Rush order bonus (round 15): flat points, no combo. Counted in `fast` (and in `rush`), so the lines still sum to `score`. */
+  addRush(points: number): number {
+    const pts = Math.round(points);
+    this.score += pts;
+    this.tally.fast += pts;
+    this.tally.rush += pts;
     return pts;
   }
 

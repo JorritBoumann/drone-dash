@@ -413,6 +413,29 @@ export class AudioSystem {
     this.tone(220, t, 0.4, 'softsaw', 0.03, 0, 440);
   }
 
+  /** Round 15: rush hour starts. A two-note courier horn, played twice, over a short duck. */
+  rushHour(): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime;
+    this.duck(0.4, t, 0.9, 0.6, 'rush');
+    [0, 0.34].forEach((o) => {
+      this.tone(587.33, t + o, 0.14, 'square', 0.05, 0.3);
+      this.tone(587.33, t + o, 0.14, 'sine', 0.14, 0.3);
+      this.tone(880, t + o + 0.15, 0.16, 'square', 0.05, 0.3);
+      this.tone(880, t + o + 0.15, 0.16, 'sine', 0.14, 0.3);
+    });
+    this.tone(146.83, t, 0.7, 'sine', 0.16, 0.2);
+    this.noise(t + 0.1, 0.5, 0.04, 'highpass', 5000, 9000);
+  }
+
+  /** Round 15: a rush order is aboard: a quick rising double beep. */
+  rushOrder(): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime;
+    this.tone(987.77, t + 0.05, 0.08, 'square', 0.04, 0.2);
+    this.tone(1318.5, t + 0.15, 0.12, 'square', 0.045, 0.3);
+  }
+
   tick(urgent: boolean): void {
     if (!this.ready) return;
     const t = this.ctx!.currentTime;

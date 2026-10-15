@@ -1,0 +1,1202 @@
+[
+ {
+  "seed": 84404,
+  "mode": "random",
+  "sites": 91,
+  "kinds": {
+   "doorstep": 63,
+   "rooftop": 19,
+   "park": 3,
+   "depot": 6
+  },
+  "towers": 4,
+  "maxPad": 58.050000000000004,
+  "hmax": 71.96353211943061,
+  "parks": 3,
+  "buildings": 229,
+  "trees": 353,
+  "spawn": {
+   "x": -80.5,
+   "y": 14.49,
+   "z": 0,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Linden Lofts Rooftop",
+   "straight": 86.55735815053508,
+   "dy": 5.160000000000002,
+   "grid": 111.05000000000001
+  },
+  "issues": [],
+  "tight": 27,
+  "tightEx": [
+   {
+    "site": "Tailor · Harbor & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.12"
+   },
+   {
+    "site": "Florist · Copper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.17"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 24933,
+  "mode": "random",
+  "sites": 93,
+  "kinds": {
+   "doorstep": 64,
+   "depot": 6,
+   "rooftop": 20,
+   "park": 3
+  },
+  "towers": 7,
+  "maxPad": 45.25000000000001,
+  "hmax": 107.66278038658203,
+  "parks": 3,
+  "buildings": 248,
+  "trees": 330,
+  "spawn": {
+   "x": -80.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Orchard Lofts Rooftop",
+   "straight": 66.64402636395853,
+   "dy": -1.2400000000000002,
+   "grid": 93.94999999999999
+  },
+  "issues": [],
+  "tight": 34,
+  "tightEx": [
+   {
+    "site": "Bakery · Union & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "19.3-20.2 at 1.32"
+   },
+   {
+    "site": "Bakery · Union & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.04"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 39971,
+  "mode": "random",
+  "sites": 93,
+  "kinds": {
+   "doorstep": 66,
+   "rooftop": 18,
+   "park": 3,
+   "depot": 6
+  },
+  "towers": 5,
+  "maxPad": 38.85000000000001,
+  "hmax": 105.02956588924863,
+  "parks": 3,
+  "buildings": 236,
+  "trees": 345,
+  "spawn": {
+   "x": 7.5,
+   "y": 14.49,
+   "z": -88,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Union Lofts Rooftop",
+   "straight": 52.1696810896904,
+   "dy": 1.959999999999999,
+   "grid": 73.775
+  },
+  "issues": [],
+  "tight": 30,
+  "tightEx": [
+   {
+    "site": "Bookshop · Maple & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.02"
+   },
+   {
+    "site": "Pharmacy · Juniper & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.00"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 71147,
+  "mode": "random",
+  "sites": 92,
+  "kinds": {
+   "doorstep": 67,
+   "rooftop": 16,
+   "park": 3,
+   "depot": 6
+  },
+  "towers": 10,
+  "maxPad": 45.25000000000001,
+  "hmax": 75.43795762695373,
+  "parks": 3,
+  "buildings": 249,
+  "trees": 343,
+  "spawn": {
+   "x": 95.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Dash Depot South · Pad 1",
+   "straight": 88.229813555283,
+   "dy": -14.040000000000001,
+   "grid": 112
+  },
+  "issues": [],
+  "tight": 35,
+  "tightEx": [
+   {
+    "site": "Pharmacy · Copper & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.12"
+   },
+   {
+    "site": "Bookshop · Juniper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.01"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 81401,
+  "mode": "random",
+  "sites": 86,
+  "kinds": {
+   "rooftop": 15,
+   "doorstep": 62,
+   "park": 3,
+   "depot": 6
+  },
+  "towers": 1,
+  "maxPad": 38.85000000000001,
+  "hmax": 72.79213324664161,
+  "parks": 3,
+  "buildings": 239,
+  "trees": 343,
+  "spawn": {
+   "x": -80.5,
+   "y": 14.49,
+   "z": 0,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Linden Lofts Rooftop",
+   "straight": 99.97887901952092,
+   "dy": -7.64,
+   "grid": 139.5
+  },
+  "issues": [],
+  "tight": 23,
+  "tightEx": [
+   {
+    "site": "Bookshop · Copper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.12"
+   },
+   {
+    "site": "Gallery · Copper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.39"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 44053,
+  "mode": "random",
+  "sites": 80,
+  "kinds": {
+   "doorstep": 61,
+   "depot": 6,
+   "rooftop": 10,
+   "park": 3
+  },
+  "towers": 4,
+  "maxPad": 42.050000000000004,
+  "hmax": 97.69218402635306,
+  "parks": 3,
+  "buildings": 238,
+  "trees": 346,
+  "spawn": {
+   "x": 51.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Copper Lofts Rooftop",
+   "straight": 96.28305276630982,
+   "dy": 5.160000000000002,
+   "grid": 126.05000000000001
+  },
+  "issues": [],
+  "tight": 22,
+  "tightEx": [
+   {
+    "site": "Noodle Bar · Orchard & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.00"
+   },
+   {
+    "site": "Records · Harbor & 3rd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.40"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 70492,
+  "mode": "random",
+  "sites": 94,
+  "kinds": {
+   "park": 3,
+   "doorstep": 64,
+   "rooftop": 21,
+   "depot": 6
+  },
+  "towers": 5,
+  "maxPad": 42.050000000000004,
+  "hmax": 119.53479631650264,
+  "parks": 3,
+  "buildings": 235,
+  "trees": 335,
+  "spawn": {
+   "x": 95.5,
+   "y": 14.49,
+   "z": -88,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Linden Lofts Rooftop",
+   "straight": 45.277215572515054,
+   "dy": 1.959999999999999,
+   "grid": 51.49999999999999
+  },
+  "issues": [],
+  "tight": 29,
+  "tightEx": [
+   {
+    "site": "Deli · Copper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.30"
+   },
+   {
+    "site": "Deli · Bay & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.41"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 59739,
+  "mode": "random",
+  "sites": 97,
+  "kinds": {
+   "doorstep": 63,
+   "rooftop": 25,
+   "depot": 6,
+   "park": 3
+  },
+  "towers": 4,
+  "maxPad": 45.25000000000001,
+  "hmax": 113.49585937312806,
+  "parks": 3,
+  "buildings": 219,
+  "trees": 337,
+  "spawn": {
+   "x": -36.5,
+   "y": 14.49,
+   "z": 0,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Linden Lofts Rooftop",
+   "straight": 39.8970706944758,
+   "dy": 1.959999999999999,
+   "grid": 51.5
+  },
+  "issues": [],
+  "tight": 23,
+  "tightEx": [
+   {
+    "site": "Gallery · Copper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.13"
+   },
+   {
+    "site": "Tailor · Orchard & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.35"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 20944,
+  "mode": "random",
+  "sites": 94,
+  "kinds": {
+   "depot": 6,
+   "rooftop": 14,
+   "doorstep": 71,
+   "park": 3
+  },
+  "towers": 2,
+  "maxPad": 58.050000000000004,
+  "hmax": 66.30913277878426,
+  "parks": 3,
+  "buildings": 245,
+  "trees": 330,
+  "spawn": {
+   "x": -36.5,
+   "y": 14.49,
+   "z": -44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Dash Depot South · Pad 1",
+   "straight": 88.229813555283,
+   "dy": -14.040000000000001,
+   "grid": 112
+  },
+  "issues": [],
+  "tight": 35,
+  "tightEx": [
+   {
+    "site": "Bakery · Juniper & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.35"
+   },
+   {
+    "site": "Bakery · Juniper & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.07"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 91818,
+  "mode": "random",
+  "sites": 82,
+  "kinds": {
+   "doorstep": 59,
+   "park": 3,
+   "depot": 6,
+   "rooftop": 14
+  },
+  "towers": 2,
+  "maxPad": 35.650000000000006,
+  "hmax": 99.21568553266115,
+  "parks": 3,
+  "buildings": 253,
+  "trees": 323,
+  "spawn": {
+   "x": -124.5,
+   "y": 14.49,
+   "z": -44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Maple Lofts Rooftop",
+   "straight": 47.70719285390831,
+   "dy": -1.2400000000000002,
+   "grid": 67.05000000000001
+  },
+  "issues": [],
+  "tight": 27,
+  "tightEx": [
+   {
+    "site": "Pharmacy · Copper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.09"
+   },
+   {
+    "site": "Florist · Bay & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "22.5-23.4 at 1.47"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 91101,
+  "mode": "random",
+  "sites": 97,
+  "kinds": {
+   "doorstep": 72,
+   "park": 3,
+   "depot": 6,
+   "rooftop": 16
+  },
+  "towers": 2,
+  "maxPad": 35.650000000000006,
+  "hmax": 64.57987533905543,
+  "parks": 3,
+  "buildings": 219,
+  "trees": 346,
+  "spawn": {
+   "x": -124.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Dash Depot North · Pad 2",
+   "straight": 53.78196723809943,
+   "dy": -14.040000000000001,
+   "grid": 76
+  },
+  "issues": [],
+  "tight": 32,
+  "tightEx": [
+   {
+    "site": "Tailor · Harbor & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "3.3-4.2 at 1.35"
+   },
+   {
+    "site": "Tailor · Harbor & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.07"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 48593,
+  "mode": "random",
+  "sites": 96,
+  "kinds": {
+   "doorstep": 62,
+   "park": 3,
+   "rooftop": 25,
+   "depot": 6
+  },
+  "towers": 5,
+  "maxPad": 29.25,
+  "hmax": 105.58003416857683,
+  "parks": 3,
+  "buildings": 232,
+  "trees": 342,
+  "spawn": {
+   "x": 139.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Orchard Lofts Rooftop",
+   "straight": 96.28305276630982,
+   "dy": 5.160000000000002,
+   "grid": 126.05000000000001
+  },
+  "issues": [],
+  "tight": 25,
+  "tightEx": [
+   {
+    "site": "Café · Linden & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.09"
+   },
+   {
+    "site": "Café · Juniper & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.33"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 77070,
+  "mode": "random",
+  "sites": 94,
+  "kinds": {
+   "depot": 6,
+   "doorstep": 68,
+   "park": 3,
+   "rooftop": 17
+  },
+  "towers": 7,
+  "maxPad": 42.050000000000004,
+  "hmax": 64.79192698979752,
+  "parks": 3,
+  "buildings": 232,
+  "trees": 339,
+  "spawn": {
+   "x": 95.5,
+   "y": 14.49,
+   "z": -44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Dash Depot South · Pad 2",
+   "straight": 98.10453608269088,
+   "dy": -14.040000000000001,
+   "grid": 135
+  },
+  "issues": [],
+  "tight": 31,
+  "tightEx": [
+   {
+    "site": "Tailor · Linden & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "3.3-4.2 at 1.41"
+   },
+   {
+    "site": "Tailor · Linden & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.13"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 48684,
+  "mode": "random",
+  "sites": 109,
+  "kinds": {
+   "doorstep": 76,
+   "park": 3,
+   "rooftop": 24,
+   "depot": 6
+  },
+  "towers": 8,
+  "maxPad": 45.25000000000001,
+  "hmax": 71.86336072986015,
+  "parks": 3,
+  "buildings": 233,
+  "trees": 345,
+  "spawn": {
+   "x": 51.5,
+   "y": 14.49,
+   "z": -88,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Orchard Lofts Rooftop",
+   "straight": 58.25998841400502,
+   "dy": -7.64,
+   "grid": 82.05000000000001
+  },
+  "issues": [],
+  "tight": 29,
+  "tightEx": [
+   {
+    "site": "Gallery · Maple & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.44"
+   },
+   {
+    "site": "Bookshop · Maple & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.09"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 35146,
+  "mode": "random",
+  "sites": 90,
+  "kinds": {
+   "doorstep": 65,
+   "rooftop": 16,
+   "park": 3,
+   "depot": 6
+  },
+  "towers": 7,
+  "maxPad": 42.050000000000004,
+  "hmax": 100.71590453390965,
+  "parks": 3,
+  "buildings": 249,
+  "trees": 349,
+  "spawn": {
+   "x": -80.5,
+   "y": 14.49,
+   "z": 0,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Willow Lofts Rooftop",
+   "straight": 99.97887901952092,
+   "dy": -7.64,
+   "grid": 139.5
+  },
+  "issues": [],
+  "tight": 41,
+  "tightEx": [
+   {
+    "site": "Deli · Copper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.34"
+   },
+   {
+    "site": "Café · Orchard & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "9.7-10.6 at 1.33"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 32730,
+  "mode": "random",
+  "sites": 82,
+  "kinds": {
+   "doorstep": 66,
+   "rooftop": 7,
+   "park": 3,
+   "depot": 6
+  },
+  "towers": 3,
+  "maxPad": 42.050000000000004,
+  "hmax": 79.58448111424224,
+  "parks": 3,
+  "buildings": 257,
+  "trees": 318,
+  "spawn": {
+   "x": -36.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Linden Lofts Rooftop",
+   "straight": 102.44596746578169,
+   "dy": -7.64,
+   "grid": 108.94999999999999
+  },
+  "issues": [],
+  "tight": 34,
+  "tightEx": [
+   {
+    "site": "Deli · Harbor & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.46"
+   },
+   {
+    "site": "Records · Juniper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.16"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 80444,
+  "mode": "random",
+  "sites": 80,
+  "kinds": {
+   "doorstep": 54,
+   "rooftop": 17,
+   "depot": 6,
+   "park": 3
+  },
+  "towers": 5,
+  "maxPad": 42.050000000000004,
+  "hmax": 67.37831666208805,
+  "parks": 3,
+  "buildings": 234,
+  "trees": 347,
+  "spawn": {
+   "x": 51.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Dash Depot South · Pad 3",
+   "straight": 65.14982732133679,
+   "dy": -14.040000000000001,
+   "grid": 92
+  },
+  "issues": [],
+  "tight": 26,
+  "tightEx": [
+   {
+    "site": "Bike Shop · Harbor & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.50"
+   },
+   {
+    "site": "Pharmacy · Linden & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.47"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 38479,
+  "mode": "random",
+  "sites": 92,
+  "kinds": {
+   "park": 3,
+   "doorstep": 67,
+   "rooftop": 16,
+   "depot": 6
+  },
+  "towers": 6,
+  "maxPad": 45.25000000000001,
+  "hmax": 95.09496499453672,
+  "parks": 3,
+  "buildings": 234,
+  "trees": 327,
+  "spawn": {
+   "x": 51.5,
+   "y": 14.49,
+   "z": -132,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Orchard Lofts Rooftop",
+   "straight": 92.79238249985825,
+   "dy": 8.360000000000001,
+   "grid": 126.05000000000001
+  },
+  "issues": [],
+  "tight": 26,
+  "tightEx": [
+   {
+    "site": "Pharmacy · Juniper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "32.0-33.0 at 1.46"
+   },
+   {
+    "site": "Pharmacy · Juniper & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.18"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 12383,
+  "mode": "random",
+  "sites": 89,
+  "kinds": {
+   "park": 3,
+   "doorstep": 69,
+   "rooftop": 11,
+   "depot": 6
+  },
+  "towers": 3,
+  "maxPad": 42.050000000000004,
+  "hmax": 108.86781862163917,
+  "parks": 3,
+  "buildings": 235,
+  "trees": 315,
+  "spawn": {
+   "x": 139.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Dash Depot South · Pad 3",
+   "straight": 58.757978181690355,
+   "dy": -14.040000000000001,
+   "grid": 83
+  },
+  "issues": [],
+  "tight": 31,
+  "tightEx": [
+   {
+    "site": "Studio · Harbor & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.13"
+   },
+   {
+    "site": "Florist · Harbor & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.19"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 42068,
+  "mode": "random",
+  "sites": 83,
+  "kinds": {
+   "doorstep": 54,
+   "park": 3,
+   "rooftop": 20,
+   "depot": 6
+  },
+  "towers": 6,
+  "maxPad": 35.650000000000006,
+  "hmax": 76.13964665392415,
+  "parks": 3,
+  "buildings": 260,
+  "trees": 335,
+  "spawn": {
+   "x": 7.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Union Lofts Rooftop",
+   "straight": 69.13447945851621,
+   "dy": 1.959999999999999,
+   "grid": 95.5
+  },
+  "issues": [],
+  "tight": 18,
+  "tightEx": [
+   {
+    "site": "Bookshop · Bay & 2nd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.15"
+   },
+   {
+    "site": "Deli · Maple & 3rd Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.11"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 43066,
+  "mode": "random",
+  "sites": 89,
+  "kinds": {
+   "doorstep": 70,
+   "park": 3,
+   "depot": 6,
+   "rooftop": 10
+  },
+  "towers": 3,
+  "maxPad": 67.65,
+  "hmax": 74.87224908722565,
+  "parks": 3,
+  "buildings": 268,
+  "trees": 317,
+  "spawn": {
+   "x": 51.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Maple Lofts Rooftop",
+   "straight": 86.55735815053508,
+   "dy": -7.64,
+   "grid": 111.05000000000001
+  },
+  "issues": [],
+  "tight": 46,
+  "tightEx": [
+   {
+    "site": "Bookshop · Harbor & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.36"
+   },
+   {
+    "site": "Bookshop · Harbor & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.08"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 57366,
+  "mode": "random",
+  "sites": 84,
+  "kinds": {
+   "doorstep": 61,
+   "depot": 6,
+   "rooftop": 14,
+   "park": 3
+  },
+  "towers": 1,
+  "maxPad": 29.25,
+  "hmax": 59.49949273876846,
+  "parks": 3,
+  "buildings": 243,
+  "trees": 341,
+  "spawn": {
+   "x": 51.5,
+   "y": 14.49,
+   "z": 44,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Orchard Lofts Rooftop",
+   "straight": 47.70719285390832,
+   "dy": -4.4399999999999995,
+   "grid": 67.05000000000001
+  },
+  "issues": [],
+  "tight": 26,
+  "tightEx": [
+   {
+    "site": "Studio · Maple & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.28"
+   },
+   {
+    "site": "Records · Harbor & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "16.1-16.9 at 1.45"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 33087,
+  "mode": "random",
+  "sites": 75,
+  "kinds": {
+   "doorstep": 58,
+   "depot": 6,
+   "park": 3,
+   "rooftop": 8
+  },
+  "towers": 2,
+  "maxPad": 32.45,
+  "hmax": 95.80878302175552,
+  "parks": 3,
+  "buildings": 242,
+  "trees": 342,
+  "spawn": {
+   "x": 51.5,
+   "y": 14.49,
+   "z": 0,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Bay Lofts Rooftop",
+   "straight": 86.55735815053508,
+   "dy": -7.64,
+   "grid": 111.05000000000001
+  },
+  "issues": [],
+  "tight": 18,
+  "tightEx": [
+   {
+    "site": "Tailor · Harbor & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "6.5-7.4 at 1.36"
+   },
+   {
+    "site": "Café · Bay & 2nd Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "9.7-10.6 at 1.48"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ },
+ {
+  "seed": 73023,
+  "mode": "random",
+  "sites": 99,
+  "kinds": {
+   "doorstep": 77,
+   "rooftop": 13,
+   "depot": 6,
+   "park": 3
+  },
+  "towers": 3,
+  "maxPad": 42.050000000000004,
+  "hmax": 115.92001209296286,
+  "parks": 3,
+  "buildings": 246,
+  "trees": 337,
+  "spawn": {
+   "x": 7.5,
+   "y": 14.49,
+   "z": -132,
+   "hit": 0,
+   "crashes3s": 0,
+   "drift3s": 0,
+   "dy3s": 0
+  },
+  "first": {
+   "name": "Copper Lofts Rooftop",
+   "straight": 100.90206266474436,
+   "dy": -1.2400000000000002,
+   "grid": 137.95
+  },
+  "issues": [],
+  "tight": 36,
+  "tightEx": [
+   {
+    "site": "Bike Shop · Maple & 1st Ave",
+    "kind": "doorstep",
+    "p": "overhang",
+    "d": "9.7-10.6 at 1.48"
+   },
+   {
+    "site": "Bike Shop · Maple & 1st Ave",
+    "kind": "doorstep",
+    "p": "awning",
+    "d": "1.20"
+   }
+  ],
+  "builder": [],
+  "errors": 0
+ }
+]

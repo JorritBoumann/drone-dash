@@ -13,7 +13,11 @@ interface ThreeGameDiagnostics {
   combo: number;
   crashes?: number;
   leg?: { time: number; par: number };
-  breakdown?: { drops: number; fast: number; combo: number; slip: number; fastCount: number; dropSeconds: number; slipSeconds: number; crashSeconds: number; total: number };
+  breakdown?: { drops: number; fast: number; combo: number; slip: number; fastCount: number; rush?: number; dropSeconds: number; slipSeconds: number; crashSeconds: number; total: number };
+  /** Round 15: which city this load built, and the daily city's own best. */
+  city?: { mode: string; seed: number; date: string; dailyBest: number; dailyTier: number };
+  /** Round 15: mid-run escalation (rush hour): stage 0 before RUSH.startAt, 1 every second parcel, 2 every parcel. */
+  escalation?: { kind: string; on: boolean; startedAt: number; stage: number; orders: number; made: number; missed: number; points: number; active: boolean; left: number; window: number };
   goals?: { tier: number; tierName: string; next: number; passes: number; passList: { tier: number; name: string; score: number; t: number }[]; best: number; bestTier: number; thresholds: number[] };
   slipstream?: { level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number; clockK: number; clockGain: number; budget: number; toward: number; bank: number; bankTotal: number; bankPaid: number; bankLost: number; legBanked: number; legCap: number };
   scoreLog?: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[];
@@ -89,6 +93,9 @@ interface DroneDashApi {
   /** Test: music on/off (same as the music chip, remembered). */
   music?(on: boolean): void;
   sites(): Array<{ name: string; kind: string; x: number; y: number; z: number }>;
+  /** Round 15: build these seeds' cities and audit every pad (buried, overhang, outside, ceiling). */
+  padAudit?(seeds: number[]): Array<{ seed: number; sites: number; issues: Array<{ site: string; kind: string; problem: string; detail: string }> }>;
+  city?(): { mode: string; seed: number; date: string };
 }
 
 interface Window {

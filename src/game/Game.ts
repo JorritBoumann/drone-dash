@@ -17,14 +17,15 @@ import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { createSky, Environment, LightingRig, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
-import { CRASH, FLIGHT, GOALS, QUALITY, RUN, SLIPSTREAM } from './config';
+import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
+import { cityUrl, dateLabel, readDaily, resolveCity, writeDaily, type CityPick } from './cities';
+import { auditPads } from '../world/padAudit';
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
 const BEST_KEY = 'drone-dash-best-v1';
 const MEDAL_COLORS = [new THREE.Color('#e0955a'), new THREE.Color('#eef2f7'), new THREE.Color('#ffd166'), new THREE.Color('#5ff5d4')];
-const DEFAULT_SEED = 7;
 
 function readBest(): number {
   try {
@@ -65,6 +66,18 @@ export class Game {
   private bankTotal = 0; // every point banked this run
   private bankPaid = 0; // deliveries that paid a street bonus
   private bankLost = 0; // points cut from the bank by hard crashes
+  private bankShownPay = false; // the run's first payout has been banked (it banks at least SLIPSTREAM.bankFirstMin)
+  // round 15 escalation: rush hour. From RUSH.startAt s some parcels are rush orders: deliver inside a short window for a flat bonus
+  private rushOn = false;
+  private rushAt = -1;
+  private rushActive = false;
+  private rushLeft = 0;
+  private rushWindow = 0;
+  private rushOrders = 0;
+  private rushMade = 0;
+  private rushMissed = 0;
+  private rushPoints = 0;
+  private lastWasRush = false;
   private scoreLog: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[] = []; // test/tuning log
   private readonly slipColor = new THREE.Color('#ffe7b0');
   private readonly slipHot = new THREE.Color('#fff6e8');
@@ -85,6 +98,8 @@ export class Game {
 
   private state: GameState = 'title';
   private readonly seed: number;
+  private readonly city: CityPick; // round 15: which city this load built (seed, random or daily)
+  private daily = { date: '', best: 0, tier: 0 };
   private rng: Rng;
   private readonly fxRng: Rng;
   private readonly intent: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
@@ -130,8 +145,10 @@ export class Game {
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const params = new URLSearchParams(window.location.search);
-    const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-    this.seed = Number.isFinite(seedParam) ? seedParam : DEFAULT_SEED;
+    // round 15: ?seed=N builds exactly that city (unchanged); ?daily the day's city; otherwise a new random city
+    this.city = resolveCity(params);
+    this.seed = this.city.seed;
+    this.daily = readDaily(this.city.date);
     this.rng = createSeededRandom(this.seed * 977 + 13);
     this.fxRng = createSeededRandom(this.seed + 4242);
 
@@ -215,6 +232,16 @@ export class Game {
     this.hud.setMusic(false, this.audio.musicEnabled);
 
     this.hud.setBest(this.best, this.bestTier);
+    this.hud.setCity(this.cityInfo());
+    // round 15: a new random city or the daily city is a fresh page load (the whole world is built from the seed)
+    const go = (mode: 'random' | 'daily') => (e: Event) => {
+      e.stopPropagation();
+      this.audio.click();
+      window.location.href = cityUrl(mode);
+    };
+    this.hud.cityNewButton.addEventListener('click', go('random'));
+    this.hud.cityDailyButton.addEventListener('click', go('daily'));
+    this.hud.overNewCityButton.addEventListener('click', go('random'));
     this.hud.showScreen('title');
     this.debug = new DebugTools(() => {
       this.renderer.toneMappingExposure = QUALITY.exposure;
@@ -251,6 +278,8 @@ export class Game {
     this.audio.unlock();
     this.audio.click();
     this.runCount++;
+    // the daily city also gives every attempt the same parcels, so a daily best is a fair race
+    if (this.city.mode === 'daily') this.rng = createSeededRandom(this.seed * 977 + 13);
     this.drone.reset(this.startPos, this.startYaw);
     this.delivery.reset(this.rng, this.startPos, (from, to) => {
       // a straight descending line to the target must clear every solid building
@@ -280,6 +309,18 @@ export class Game {
     this.bankTotal = 0;
     this.bankPaid = 0;
     this.bankLost = 0;
+    this.bankShownPay = false;
+    this.rushOn = false;
+    this.rushAt = -1;
+    this.rushActive = false;
+    this.rushLeft = 0;
+    this.rushWindow = 0;
+    this.rushOrders = 0;
+    this.rushMade = 0;
+    this.rushMissed = 0;
+    this.rushPoints = 0;
+    this.lastWasRush = false;
+    this.hud.setRush(0, 0);
     this.scoreLog = [];
     this.newLeg(this.startPos);
     this.hud.setBank(0, false);
@@ -346,6 +387,13 @@ export class Game {
       writeBestTier(this.tier);
     }
     this.hud.setBest(this.best, this.bestTier);
+    let dailyNew = false;
+    if (this.city.mode === 'daily') {
+      dailyNew = score > this.daily.best;
+      this.daily = { date: this.city.date, best: Math.max(this.daily.best, score), tier: Math.max(this.daily.tier, tierFor(score)) };
+      writeDaily(this.daily);
+    }
+    this.hud.setCity(this.cityInfo());
     const T = this.delivery.tally;
     this.hud.showOver({
       score,
@@ -369,6 +417,10 @@ export class Game {
       slipSeconds: T.slipSeconds,
       crashSeconds: T.crashSeconds,
       crashes: this.crashes,
+      rush: T.rush,
+      rushMade: this.rushMade,
+      rushOrders: this.rushOrders,
+      dailyNew: dailyNew && score > 0,
     });
     this.hud.showScreen('over');
     this.marker.hide();
@@ -406,10 +458,16 @@ export class Game {
     }
   };
 
+  /** Title and game-over city line: the seed, or the daily city with its own best. */
+  private cityInfo(): { mode: CityPick['mode']; label: string; best: number; tier: number } {
+    const c = this.city;
+    return { mode: c.mode, label: c.mode === 'daily' ? `Daily city · ${dateLabel(c.date)}` : `City ${c.seed}`, best: this.daily.best, tier: this.daily.tier };
+  }
+
   private setMarkerFromDelivery(): void {
     const kind = this.delivery.phase === 'pickup' ? 'pickup' : 'drop';
     const t = this.delivery.target;
-    this.marker.set(kind, t.pos, t.radius);
+    this.marker.set(kind, t.pos, t.radius, kind === 'drop' && this.rushActive);
     this.drone.guide.copy(t.pos);
     this.drone.hasGuide = true;
     this.hud.setObjective(kind, t.name);
@@ -514,7 +572,13 @@ export class Game {
       this.audio.pickup();
       this.vfx.burst(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 1.8), MARKER_COLORS.pickup, 36, 9, 0.2, this.fxRng);
       this.vfx.ring(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 0.3), MARKER_COLORS.pickup, 5.5);
-      this.hud.popText('Parcel secured!', 'Now deliver it', 'pickup');
+      if (this.rushOn && (this.runTime >= RUSH.everyAt || !this.lastWasRush)) this.makeRush(this.delivery.legRoute);
+      else this.lastWasRush = false;
+      // the rush hour banner already speaks for the first seconds: no second pop on top of it
+      const bannerUp = this.rushAt >= 0 && this.runTime - this.rushAt < 3.2;
+      if (this.rushActive && bannerUp) { /* tag in the pill shows the window */ }
+      else if (this.rushActive) this.hud.popText('Rush order!', `Deliver in ${Math.ceil(this.rushWindow)} s for +${RUSH.bonus}`, 'rush');
+      else this.hud.popText('Parcel secured!', 'Now deliver it', 'pickup');
       this.setMarkerFromDelivery();
     } else if (ev?.type === 'delivered') {
       d.setCarrying(false);
@@ -526,16 +590,32 @@ export class Game {
       const sub = ev.fast ? (ev.combo > 1 ? `Fast drop · x${this.delivery.multiplier.toFixed(1)} combo` : 'Fast drop!') : 'Delivered';
       // the street bonus banked on this parcel run is paid now (the breakdown's "Street bonus" line is exactly these)
       const paid = this.bank > 0 ? this.delivery.addBonus(this.bank, 0, false) : 0;
+      // round 15: a rush order delivered inside its window adds a flat bonus (no combo; counted in the fast drops line)
+      const rush = this.rushActive && this.rushLeft > 0 ? this.delivery.addRush(RUSH.bonus) : 0;
+      if (this.rushActive) {
+        this.rushActive = false;
+        this.hud.setRush(0, 0);
+      }
+      if (rush > 0) {
+        this.rushMade++;
+        this.rushPoints += rush;
+        this.scoreLog.push({ t: this.rt(), k: 'rush', v: rush });
+      }
       this.scoreLog.push({ t: this.rt(), k: 'drop', v: ev.points, c: paid, m: this.delivery.multiplier, lt: Math.round(ev.legTime * 10) / 10, par: Math.round(ev.par * 10) / 10 });
       if (paid > 0) this.bankPaid++;
       this.bank = 0;
       this.newLeg(ev.site.pos);
       this.hud.setBank(0, false);
-      this.hud.popText(`+${ev.points + paid}`, paid > 0 ? `${sub} · street bonus +${paid}` : sub, 'drop');
+      const subs = [rush > 0 ? `Rush +${rush}` : sub];
+      if (paid > 0) subs.push(`street bonus +${paid}`);
+      this.hud.popText(`+${ev.points + paid + rush}`, subs.join(' · '), 'drop');
       if (paid > 0) this.hud.slipPop(`+${paid}`, 1, 'Street bonus paid', true);
       this.hud.flashTimeBonus(ev.timeBonus);
       this.setMarkerFromDelivery();
     }
+
+    this.updateRush(dt);
+    this.hud.tickBank(realDt);
 
     // low-time ticks
     const tl = this.delivery.timeLeft;
@@ -684,6 +764,53 @@ export class Game {
     this.scoreLog.push({ t: this.rt(), k: 'leg', v: Math.round(route), c: this.legCap });
   }
 
+  /**
+   * Round 15 escalation: rush hour. At RUSH.startAt s of run time a banner and a horn announce it once. From then on
+   * every second parcel is a rush order (every parcel from RUSH.everyAt s): it must reach its drop inside a short window
+   * sized by the street route, for a flat bonus. A parcel already aboard when rush hour starts becomes the first one.
+   * A missed window only loses the bonus: the parcel still pays as normal. The objective RNG is never touched.
+   */
+  private updateRush(dt: number): void {
+    if (!this.rushOn && this.runTime >= RUSH.startAt && this.delivery.timeLeft > 0) {
+      this.rushOn = true;
+      this.rushAt = this.rt();
+      this.scoreLog.push({ t: this.rt(), k: 'rushhour', v: 0 });
+      const aboard = this.delivery.phase === 'deliver';
+      this.hud.eventPop('Rush hour', aboard ? `This parcel is a rush order: +${RUSH.bonus} if you beat the tag` : `Rush parcels pay +${RUSH.bonus} if you beat the tag`);
+      this.audio.rushHour();
+      this.cameraRig.addShake(0.12);
+      if (this.delivery.phase === 'deliver') {
+        const p = this.drone.group.position, t = this.delivery.target.pos;
+        this.makeRush(Math.abs(t.x - p.x) + Math.abs(t.z - p.z) + Math.abs(t.y - p.y));
+        this.setMarkerFromDelivery();
+      }
+    }
+    if (!this.rushActive) return;
+    this.rushLeft -= dt;
+    if (this.rushLeft <= 0) {
+      this.rushActive = false;
+      this.rushMissed++;
+      this.scoreLog.push({ t: this.rt(), k: 'rushmiss', v: 0 });
+      this.hud.setRush(0, 0);
+      this.hud.slipPop('Rush missed', 1, 'Still deliver it');
+      this.audio.tick(false);
+      this.setMarkerFromDelivery();
+      return;
+    }
+    this.hud.setRush(this.rushLeft, this.rushWindow);
+  }
+
+  private makeRush(route: number): void {
+    this.rushWindow = route / RUSH.speed + RUSH.slack;
+    this.rushLeft = this.rushWindow;
+    this.rushActive = true;
+    this.rushOrders++;
+    this.lastWasRush = true;
+    this.scoreLog.push({ t: this.rt(), k: 'rushorder', v: Math.round(this.rushWindow * 10) / 10, c: Math.round(route) });
+    this.audio.rushOrder();
+    this.hud.setRush(this.rushLeft, this.rushWindow);
+  }
+
   /** HUD chevrons: how fast the slipstream meter is filling right now (0 none, 1 slow, 2 good, 3 fast and tight). */
   private slipRateTier(): number {
     const r = this.slip.rate;
@@ -745,7 +872,10 @@ export class Game {
       // round 14: the payout is banked on the parcel run (paid on delivery), not scored now
       const S = SLIPSTREAM;
       const pace = Math.max(S.bankPaceMin, Math.min(S.bankPaceMax, (ev.pace - S.bankPaceLow) / (S.bankPaceFull - S.bankPaceLow)));
-      const want = Math.round(ev.points * pace * (d.carrying ? S.bankCarry : S.bankPickup));
+      let want = Math.round(ev.points * pace * (d.carrying ? S.bankCarry : S.bankPickup));
+      // round 15: the run's first payout banks at least bankFirstMin, so the first draft visibly counts
+      if (!this.bankShownPay) want = Math.max(want, S.bankFirstMin);
+      this.bankShownPay = true;
       const pts = Math.max(0, Math.min(want, this.legCap - this.legBanked));
       this.bank += pts;
       this.legBanked += pts;
@@ -891,6 +1021,8 @@ export class Game {
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
       slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
       scoreLog: this.scoreLog,
+      city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier },
+      escalation: { kind: 'rush', on: this.rushOn, startedAt: this.rushAt, stage: !this.rushOn ? 0 : this.runTime >= RUSH.everyAt ? 2 : 1, orders: this.rushOrders, made: this.rushMade, missed: this.rushMissed, points: this.rushPoints, active: this.rushActive, left: Math.max(0, this.rushLeft), window: this.rushWindow },
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
       lastCrash: this.lastCrash,
@@ -946,7 +1078,7 @@ export class Game {
       },
       // test hook: patch tunables, e.g. tune({ SLIPSTREAM: { points: 40 } }) (builder balance sims)
       tune: (patch: Record<string, Record<string, unknown>>) => {
-        const all: Record<string, object> = { CRASH, FLIGHT, GOALS, RUN, SLIPSTREAM };
+        const all: Record<string, object> = { CRASH, FLIGHT, GOALS, RUN, RUSH, SLIPSTREAM };
         for (const [k, v] of Object.entries(patch)) if (all[k]) Object.assign(all[k], v);
       },
       externalClock: (on: boolean) => {
@@ -970,6 +1102,15 @@ export class Game {
       musicForce: (chain: number | null, final = false) => this.audio.forceRunState(chain, final),
       music: (on: boolean) => this.audio.setMusicEnabled(on),
       sites: () => this.layout.sites.map((s) => ({ name: s.name, kind: s.kind, x: s.pos.x, y: s.pos.y, z: s.pos.z })),
+      // round 15 test hook: build cities for these seeds (no rendering) and audit every pad (see world/padAudit.ts)
+      padAudit: (seeds: number[]) =>
+        seeds.map((seed) => {
+          const layout = generateCity(createSeededRandom(seed));
+          const issues = auditPads(layout, FLIGHT.maxAltitude, 1.2, FLIGHT.radius);
+          layout.geometry.dispose();
+          return { seed, sites: layout.sites.length, issues };
+        }),
+      city: () => ({ ...this.city }),
     };
     window.__THREE_GAME_TEST_HOOKS__ = {
       seed: (value: number) => {

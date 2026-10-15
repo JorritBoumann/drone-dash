@@ -17,7 +17,7 @@
       <section id="hud" aria-live="polite">
         <div class="hud-score">
           <span class="hud-label">Score</span>
-          <strong id="score-value">0</strong>
+          <div class="score-line"><strong id="score-value">0</strong><span id="score-pending" class="score-pending" title="Street bonus banked: paid when you deliver" hidden>+0</span></div>
           <div id="goal" class="goal" data-m="1" title="Next medal">
             <i class="medal" aria-hidden="true"></i><span class="goal-text"><b id="goal-name">Bronze</b> <span id="goal-score">1,000</span></span>
             <span class="goal-track" aria-hidden="true"><span id="goal-fill" class="goal-fill"></span></span>
@@ -41,6 +41,7 @@
             <span class="objective-verb" id="objective-verb">Pick up</span>
             <span class="objective-name" id="objective-name">Dash Depot</span>
             <span class="objective-bank" id="objective-bank" title="Street bonus: slipstream points banked on this parcel, paid on delivery" hidden><small>Bonus</small> <b id="objective-bank-value">+0</b></span>
+            <span class="objective-rush" id="objective-rush" title="Rush order: deliver before the tag runs out" hidden><small>Rush</small> <b id="objective-rush-value">0</b><i class="objective-rush-bar"></i></span>
           </div>
         </div>
 
@@ -86,6 +87,8 @@
           <span id="medal-pop-sub">Next: Silver</span>
         </div>
 
+        <div id="event-pop" class="event-pop" aria-live="polite"><strong id="event-pop-main">Rush hour</strong><span id="event-pop-sub"></span></div>
+
         <div id="pop" class="pop">
           <svg class="pop-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></svg>
           <strong id="pop-main"></strong><span id="pop-sub"></span>
@@ -119,7 +122,7 @@
             <span class="logo-kicker">Golden-hour courier</span>
             <h1>Drone<span>Dash</span></h1>
           </div>
-          <p class="tagline">Grab the glowing parcel, beat the clock, chain fast drops for combos. Fly fast and low by the walls: the slipstream banks a street bonus, paid when you deliver.</p>
+          <p class="tagline">Deliver parcels against the clock, flying fast and low by the walls to bank a street bonus.</p>
           <ul class="controls-hint">
             <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly &amp; turn</li>
             <li><kbd>Space</kbd>/<kbd>Shift</kbd> up / down</li>
@@ -128,6 +131,12 @@
           </ul>
           <p class="controls-touch">Stick to fly · buttons to climb, dive &amp; boost</p>
           <button id="play-button" class="primary-button" type="button">Play</button>
+          <div class="city-pick">
+            <span id="city-label" class="city-label">City</span>
+            <button id="city-new" class="city-button" type="button">New city</button>
+            <button id="city-daily" class="city-button" type="button" aria-pressed="false">Daily city</button>
+          </div>
+          <p id="daily-line" class="best-line daily-line" hidden>Daily best <strong id="daily-best">0</strong> <span id="daily-best-tier" class="best-tier"></span></p>
           <ul id="title-medals" class="medal-row" aria-label="Medals for one run's score"></ul>
           <p class="best-line">Best <strong id="title-best">0</strong> <span id="title-best-tier" class="best-tier"></span></p>
         </div>
@@ -147,6 +156,7 @@
         <div class="modal-card over-card">
           <div class="over-head">
             <span class="over-kicker">Time's up</span>
+            <span id="over-city" class="over-city"></span>
             <div id="over-medal" class="over-medal" data-m="0"><i class="medal" aria-hidden="true"></i><span id="over-medal-name">No medal yet</span></div>
             <h2 id="over-score">0</h2>
             <span id="new-best" class="new-best" hidden>New best!</span>
@@ -156,7 +166,11 @@
             <dl id="over-breakdown" class="over-breakdown"></dl>
             <p id="over-time" class="over-time"></p>
             <p class="over-best">Best <strong id="over-best">0</strong> <span id="over-best-tier" class="best-tier"></span></p>
-            <button id="again-button" class="primary-button" type="button">Fly again</button>
+            <p id="over-daily" class="over-best over-daily" hidden>Daily best <strong id="over-daily-best">0</strong> <span id="over-daily-tier" class="best-tier"></span> <span id="over-daily-new" class="new-best" hidden>New daily best!</span></p>
+            <div class="over-actions">
+              <button id="again-button" class="primary-button" type="button">Replay this city</button>
+              <button id="new-city-button" class="ghost-button" type="button">New city</button>
+            </div>
           </div>
         </div>
       </section>

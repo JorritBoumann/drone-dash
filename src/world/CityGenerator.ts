@@ -19,11 +19,16 @@ export type CityLayout = {
   sites: Site[];
   trees: TreeSpec[];
   lamps: LampSpec[];
+  /** Round 15: awning boxes (drawn only, not colliders), kept so the pad audit can check doorsteps for overhangs. */
+  awnings: Box[];
   geometry: THREE.BufferGeometry;
   buildingCount: number;
 };
 
 const FLOOR_H = 3.2;
+/** Round 15: clear radius around a pad's centre that no tree canopy may enter (drone radius 0.95 plus 0.25 m, the same as the pad audit). */
+const PAD_CLEAR = 1.2;
+const AWNING_DEPTH = 0.5;
 const SIDEWALK_H = 0.25;
 const SIDEWALK_W = 3;
 
@@ -64,6 +69,7 @@ export function generateCity(rng: Rng, blocks = 7): CityLayout {
   const sites: Site[] = [];
   const trees: TreeSpec[] = [];
   const lamps: LampSpec[] = [];
+  const awnings: Box[] = [];
   let buildingCount = 0;
   let towerNameIdx = randInt(rng, 0, TOWERS.length - 1);
 
@@ -146,11 +152,18 @@ export function generateCity(rng: Rng, blocks = 7): CityLayout {
         collide(cx - 4.2, 0, cz - 4.2, cx + 4.2, fy + 0.8, cz + 4.2);
         collide(cx - 1.4, 0, cz - 1.4, cx + 1.4, fy + 2.7, cz + 1.4);
         // park trees in quadrants
+        // Round 15: a canopy that would hang over the park pad is still rolled (the same random numbers are drawn, so
+        // every other part of the city is unchanged) but not planted. The pad sits at (cx + 7.5, cz).
+        const scrapT: TreeSpec[] = [], scrapC: Box[] = [];
         for (let k = 0; k < 26; k++) {
           const tx = range(rng, ix0 + 1.5, ix1 - 1.5);
           const tz = range(rng, iz0 + 1.5, iz1 - 1.5);
           if (Math.abs(tx - cx) < 3 || Math.abs(tz - cz) < 3) continue;
-          addTree(trees, colliders, rng, tx, SIDEWALK_H + 0.08, tz, range(rng, 0.9, 1.45), chance(rng, 0.3));
+          const ts = range(rng, 0.9, 1.45);
+          const pine = chance(rng, 0.3);
+          const half = (pine ? 1.5 : 2.0) * ts * 0.75;
+          const over = Math.hypot(Math.max(0, Math.abs(tx - (cx + 7.5)) - half), Math.max(0, Math.abs(tz - cz) - half)) < PAD_CLEAR;
+          addTree(over ? scrapT : trees, over ? scrapC : colliders, rng, tx, SIDEWALK_H + 0.08, tz, ts, pine);
         }
         const sx = cx + 7.5;
         const sz = cz + 1.4 + 0.0;
@@ -208,7 +221,7 @@ export function generateCity(rng: Rng, blocks = 7): CityLayout {
             const lx0 = ix0 + c * (lw + gap);
             const lz0 = iz0 + r * (ld + gap);
             const edgeW = c === 0, edgeE = c === cols - 1, edgeN = r === 0, edgeS = r === rows - 1;
-            const res = addBuilding(gb, colliders, rng, lx0, lz0, lx0 + lw, lz0 + ld, down, { edgeW, edgeE, edgeN, edgeS });
+            const res = addBuilding(gb, colliders, rng, lx0, lz0, lx0 + lw, lz0 + ld, down, { edgeW, edgeE, edgeN, edgeS }, awnings);
             buildingCount++;
             if (res.padRoof) {
               const name = res.tall ? TOWERS[towerNameIdx++ % TOWERS.length] : `${pick(rng, STREETS)} Lofts`;
@@ -282,6 +295,7 @@ export function generateCity(rng: Rng, blocks = 7): CityLayout {
     sites,
     trees,
     lamps,
+    awnings,
     geometry: gb.build(),
     buildingCount,
   };
@@ -304,7 +318,7 @@ type Edges = { edgeW: boolean; edgeE: boolean; edgeN: boolean; edgeS: boolean };
 
 function addBuilding(
   gb: GeometryBuilder, colliders: Box[], rng: Rng,
-  x0: number, z0: number, x1: number, z1: number, down: number, edges: Edges,
+  x0: number, z0: number, x1: number, z1: number, down: number, edges: Edges, awnings: Box[] = [],
 ): { padRoof: THREE.Vector3 | null; tall: boolean } {
   const w = x1 - x0;
   const d = z1 - z0;
@@ -347,10 +361,17 @@ function addBuilding(
   if (!tall && chance(rng, 0.65)) {
     const aw = color(pick(rng, AWNINGS), 0.3, rng);
     const ay = y0 + 2.5;
-    if (edges.edgeN) gb.box(bx0 + 0.8, ay, bz0 - 1.1, bx1 - 0.8, ay + 0.35, bz0, aw, Style.plain);
-    if (edges.edgeS) gb.box(bx0 + 0.8, ay, bz1, bx1 - 0.8, ay + 0.35, bz1 + 1.1, aw, Style.plain);
-    if (edges.edgeW) gb.box(bx0 - 1.1, ay, bz0 + 0.8, bx0, ay + 0.35, bz1 - 0.8, aw, Style.plain);
-    if (edges.edgeE) gb.box(bx1, ay, bz0 + 0.8, bx1 + 1.1, ay + 0.35, bz1 - 0.8, aw, Style.plain);
+    // round 15: awnings reach 0.5 m (was 1.1 m) so they never hang over a doorstep pad 1.5 m out from the lot edge
+    const ad = AWNING_DEPTH;
+    const boxes: Box[] = [];
+    if (edges.edgeN) boxes.push({ minX: bx0 + 0.8, minY: ay, minZ: bz0 - ad, maxX: bx1 - 0.8, maxY: ay + 0.35, maxZ: bz0 });
+    if (edges.edgeS) boxes.push({ minX: bx0 + 0.8, minY: ay, minZ: bz1, maxX: bx1 - 0.8, maxY: ay + 0.35, maxZ: bz1 + ad });
+    if (edges.edgeW) boxes.push({ minX: bx0 - ad, minY: ay, minZ: bz0 + 0.8, maxX: bx0, maxY: ay + 0.35, maxZ: bz1 - 0.8 });
+    if (edges.edgeE) boxes.push({ minX: bx1, minY: ay, minZ: bz0 + 0.8, maxX: bx1 + ad, maxY: ay + 0.35, maxZ: bz1 - 0.8 });
+    for (const b of boxes) {
+      gb.box(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ, aw, Style.plain);
+      awnings.push(b);
+    }
   }
 
   let roofX0 = bx0, roofZ0 = bz0, roofX1 = bx1, roofZ1 = bz1;

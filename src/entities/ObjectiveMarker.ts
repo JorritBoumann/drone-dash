@@ -6,6 +6,8 @@ export const MARKER_COLORS: Record<MarkerKind, THREE.Color> = {
   pickup: new THREE.Color('#ffb400'),
   drop: new THREE.Color('#2fe6c0'),
 };
+/** Round 15: a rush order's drop glows coral instead of teal (same intensities, so the bloom clamps hold). */
+export const RUSH_COLOR = new THREE.Color('#ff6a3d');
 
 const beamVertex = /* glsl */ `
   varying vec2 vUv;
@@ -157,11 +159,12 @@ export class ObjectiveMarker {
     this.group.add(this.xray);
   }
 
-  set(kind: MarkerKind, pos: THREE.Vector3, radius: number): void {
+  set(kind: MarkerKind, pos: THREE.Vector3, radius: number, rush = false): void {
     this.kind = kind;
     this.position.copy(pos);
     this.group.position.copy(pos);
-    const c = MARKER_COLORS[kind];
+    const c = rush ? RUSH_COLOR : MARKER_COLORS[kind];
+    this.chevronMat.emissive.copy(c);
     this.pad.material.map = this.glyphs[kind];
     this.pad.material.color.copy(c).multiplyScalar(2.2);
     this.chevron.material.color.copy(c).multiplyScalar(1.6);

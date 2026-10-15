@@ -171,6 +171,24 @@ export const SLIPSTREAM = {
   bankLegMin: 150, // points: every leg can bank at least this much (very short legs)
   bankCrashKeep: 0.5,
   bankCrashTier: 1, // CRASH.tiers index from which a crash cuts the bank (1 = Hard crash)
+  // Round 15: the run's first payout banks at least this many points (it used to bank about 7 after a slow intro draft,
+  // which read as "drafting does nothing"). Still banked, so it is paid only on delivery: a no-delivery farm stays at 0.
+  bankFirstMin: 25,
+};
+
+/**
+ * Round 15 escalation: rush hour. At `startAt` seconds of run time it is announced once (banner and horn). From then on
+ * every second parcel is a rush order, and every parcel from `everyAt` seconds. A rush order must reach its drop within
+ * its window: the leg's street route (grid distance) at `speed` plus `slack` seconds (shorter than the fast-drop par,
+ * which is route / 9 + 7). Made in time it adds `bonus` flat points (no combo). Missed, the parcel still pays as normal.
+ * It never adds clock time and never touches the objective RNG, so run length and the parcel order are unchanged.
+ */
+export const RUSH = {
+  startAt: 60,
+  everyAt: 120,
+  speed: 11,
+  slack: 5,
+  bonus: 150,
 };
 
 /**

@@ -25,7 +25,13 @@ export type RunSummary = {
   slipSeconds: number;
   crashSeconds: number;
   crashes: number;
+  rush: number; // rush order bonus points (part of `fast`)
+  rushMade: number;
+  rushOrders: number;
+  dailyNew: boolean;
 };
+
+export type CityInfo = { mode: 'seed' | 'random' | 'daily'; label: string; best: number; tier: number };
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
 /** Clock seconds: whole numbers plain, halves with one decimal (2, 2.5). */
@@ -65,6 +71,17 @@ export class Hud {
   private readonly objectiveBank = $('objective-bank');
   private readonly objectiveBankValue = $('objective-bank-value');
   private bankShown = -1;
+  // round 15: the banked amount counts up in the pill and next to the score instead of jumping
+  private bankTarget = 0;
+  private bankShownF = 0;
+  private readonly scorePending = $('score-pending');
+  private readonly objectiveRush = $('objective-rush');
+  private readonly objectiveRushValue = $('objective-rush-value');
+  private rushShown = '';
+  private rushFrac = -1;
+  private readonly eventPopEl = $('event-pop');
+  private readonly eventPopMain = $('event-pop-main');
+  private readonly eventPopSub = $('event-pop-sub');
   private readonly deliveries = $('deliveries-value');
   private readonly boost = document.querySelector('.boost') as HTMLElement;
   private readonly boostFill = $('boost-fill');
@@ -119,6 +136,9 @@ export class Hud {
   readonly restartButton = $<HTMLButtonElement>('restart-button');
   readonly againButton = $<HTMLButtonElement>('again-button');
   readonly pauseButton = $<HTMLButtonElement>('pause-button');
+  readonly cityNewButton = $<HTMLButtonElement>('city-new');
+  readonly cityDailyButton = $<HTMLButtonElement>('city-daily');
+  readonly overNewCityButton = $<HTMLButtonElement>('new-city-button');
   readonly musicButton = $<HTMLButtonElement>('music-toggle');
   private readonly musicLabel = $('music-label');
   private musicState = '';
@@ -163,6 +183,53 @@ export class Hud {
     row.innerHTML = GOALS.tiers
       .map((t, i) => `<li data-m="${i + 1}" class="${i < bestTier ? 'won' : ''}"><i class="medal" aria-hidden="true"></i><b>${t.name}</b><span>${fmt(t.score)}</span></li>`)
       .join('');
+  }
+
+  /** Round 15: the city line on the title and game-over cards, and the daily city's own best. */
+  setCity(c: CityInfo): void {
+    // the title label carries the daily best too, so short (phone) screens can drop the separate daily line
+    $('city-label').textContent = c.mode === 'daily' && c.best > 0 ? `${c.label} · best ${fmt(c.best)}` : c.label;
+    $('over-city').textContent = c.label;
+    const daily = c.mode === 'daily';
+    this.cityDailyButton.setAttribute('aria-pressed', String(daily));
+    this.cityDailyButton.textContent = daily ? 'Daily city ✓' : 'Daily city';
+    this.cityNewButton.textContent = daily ? 'Random city' : 'New city';
+    $('daily-line').hidden = !daily;
+    $('over-daily').hidden = !daily;
+    for (const [v, t] of [['daily-best', 'daily-best-tier'], ['over-daily-best', 'over-daily-tier']]) {
+      $(v).textContent = fmt(c.best);
+      const bt = $(t);
+      bt.textContent = c.tier > 0 ? tierName(c.tier) : '';
+      bt.dataset.m = String(c.tier);
+    }
+  }
+
+  /** Round 15: rush order tag in the objective pill: seconds left and a bar that empties. 0 hides it. */
+  setRush(left: number, window: number): void {
+    const on = left > 0 && window > 0;
+    const text = on ? String(Math.ceil(left)) : '';
+    if (text !== this.rushShown) {
+      this.rushShown = text;
+      this.objectiveRush.hidden = !on;
+      this.objective.dataset.rush = on ? '1' : '0';
+      this.nav.dataset.rush = on ? '1' : '0';
+      this.objectiveRushValue.textContent = text;
+      this.objectiveRush.classList.toggle('low', on && left <= 5);
+    }
+    const f = on ? Math.round((left / window) * 40) / 40 : 0;
+    if (f !== this.rushFrac) {
+      this.rushFrac = f;
+      this.objectiveRush.style.setProperty('--left', String(f));
+    }
+  }
+
+  /** Round 15: one-time event banner (rush hour), above the medal banner's spot. */
+  eventPop(main: string, sub: string): void {
+    this.eventPopMain.textContent = main;
+    this.eventPopSub.textContent = sub;
+    this.eventPopEl.classList.remove('show');
+    void this.eventPopEl.offsetWidth;
+    this.eventPopEl.classList.add('show');
   }
 
   /** In-run goal: the next medal, its score and a thin progress bar from the last medal to it. */
@@ -326,17 +393,36 @@ export class Hud {
    */
   setBank(points: number, carrying: boolean): void {
     const v = Math.max(0, Math.round(points));
-    if (v === this.bankShown) return;
-    const grew = v > this.bankShown && this.bankShown >= 0;
-    this.bankShown = v;
-    this.objectiveBank.hidden = v <= 0;
-    this.objectiveBankValue.textContent = `+${fmt(v)}`;
     this.objectiveBank.dataset.carry = carrying ? '1' : '0';
-    if (grew) {
+    this.scorePending.dataset.carry = carrying ? '1' : '0';
+    if (v > this.bankTarget && this.bankShown >= 0) {
       this.objectiveBank.classList.remove('bump');
       void this.objectiveBank.offsetWidth;
       this.objectiveBank.classList.add('bump');
     }
+    this.bankTarget = v;
+    // a drop or a crash cut shows at once; growth counts up in tickBank
+    if (v < this.bankShownF || this.bankShown < 0) {
+      this.bankShownF = v;
+      this.writeBank(v);
+    }
+  }
+
+  /** Round 15: count the shown bank up toward the banked amount (about 0.6 s per payout), every frame. */
+  tickBank(dt: number): void {
+    if (this.bankShownF >= this.bankTarget) return;
+    const gap = this.bankTarget - this.bankShownF;
+    this.bankShownF = Math.min(this.bankTarget, this.bankShownF + Math.max(gap * Math.min(1, dt * 5), 40 * dt));
+    this.writeBank(Math.round(this.bankShownF));
+  }
+
+  private writeBank(v: number): void {
+    if (v === this.bankShown) return;
+    this.bankShown = v;
+    this.objectiveBank.hidden = v <= 0;
+    this.objectiveBankValue.textContent = `+${fmt(v)}`;
+    this.scorePending.hidden = v <= 0;
+    this.scorePending.textContent = `+${fmt(v)}`;
   }
 
   setObjective(kind: MarkerKind, name: string): void {
@@ -495,12 +581,13 @@ export class Hud {
     this.hitFlashEl.classList.add('show');
   }
 
-  popText(main: string, sub: string, kind: MarkerKind | 'crash'): void {
+  popText(main: string, sub: string, kind: MarkerKind | 'crash' | 'rush'): void {
     this.popMain.textContent = main;
     this.popSub.textContent = sub;
     this.pop.classList.toggle('drop', kind === 'drop');
     this.pop.classList.toggle('pickup', kind === 'pickup');
     this.pop.classList.toggle('crash', kind === 'crash');
+    this.pop.classList.toggle('rush', kind === 'rush');
     this.popAt = performance.now();
     this.pop.classList.remove('show');
     void this.pop.offsetWidth;
@@ -520,7 +607,8 @@ export class Hud {
       `<div class="${cls}"><dt>${label}${detail ? ` <small>${detail}</small>` : ''}</dt><dd>${pts > 0 ? '+' : ''}${fmt(pts)}</dd></div>`;
     const rows = [
       row('Deliveries', `×${r.deliveries}`, r.drops),
-      row('Fast drops', `×${r.fastCount}`, r.fast),
+      row('Fast drops', `×${r.fastCount}`, r.fast - r.rush),
+      ...(r.rushOrders > 0 ? [row('Rush orders', `${r.rushMade} of ${r.rushOrders} in time`, r.rush)] : []),
       row('Combo bonus', r.topCombo > 1 ? `up to x${r.topCombo.toFixed(1)}` : '', r.combo),
       row('Street bonus', bankDetail(r), r.slip),
       `<div class="total"><dt>Score</dt><dd>${fmt(r.score)}</dd></div>`,
@@ -533,6 +621,7 @@ export class Hud {
     if (r.crashSeconds > 0) parts.push(`<em>−${r.crashSeconds.toFixed(1).replace(/\.0$/, '')} s ${r.crashes} crash${r.crashes === 1 ? '' : 'es'}</em>`);
     const m = Math.floor(flown / 60), sec = Math.round(flown % 60);
     $('over-time').innerHTML = `Flew ${m}:${String(sec).padStart(2, '0')} <small>${parts.join(' ')}</small>`;
+    $('over-daily-new').hidden = !r.dailyNew;
     $('over-best').textContent = fmt(r.best);
     const bt = $('over-best-tier');
     bt.textContent = r.bestTier > 0 ? tierName(r.bestTier) : '';
@@ -555,7 +644,12 @@ export class Hud {
     this.windEl.classList.remove('on');
     this.slipPopEl.classList.remove('show', 'paid');
     this.bankShown = -1;
+    this.bankTarget = 0;
+    this.bankShownF = 0;
     this.setBank(0, false);
+    this.eventPopEl.classList.remove('show');
+    this.rushShown = 'x';
+    this.setRush(0, 0);
     window.clearTimeout(this.comboBreakTimer);
     this.comboChip.classList.remove('broken');
     this.timePenalty.classList.remove('show');

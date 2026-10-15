@@ -17,6 +17,9 @@ export type RunSummary = {
   combo: number;
   slip: number;
   slipPayouts: number;
+  bankPaid: number; // deliveries that paid a street bonus
+  bankUnpaid: number; // street bonus still banked when the clock ran out (lost)
+  bankLost: number; // street bonus cut by hard crashes
   startTime: number;
   dropSeconds: number;
   slipSeconds: number;
@@ -27,6 +30,13 @@ export type RunSummary = {
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
 /** Clock seconds: whole numbers plain, halves with one decimal (2, 2.5). */
 const fmtSec = (n: number) => (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '');
+/** Game-over detail for the street bonus row: how many drops paid one, and what was lost (not part of the sum). */
+const bankDetail = (r: RunSummary) => {
+  const bits = [r.bankPaid > 0 ? `paid on ${r.bankPaid} drop${r.bankPaid === 1 ? '' : 's'}` : 'paid on delivery'];
+  const lost = Math.round(r.bankUnpaid + r.bankLost);
+  if (lost > 0) bits.push(`${fmt(lost)} lost`);
+  return bits.join(' · ');
+};
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -52,6 +62,9 @@ export class Hud {
   private readonly objective = $('objective');
   private readonly objectiveVerb = $('objective-verb');
   private readonly objectiveName = $('objective-name');
+  private readonly objectiveBank = $('objective-bank');
+  private readonly objectiveBankValue = $('objective-bank-value');
+  private bankShown = -1;
   private readonly deliveries = $('deliveries-value');
   private readonly boost = document.querySelector('.boost') as HTMLElement;
   private readonly boostFill = $('boost-fill');
@@ -74,6 +87,9 @@ export class Hud {
   private readonly slipPopSub = $('slip-pop-sub');
   private readonly timerSlow = $('timer-slow');
   private slowShown = false;
+  private slowFrac = -1;
+  slowBudgetMax = 8; // s: the per-leg slow clock budget (the badge bar is full at this)
+  private readonly timerSlowText = $('timer-slow-text');
   private slowSpent = false; // drafting with this leg's slow clock budget used up (muted tag)
   private slowOff = 0; // s since the slow clock last ran (the marker lingers briefly so it does not flicker)
   private hintLeft = 0; // s of first-time hint still to show while the meter is up
@@ -250,14 +266,20 @@ export class Hud {
       this.timer.classList.toggle('spent', spent);
     }
     if (on || spent) {
+      // round 14: the timer is the only seconds number on screen. The badge names the state in words and shows this
+      // leg's slow clock budget as a small bar that empties (a pickup or a drop refills it).
       const speed = Math.max(0, 1 - gain);
-      const left = `${Math.ceil(budget - 0.05)}s`;
       const text = spent
         ? idle === 'spent' ? 'slow clock spent' : 'slow clock: wrong way'
-        : `${gain > 1.05 ? `clock +${(gain - 1).toFixed(1)}/s` : speed < 0.05 ? 'clock frozen' : `clock x${speed.toFixed(1)}`} · ${left}`;
+        : gain > 1.05 ? 'clock rewinds' : speed < 0.05 ? 'clock frozen' : 'slow clock';
       if (text !== this.last.slow) {
         this.last.slow = text;
-        this.timerSlow.textContent = text;
+        this.timerSlowText.textContent = text;
+      }
+      const frac = Math.round(Math.max(0, Math.min(1, budget / Math.max(0.01, this.slowBudgetMax))) * 50) / 50;
+      if (frac !== this.slowFrac) {
+        this.slowFrac = frac;
+        this.timerSlow.style.setProperty('--budget', String(frac));
       }
     }
   }
@@ -296,6 +318,25 @@ export class Hud {
         this.comboChip.hidden = this.last.combo <= 0;
       }
     }, 900);
+  }
+
+  /**
+   * Street bonus: the slipstream points banked on this parcel run, shown at the end of the objective pill. They are paid
+   * on delivery. Hidden while nothing is banked. The pill bumps when the amount grows.
+   */
+  setBank(points: number, carrying: boolean): void {
+    const v = Math.max(0, Math.round(points));
+    if (v === this.bankShown) return;
+    const grew = v > this.bankShown && this.bankShown >= 0;
+    this.bankShown = v;
+    this.objectiveBank.hidden = v <= 0;
+    this.objectiveBankValue.textContent = `+${fmt(v)}`;
+    this.objectiveBank.dataset.carry = carrying ? '1' : '0';
+    if (grew) {
+      this.objectiveBank.classList.remove('bump');
+      void this.objectiveBank.offsetWidth;
+      this.objectiveBank.classList.add('bump');
+    }
   }
 
   setObjective(kind: MarkerKind, name: string): void {
@@ -436,11 +477,11 @@ export class Hud {
    * Payout pop near the drone: grows, brightens and gets a chain tag as the chain climbs. Once the slow clock has banked
    * a second or more, the tag also shows the run's total clock time from the slipstream so far.
    */
-  slipPop(points: string, chain: number, clockTotal = 0): void {
+  slipPop(points: string, chain: number, sub: string, paid = false): void {
     this.slipPopMain.textContent = points;
-    const tag = chain > 1 ? `Slipstream chain x${chain}` : 'Slipstream';
-    this.slipPopSub.textContent = clockTotal >= 1 ? `${tag} · clock +${Math.round(clockTotal)}s` : tag;
+    this.slipPopSub.textContent = sub;
     this.slipPopEl.dataset.chain = String(Math.min(chain, 5));
+    this.slipPopEl.classList.toggle('paid', paid);
     this.slipPopEl.classList.remove('show');
     void this.slipPopEl.offsetWidth;
     this.slipPopEl.classList.add('show');
@@ -481,7 +522,7 @@ export class Hud {
       row('Deliveries', `×${r.deliveries}`, r.drops),
       row('Fast drops', `×${r.fastCount}`, r.fast),
       row('Combo bonus', r.topCombo > 1 ? `up to x${r.topCombo.toFixed(1)}` : '', r.combo),
-      row('Slipstream', `×${r.slipPayouts}${r.slipSeconds > 0 ? ` · +${fmtSec(r.slipSeconds)} s clock` : ''}`, r.slip),
+      row('Street bonus', bankDetail(r), r.slip),
       `<div class="total"><dt>Score</dt><dd>${fmt(r.score)}</dd></div>`,
     ];
     $('over-breakdown').innerHTML = rows.join('');
@@ -507,11 +548,14 @@ export class Hud {
     this.slip.classList.remove('on', 'drafting', 'hug', 'hint');
     this.slowShown = false;
     this.slowSpent = false;
+    this.slowFrac = -1;
     this.timer.classList.remove('slow', 'spent');
     this.hintLeft = 0;
     this.windOn = false;
     this.windEl.classList.remove('on');
-    this.slipPopEl.classList.remove('show');
+    this.slipPopEl.classList.remove('show', 'paid');
+    this.bankShown = -1;
+    this.setBank(0, false);
     window.clearTimeout(this.comboBreakTimer);
     this.comboChip.classList.remove('broken');
     this.timePenalty.classList.remove('show');

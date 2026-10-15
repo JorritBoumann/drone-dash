@@ -33,13 +33,14 @@
             </svg>
             <strong id="timer-value">0:50</strong>
             <span id="time-bonus" class="time-bonus"></span>
-            <span id="timer-slow" class="timer-slow" aria-hidden="true"></span>
+            <span id="timer-slow" class="timer-slow" aria-hidden="true"><span id="timer-slow-text"></span><i class="timer-slow-bar"></i></span>
             <span id="time-penalty" class="time-penalty" aria-live="polite"></span>
           </div>
           <div id="objective" class="objective" data-kind="pickup">
             <span class="objective-dot"></span>
             <span class="objective-verb" id="objective-verb">Pick up</span>
             <span class="objective-name" id="objective-name">Dash Depot</span>
+            <span class="objective-bank" id="objective-bank" title="Street bonus: slipstream points banked on this parcel, paid on delivery" hidden><small>Bonus</small> <b id="objective-bank-value">+0</b></span>
           </div>
         </div>
 
@@ -118,7 +119,7 @@
             <span class="logo-kicker">Golden-hour courier</span>
             <h1>Drone<span>Dash</span></h1>
           </div>
-          <p class="tagline">Grab the glowing parcel, beat the clock, chain fast drops for combos. Fly fast and low, close to the walls: the slipstream pays points and slows the clock on the way to your next stop.</p>
+          <p class="tagline">Grab the glowing parcel, beat the clock, chain fast drops for combos. Fly fast and low by the walls: the slipstream banks a street bonus, paid when you deliver.</p>
           <ul class="controls-hint">
             <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly &amp; turn</li>
             <li><kbd>Space</kbd>/<kbd>Shift</kbd> up / down</li>

@@ -116,7 +116,7 @@ body { background: #f0b98a; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 14px; /* round 14: room for the slow clock badge between the timer and the objective pill */
 }
 
 .timer {
@@ -170,13 +170,13 @@ body { background: #f0b98a; }
   position: absolute;
   top: 100%;
   left: 50%;
-  transform: translate(-50%, -72%); /* a badge on the timer's lower edge, clear of the objective pill below */
+  transform: translate(-50%, -45%); /* a badge on the timer's lower edge, clear of the objective pill below */
   padding: 0 7px;
   line-height: 1.35;
   border-radius: 999px;
   background: var(--ink);
   color: var(--teal);
-  font-size: 0.62rem;
+  font-size: 0.78rem; /* round 14: 12.5 px on desktop (was 9.9) */
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -184,7 +184,30 @@ body { background: #f0b98a; }
   opacity: 0;
   transition: opacity 0.2s;
   pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
+/* the leg's slow clock budget as a bar (no second seconds number next to the timer) */
+.timer-slow-bar {
+  position: relative;
+  width: 26px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(47, 240, 196, 0.25);
+  overflow: hidden;
+}
+.timer-slow-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--teal);
+  transform-origin: left;
+  transform: scaleX(var(--budget, 1));
+  transition: transform 0.15s linear;
+}
+.timer.spent .timer-slow-bar { background: rgba(255, 255, 255, 0.2); }
+.timer.spent .timer-slow-bar::after { background: rgba(255, 255, 255, 0.6); }
 .timer.slow .timer-slow { opacity: 1; }
 /* round 13: the leg's slow clock budget is spent; drafting still pays points, a pickup or drop refills the budget */
 .timer.slow.spent { box-shadow: var(--shadow); }
@@ -275,6 +298,25 @@ body { background: #f0b98a; }
 .objective[data-kind='drop'] .objective-verb { color: var(--teal); }
 .objective-name { overflow: hidden; text-overflow: ellipsis; }
 .objective.flash { animation: obj-flash 0.6s ease; }
+/* round 14: street bonus banked on this parcel run, paid on delivery */
+.objective-bank {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(255, 231, 176, 0.16);
+  color: #ffe7b0;
+  font-variant-numeric: tabular-nums;
+}
+.objective-bank[hidden] { display: none; }
+.objective-bank small { font-size: 0.62rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
+.objective-bank b { font-weight: 900; }
+.objective-bank[data-carry='0'] { opacity: 0.8; }
+.objective-bank.bump { animation: bank-bump 0.45s ease; }
+@keyframes bank-bump { 30% { transform: scale(1.18); background: rgba(255, 231, 176, 0.4); } }
 @keyframes obj-flash { 30% { transform: scale(1.08); } }
 
 .hud-right {
@@ -449,6 +491,7 @@ body { background: #f0b98a; }
 .slip-pop[data-chain='4'] strong { font-size: 2.25rem; color: #ffe7b0; }
 .slip-pop[data-chain='5'] strong { font-size: 2.5rem; color: #fff3d6; }
 .slip-pop.show { animation: slip-rise 1.3s ease-out; }
+.slip-pop.paid strong { font-size: 2.1rem; color: var(--teal); }
 @keyframes slip-rise {
   0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); }
   15% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
@@ -1025,6 +1068,7 @@ kbd {
   .timer strong { font-size: 1.35rem; }
   .timer-ring { width: 28px; height: 28px; }
   .objective { font-size: 0.72rem; max-width: 60vw; }
+  .objective-bank small { display: none; }
   .boost { width: 150px; }
   .slip { width: 150px; }
 }
@@ -1035,7 +1079,9 @@ kbd {
   .primary-button { padding: 12px 30px; font-size: 1.05rem; }
   .modal-card { padding: 18px 24px; gap: 8px; }
   #over-score { font-size: 2.8rem; }
-  .hud-center { gap: 4px; }
+  .hud-center { gap: 10px; }
+  .timer-slow { font-size: 0.66rem; }
+  .objective-bank small { display: none; }
   .over-card { flex-direction: row; align-items: center; gap: 24px; padding: 16px 24px; }
   .over-head { min-width: 160px; }
   .over-body { gap: 7px; min-width: 250px; }

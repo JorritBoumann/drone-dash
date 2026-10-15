@@ -58,6 +58,14 @@ export class Game {
   private slipClockGain = 0; // clock seconds gained per second this frame (the clock runs at 1 - this speed)
   private slipBudget: number = SLIPSTREAM.clockBudget; // slow clock seconds left on this leg (refilled on pickup and drop)
   private slipToward = 1; // 0..1 heading toward the current objective this frame (the slow clock only helps on the way)
+  // round 14 street bonus: slip payouts bank here and are paid on delivery (see SLIPSTREAM.bankCarry)
+  private bank = 0; // points banked on the current parcel run, unpaid
+  private legBanked = 0; // points banked on the current leg (capped at legCap)
+  private legCap = 0;
+  private bankTotal = 0; // every point banked this run
+  private bankPaid = 0; // deliveries that paid a street bonus
+  private bankLost = 0; // points cut from the bank by hard crashes
+  private scoreLog: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[] = []; // test/tuning log
   private readonly slipColor = new THREE.Color('#ffe7b0');
   private readonly slipHot = new THREE.Color('#fff6e8');
   private readonly windColor = new THREE.Color('#e6f2ff');
@@ -268,6 +276,14 @@ export class Game {
     this.slipClockGain = 0;
     this.slipBudget = SLIPSTREAM.clockBudget;
     this.slipToward = 1;
+    this.bank = 0;
+    this.bankTotal = 0;
+    this.bankPaid = 0;
+    this.bankLost = 0;
+    this.scoreLog = [];
+    this.newLeg(this.startPos);
+    this.hud.setBank(0, false);
+    this.hud.slowBudgetMax = SLIPSTREAM.clockBudget;
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
@@ -317,6 +333,7 @@ export class Game {
     this.hud.setSpeedLines(0);
     this.audio.setRotor(false);
     const score = this.delivery.score;
+    this.scoreLog.push({ t: this.rt(), k: 'end', v: this.bank });
     this.audio.gameOver(tierFor(score));
     this.audio.setMusicScene('over', tierFor(score));
     const newBest = score > this.best;
@@ -344,6 +361,9 @@ export class Game {
       combo: T.combo,
       slip: T.slip,
       slipPayouts: this.slip.payouts,
+      bankPaid: this.bankPaid,
+      bankUnpaid: this.bank,
+      bankLost: this.bankLost,
       startTime: RUN.startTime,
       dropSeconds: T.dropSeconds,
       slipSeconds: T.slipSeconds,
@@ -487,6 +507,9 @@ export class Game {
     const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius);
     if (ev) this.slipBudget = SLIPSTREAM.clockBudget; // a new leg: the slow clock budget refills (to the cap, no stacking)
     if (ev?.type === 'picked') {
+      this.newLeg(ev.site.pos);
+      this.scoreLog.push({ t: this.rt(), k: 'pick', v: this.bank });
+      this.hud.setBank(this.bank, true);
       d.setCarrying(true);
       this.audio.pickup();
       this.vfx.burst(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 1.8), MARKER_COLORS.pickup, 36, 9, 0.2, this.fxRng);
@@ -501,7 +524,15 @@ export class Game {
       this.vfx.ring(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 0.3), MARKER_COLORS.drop, 9);
       this.cameraRig.addShake(0.2);
       const sub = ev.fast ? (ev.combo > 1 ? `Fast drop · x${this.delivery.multiplier.toFixed(1)} combo` : 'Fast drop!') : 'Delivered';
-      this.hud.popText(`+${ev.points}`, sub, 'drop');
+      // the street bonus banked on this parcel run is paid now (the breakdown's "Street bonus" line is exactly these)
+      const paid = this.bank > 0 ? this.delivery.addBonus(this.bank, 0, false) : 0;
+      this.scoreLog.push({ t: this.rt(), k: 'drop', v: ev.points, c: paid, m: this.delivery.multiplier, lt: Math.round(ev.legTime * 10) / 10, par: Math.round(ev.par * 10) / 10 });
+      if (paid > 0) this.bankPaid++;
+      this.bank = 0;
+      this.newLeg(ev.site.pos);
+      this.hud.setBank(0, false);
+      this.hud.popText(`+${ev.points + paid}`, paid > 0 ? `${sub} · street bonus +${paid}` : sub, 'drop');
+      if (paid > 0) this.hud.slipPop(`+${paid}`, 1, 'Street bonus paid', true);
       this.hud.flashTimeBonus(ev.timeBonus);
       this.setMarkerFromDelivery();
     }
@@ -579,12 +610,22 @@ export class Game {
     const charged = this.crashWindow > 0 ? this.crashCharged : 0;
     if (tier.seconds <= charged) return;
     const res = this.delivery.penalize(tier.seconds - charged, CRASH.floor, true);
+    // a hard crash (or worse) shakes the parcel: the street bonus banked on it is cut (once per collision)
+    const cutAt = CRASH.tiers[Math.min(SLIPSTREAM.bankCrashTier, CRASH.tiers.length - 1)].seconds;
+    let bankCut = 0;
+    if (tier.seconds >= cutAt && charged < cutAt && this.bank > 0) {
+      bankCut = this.bank - Math.round(this.bank * SLIPSTREAM.bankCrashKeep);
+      this.bank -= bankCut;
+      this.bankLost += bankCut;
+      this.scoreLog.push({ t: this.rt(), k: 'cut', v: bankCut });
+      this.hud.setBank(this.bank, this.drone.carrying);
+    }
     const fresh = this.crashWindow <= 0;
     this.crashCharged = tier.seconds;
     this.crashWindow = CRASH.window;
     if (fresh) this.crashes++;
     this.lastCrash = { loss: this.hitLoss, wallTop: this.hitTop, normalY: this.hitNormalY, y: this.drone.group.position.y };
-    this.crashFeedback(tier.label, tier.seconds, res.comboLost, Math.min(1, this.hitLoss / 30), fresh);
+    this.crashFeedback(tier.label, tier.seconds, res.comboLost, Math.min(1, this.hitLoss / 30), fresh, bankCut);
   }
 
   /** The wall just hit is the upper edge of the block the current pad sits on (roof lip, kerb, lawn edge), near the pad. */
@@ -597,10 +638,11 @@ export class Game {
     return p.y - FLIGHT.radius > wallTop - CRASH.padEdgeDepth;
   }
 
-  private crashFeedback(label: string, seconds: number, comboLost: number, s: number, fresh: boolean): void {
+  private crashFeedback(label: string, seconds: number, comboLost: number, s: number, fresh: boolean, bankCut = 0): void {
     const d = this.drone;
     this.hud.flashTimePenalty(seconds);
-    const lost = comboLost > 0 ? `-${seconds} sec · x${comboLost.toFixed(1)} combo lost` : `-${seconds} sec`;
+    let lost = comboLost > 0 ? `-${seconds} sec · x${comboLost.toFixed(1)} combo lost` : `-${seconds} sec`;
+    if (bankCut > 0) lost += ` · bonus -${bankCut}`;
     this.hud.popText(`${label}!`, lost, 'crash');
     if (comboLost > 0) this.hud.breakCombo(comboLost);
     this.slip.lose();
@@ -627,6 +669,19 @@ export class Game {
     const c = MEDAL_COLORS[Math.min(t, MEDAL_COLORS.length) - 1];
     this.vfx.burst(this.drone.group.position, c, 26 + t * 6, 8 + t, 0.16, this.fxRng);
     this.cameraRig.addShake(0.12);
+  }
+
+  private rt(): number {
+    return Math.round(this.runTime * 10) / 10;
+  }
+
+  /** A new leg starts at `from` toward the current target: its street bonus share is sized by its street route. */
+  private newLeg(from: THREE.Vector3): void {
+    const t = this.delivery.target.pos;
+    const route = Math.abs(t.x - from.x) + Math.abs(t.z - from.z);
+    this.legCap = Math.max(SLIPSTREAM.bankLegMin, Math.round(route * SLIPSTREAM.bankPerMetre));
+    this.legBanked = 0;
+    this.scoreLog.push({ t: this.rt(), k: 'leg', v: Math.round(route), c: this.legCap });
   }
 
   /** HUD chevrons: how fast the slipstream meter is filling right now (0 none, 1 slow, 2 good, 3 fast and tight). */
@@ -687,11 +742,21 @@ export class Game {
     this.hud.setSlowClock(this.slipClockGain, dt, this.slipBudget, idle);
     if (ev?.type === 'tick') this.audio.slipTick(ev.step);
     else if (ev?.type === 'payout') {
-      const pts = this.delivery.addBonus(ev.points, 0, false);
+      // round 14: the payout is banked on the parcel run (paid on delivery), not scored now
+      const S = SLIPSTREAM;
+      const pace = Math.max(S.bankPaceMin, Math.min(S.bankPaceMax, (ev.pace - S.bankPaceLow) / (S.bankPaceFull - S.bankPaceLow)));
+      const want = Math.round(ev.points * pace * (d.carrying ? S.bankCarry : S.bankPickup));
+      const pts = Math.max(0, Math.min(want, this.legCap - this.legBanked));
+      this.bank += pts;
+      this.legBanked += pts;
+      this.bankTotal += pts;
       this.slip.points += pts;
+      this.scoreLog.push({ t: this.rt(), k: 'pay', v: pts, c: d.carrying ? 1 : 0, m: ev.points, par: Math.round(ev.pace * 10) / 10 });
+      this.hud.setBank(this.bank, d.carrying);
       d.boost = Math.min(1, d.boost + SLIPSTREAM.boost);
       this.audio.slipPayout(ev.chain);
-      this.hud.slipPop(`+${pts}`, ev.chain, this.delivery.tally.slipSeconds);
+      if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus');
+      else this.hud.slipPop('Bonus full', ev.chain, d.carrying ? 'Deliver to cash in' : 'Grab the parcel');
       this.cameraRig.addShake(0.06 + 0.03 * ev.chain);
       this.vfx.burst(d.group.position, this.slipColor, 12 + ev.chain * 6, 6 + ev.chain, 0.12, this.fxRng);
       if (ev.chain >= 3) this.vfx.burst(d.group.position, this.slipHot, 6 + ev.chain * 3, 9 + ev.chain, 0.1, this.fxRng);
@@ -824,7 +889,8 @@ export class Game {
       combo: this.delivery.combo,
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
-      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward },
+      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
+      scoreLog: this.scoreLog,
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
       lastCrash: this.lastCrash,

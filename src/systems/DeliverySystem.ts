@@ -6,7 +6,7 @@ import type { Site } from '../world/CityGenerator';
 export type DeliveryPhase = 'pickup' | 'deliver';
 export type DeliveryEvent =
   | { type: 'picked'; site: Site }
-  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number }
+  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number }
   | null;
 
 export type Tally = {
@@ -156,6 +156,7 @@ export class DeliverySystem {
     }
 
     // delivered
+    const legTime = this.legTime;
     const fast = this.legTime <= this.legPar;
     this.combo = fast ? this.combo + 1 : 0;
     const decay = this.clockDecay;
@@ -177,6 +178,6 @@ export class DeliverySystem {
     // next pickup reasonably close so the loop keeps moving
     this.target = this.choose(rng, t.pos, 30, 95 + Math.min(this.deliveries * 5, 60), undefined, this.approachable(t.pos));
     this.legTime = 0;
-    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo };
+    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar };
   }
 }

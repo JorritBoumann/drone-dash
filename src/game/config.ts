@@ -151,6 +151,26 @@ export const SLIPSTREAM = {
   clockBudget: 8,
   towardLow: -0.1, // cos(heading to target): at or below this the slow clock is off...
   towardFull: 0.2, // ...and full from here
+  // Round 14: the street bonus. Slip payouts no longer score on their own. Each payout is banked on the parcel run
+  // (shown in the objective pill) and the bank is paid on delivery. With no delivery, drafting scores nothing (it still
+  // refills boost, builds the chain and drives the music). Payouts while carrying bank `bankCarry` of their points, on
+  // the way to a pickup `bankPickup` (the bank then rides on the parcel you pick up). Each leg can bank at most
+  // `bankPerMetre` x the leg's street route (grid distance), so circling a wall with a parcel aboard stops paying once
+  // the leg's share is full. A hard crash or worse keeps `bankCrashKeep` of the bank. When the clock runs out, the bank is lost.
+  // Each payout banks points x pace weight: the meter's mean fill rate over that payout (draft metres a second, the HUD
+  // chevron measure) maps linearly from `bankPaceMin` at `bankPaceLow` to 1 at `bankPaceFull` and on up to `bankPaceMax`.
+  // A slow, centred crawl (2 to 4 m/s of draft) banks a fifth to a half; a fast street line along the facades (8 to
+  // 14) banks 1.5 to 2.5 times. Balance bots: the lazy flier's payouts average 3, the routed street pilot's 4 to 14.
+  bankCarry: 1,
+  bankPickup: 0.75,
+  bankPaceLow: 2.5,
+  bankPaceFull: 6,
+  bankPaceMin: 0.2,
+  bankPaceMax: 2.5,
+  bankPerMetre: 7, // honest street legs banked up to 6 points per metre of street route on the balance bots
+  bankLegMin: 150, // points: every leg can bank at least this much (very short legs)
+  bankCrashKeep: 0.5,
+  bankCrashTier: 1, // CRASH.tiers index from which a crash cuts the bank (1 = Hard crash)
 };
 
 /**
@@ -163,12 +183,16 @@ export const SLIPSTREAM = {
  * Round 13: Silver 1775 -> 1600. With the slow clock only on the way to the objective, the lazy flier's seed 22 run
  * misses its second drop (844, was 1,728), so its best is 1,141. The routed street pilot's worst is seed 58 at 1,792.
  * Silver sits 459 above the first and 192 below the second: see progress/round-13/builder.md.
+ * Round 14: slipstream points are a street bonus paid on delivery and weighted by draft pace (SLIPSTREAM.bank*), so a
+ * no-delivery farm scores 0 and the lazy flier keeps little of its drafting. Lazy best 1,249; routed street worst 2,046
+ * (gap 797). Silver 1600 -> 1650 sits 401 above and 396 below. Ace 7500 -> 8500: the street line now keeps more of
+ * a fast run's drafting (best bot 6,927, desktop medal journey 6,903). See progress/round-14/builder.md.
  */
 export const GOALS = {
   tiers: [
     { name: 'Bronze', score: 1000 },
-    { name: 'Silver', score: 1600 },
+    { name: 'Silver', score: 1650 },
     { name: 'Gold', score: 4500 },
-    { name: 'Ace', score: 7500 },
+    { name: 'Ace', score: 8500 },
   ],
 };

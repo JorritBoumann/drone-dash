@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import { SLIPSTREAM } from '../game/config';
 import type { CollisionWorld } from './CollisionWorld';
 
-export type SlipEvent = { type: 'payout'; points: number; chain: number } | { type: 'tick'; step: number } | null;
+export type SlipEvent = { type: 'payout'; points: number; chain: number; pace: number } | { type: 'tick'; step: number } | null;
 
 /**
  * Slipstream: flying low and fast along building faces builds a draft meter. The meter fills by distance flown in the
@@ -25,6 +25,8 @@ export class Slipstream {
   private draftClock = -1;
   chain = 0;
   payouts = 0;
+  private paceMetres = 0; // draft metres filled since the last payout
+  private paceTime = 0; // s spent drafting since the last payout
   points = 0;
   hotPoints = 0; // always 0 since round 9 (the street multiplier on deliveries was removed); kept for older scripts
   seconds = 0;
@@ -46,6 +48,8 @@ export class Slipstream {
     this.draftClock = -1;
     this.chain = 0;
     this.payouts = 0;
+    this.paceMetres = 0;
+    this.paceTime = 0;
     this.points = 0;
     this.hotPoints = 0;
     this.seconds = 0;
@@ -91,6 +95,8 @@ export class Slipstream {
       this.since = 0;
       const size = this.payouts === 0 ? S.introMeter : S.firstMeter + S.meterPerChain * Math.min(this.chain, S.maxChain - 1);
       this.level += (this.rate * dt) / size;
+      this.paceMetres += this.rate * dt;
+      this.paceTime += dt;
     } else {
       this.since += dt;
       if (this.since > S.grace) this.level = Math.max(0, this.level - S.drain * dt);
@@ -104,7 +110,11 @@ export class Slipstream {
       const points = S.points + S.chainStep * (this.chain - 1);
       this.payouts++;
       if (this.firstPayoutAt < 0) this.firstPayoutAt = this.draftClock;
-      return { type: 'payout', points, chain: this.chain };
+      // pace: the meter's mean fill rate while drafting for this payout (draft metres a second, the HUD chevron measure)
+      const pace = this.paceTime > 0 ? this.paceMetres / this.paceTime : 0;
+      this.paceMetres = 0;
+      this.paceTime = 0;
+      return { type: 'payout', points, chain: this.chain, pace };
     }
     const step = Math.floor(this.level * 4);
     if (step > this.lastStep) ev = { type: 'tick', step };

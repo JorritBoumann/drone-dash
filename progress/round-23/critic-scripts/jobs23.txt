@@ -1,0 +1,43 @@
+SEED=22 TOTAL=62 node cam-clip.mjs > cam-clip-22.log 2>&1
+NOORBIT=1 SEED=22 TOTAL=62 node cam-clip.mjs > cam-clip-22-noorbit.log 2>&1
+SEED=130 TOTAL=45 node cam-clip.mjs > cam-clip-130.log 2>&1
+NOORBIT=1 SEED=130 TOTAL=45 node cam-clip.mjs > cam-clip-130-noorbit.log 2>&1
+SEED=44 TOTAL=62 node cam-clip.mjs > cam-clip-44.log 2>&1
+NOORBIT=1 SEED=44 TOTAL=62 node cam-clip.mjs > cam-clip-44-noorbit.log 2>&1
+SEED=203 TOTAL=62 node cam-clip.mjs > cam-clip-203.log 2>&1
+NOORBIT=1 SEED=203 TOTAL=62 node cam-clip.mjs > cam-clip-203-noorbit.log 2>&1
+SEED=22 TOTAL=40 node gap-fly23.mjs > gap-22.log 2>&1
+NOORBIT=1 SEED=22 TOTAL=40 node gap-fly23.mjs > gap-22-noorbit.log 2>&1
+SEED=44 TOTAL=40 node gap-fly23.mjs > gap-44.log 2>&1
+NOORBIT=1 SEED=44 TOTAL=40 node gap-fly23.mjs > gap-44-noorbit.log 2>&1
+node tunnel44-dbg.mjs > tunnel44-dbg.log 2>&1
+node tunnel22-dbg.mjs > tunnel22-dbg.log 2>&1
+SEEDS=22,44 node arrival-metrics.mjs > arrival.log 2>&1
+node cam-desktop.mjs > cam-desktop.log 2>&1
+node cam-touch.mjs > cam-touch.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 node farm-probe.mjs > farm-$s.log 2>&1; done
+SEED=22 MODE=near SIMT=600 node smart-farm.mjs > smart-near-22.log 2>&1
+SEED=22 MODE=van FARMMAX=12 SIMT=600 node capfarm-narrow.mjs > cfn-van-12-22.log 2>&1
+node van-draft.mjs > van-draft.log 2>&1
+node street-probe.mjs > street-probe.log 2>&1
+node density-probe.mjs > density.log 2>&1
+node density23.mjs > density23.log 2>&1
+node pad-people23.mjs > pad-people.log 2>&1
+(cd ../../.. && npx tsc --noEmit && npx vite build --outDir /private/tmp/claude-501/-Users-jorritboumann-projects-browser-game-lab/c70bfd6f-b51c-4910-b300-7e4c0c36b628/scratchpad/dist23 --emptyOutDir) > build.log 2>&1
+node hand-fly20.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly20.mjs > hf-mobile.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+MOBILE=1 node promenade23.mjs > prom-m.log 2>&1
+MODE=sign SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node route-sign20.mjs > acc-sign.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+MOBILE=1 OVSHOT=1 PFX=hud23- node hand-fly23.mjs > hf23-mobile.log 2>&1
+MOBILE=1 OVSHOT=1 PFX=hud23b- SEED=130 node hand-fly23.mjs > hf23-mobile-130.log 2>&1
+LINE=high SEEDS=22 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-22b.log 2>&1
+END

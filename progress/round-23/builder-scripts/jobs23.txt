@@ -1,0 +1,18 @@
+SEED=22 TOTAL=62 node cam-clip.mjs > cam-clip-22.log 2>&1
+NOORBIT=1 SEED=22 TOTAL=62 node cam-clip.mjs > cam-clip-22-noorbit.log 2>&1
+SEED=130 TOTAL=45 node cam-clip.mjs > cam-clip-130.log 2>&1
+NOORBIT=1 SEED=130 TOTAL=45 node cam-clip.mjs > cam-clip-130-noorbit.log 2>&1
+node cam-desktop.mjs > cam-desktop.log 2>&1
+node cam-touch.mjs > cam-touch.log 2>&1
+node hand-fly20.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly20.mjs > hf-mobile.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+node van-draft.mjs > van-draft.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+END

@@ -11,6 +11,8 @@ import { PANTS, SHIRTS, buildPedGeometry, pedMaterial } from './StreetKit';
  * pad of the current pickup or drop. Drawn with one InstancedMesh, only near the camera.
  */
 
+/** Round 23: people further than this from the camera use the low-detail figure (m). */
+const LOD_NEAR = 40;
 const SIDEWALK_H = 0.25;
 const PATH_H = SIDEWALK_H + 0.12;
 
@@ -24,11 +26,16 @@ type Ped = {
   path: number; s: number; speed: number; base: number; pause: number; faceYaw: number; hurry: boolean;
   react: number; cool: number; aside: number; asideT: number; jx: number; jz: number;
   phase: number; x: number; z: number; y: number; yaw: number; scale: number;
-  shirt: THREE.Color; pants: THREE.Color; look: number; seg: number; rx: number; rz: number;
+  shirt: THREE.Color; pants: THREE.Color; look: number; seg: number; rx: number; rz: number; hid?: boolean;
 };
 
 export class Pedestrians {
-  readonly mesh: THREE.InstancedMesh;
+  /** Round 23: near (full detail) and far (low detail, LOD_NEAR on) people. */
+  readonly mesh: THREE.Group;
+  private readonly near: THREE.InstancedMesh;
+  private readonly far: THREE.InstancedMesh;
+  private readonly fanim: THREE.InstancedBufferAttribute;
+  private readonly fpants: THREE.InstancedBufferAttribute;
   private readonly paths: Path[] = [];
   private readonly peds: Ped[] = [];
   private readonly rng: Rng;
@@ -44,6 +51,9 @@ export class Pedestrians {
   reactions = 0;
   reacting = 0;
   drawn = 0;
+  drawnFar = 0;
+  /** Round 23: person-frames kept off the live pad by the last-resort hide (diagnostics; should stay near 0). */
+  padHidden = 0;
   droppedLoops = 0;
   onPad = 0;
 
@@ -55,17 +65,31 @@ export class Pedestrians {
     const n = Math.max(1, this.peds.length);
     this.ianim = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4);
     this.ipants = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3);
-    this.ianim.setUsage(THREE.DynamicDrawUsage);
-    this.ipants.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('ianim', this.ianim);
-    geo.setAttribute('ipants', this.ipants);
-    this.mesh = new THREE.InstancedMesh(geo, pedMaterial(), n);
-    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.setColorAt(0, new THREE.Color());
-    this.mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.castShadow = true;
-    this.mesh.frustumCulled = false;
-    this.mesh.count = 0;
+    this.fanim = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4);
+    this.fpants = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3);
+    const mat = pedMaterial();
+    const make = (anim: THREE.InstancedBufferAttribute, pants: THREE.InstancedBufferAttribute, far: boolean) => {
+      const g = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(geo.attributes)) g.setAttribute(name, attr);
+      if (far) g.setDrawRange(0, geo.userData.farCount as number);
+      anim.setUsage(THREE.DynamicDrawUsage);
+      pants.setUsage(THREE.DynamicDrawUsage);
+      g.setAttribute('ianim', anim);
+      g.setAttribute('ipants', pants);
+      const m = new THREE.InstancedMesh(g, mat, n);
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      m.setColorAt(0, new THREE.Color());
+      m.instanceColor!.setUsage(THREE.DynamicDrawUsage);
+      m.castShadow = true;
+      m.frustumCulled = false;
+      m.count = 0;
+      m.name = far ? 'pedestrians-far' : 'pedestrians';
+      return m;
+    };
+    this.near = make(this.ianim, this.ipants, false);
+    this.far = make(this.fanim, this.fpants, true);
+    this.mesh = new THREE.Group();
+    this.mesh.add(this.near, this.far);
     this.mesh.name = 'pedestrians';
   }
 
@@ -236,7 +260,21 @@ export class Pedestrians {
   // ----------------------------------------------------------------------------------------------------------------
 
   /** The pad of the current pickup or drop (radius 0: none). */
-  setActivePad(x: number, z: number, r: number): void { this.pad.x = x; this.pad.z = z; this.pad.r = r; }
+  setActivePad(x: number, z: number, r: number): void {
+    const changed = x !== this.pad.x || z !== this.pad.z || r !== this.pad.r;
+    this.pad.x = x; this.pad.z = z; this.pad.r = r;
+    if (!changed || r <= 0) return;
+    // round 23: nobody is ever on the live pad. Walkers already on it when it lights up step on along their loop to
+    // just past it (this happens far from the drone: the next pad lights up when the last one is done).
+    for (const w of this.peds) {
+      if (w.path < 0) continue;
+      const p = this.paths[w.path];
+      let a = this.at(p, w.s);
+      if (!this.inPad(a.x, a.z, 0.9)) continue;
+      for (let k = 0; k < 80 && this.inPad(a.x, a.z, 0.9); k++) { w.s = (w.s + 0.25) % p.L; a = this.at(p, w.s); }
+      w.pause = 0;
+    }
+  }
 
   private inPad(x: number, z: number, m: number): boolean {
     return this.pad.r > 0 && Math.hypot(x - this.pad.x, z - this.pad.z) < this.pad.r + m;
@@ -295,7 +333,9 @@ export class Pedestrians {
       for (const w of turnBack) this.reverse(w, p);
     }
     // pose, reactions and the instance buffers
-    let k = 0;
+    let k = 0, kf = 0;
+    const fanim = this.fanim.array as Float32Array;
+    const fpants = this.fpants.array as Float32Array;
     this.reacting = 0;
     this.onPad = 0;
     const anim = this.ianim.array as Float32Array;
@@ -344,26 +384,39 @@ export class Pedestrians {
       while (dy > Math.PI) dy -= 2 * Math.PI;
       while (dy < -Math.PI) dy += 2 * Math.PI;
       w.yaw += dy * Math.min(1, dt * 8);
+      // round 23: never drawn on the live pad (a sidestep or a nudge cannot carry anyone onto it)
+      if (this.inPad(x, z, 0.15)) { x -= inx * as + w.jx; z -= inz * as + w.jz; w.aside = 0; w.jx = w.jz = 0; }
       w.rx = x; w.rz = z;
+      w.hid = this.inPad(x, z, 0.15);
+      if (w.hid) { this.padHidden++; continue; }
       if (this.inPad(x, z, 0)) this.onPad++;
       const fade = Math.min(1, (R - d) / 10);
       const s = w.scale * fade;
       this.q.setFromAxisAngle(this.up, w.yaw);
       this.m.compose(this.v.set(x, p ? p.y : w.y, z), this.q, this.sc.set(s, s, s));
-      this.mesh.setMatrixAt(k, this.m);
-      this.mesh.setColorAt(k, w.shirt);
+      // round 23: past LOD_NEAR the low-detail figure (no shoes, hands, neck, hips or back hair)
+      const isFar = d > LOD_NEAR;
+      const mesh = isFar ? this.far : this.near;
+      const j = isFar ? kf++ : k++;
+      const A = isFar ? fanim : anim, PA = isFar ? fpants : pants;
+      mesh.setMatrixAt(j, this.m);
+      mesh.setColorAt(j, w.shirt);
       const walk = p ? Math.min(1, w.speed / 1.1) : 0;
       // standing people idle: a slow weight shift
       const ph = p ? w.phase : 0;
       if (!p) w.phase += dt;
-      anim[k * 4] = ph; anim[k * 4 + 1] = p ? walk : 0.06 * Math.sin(w.phase * 0.7); anim[k * 4 + 2] = rc; anim[k * 4 + 3] = w.look;
-      pants[k * 3] = w.pants.r; pants[k * 3 + 1] = w.pants.g; pants[k * 3 + 2] = w.pants.b;
-      k++;
+      A[j * 4] = ph; A[j * 4 + 1] = p ? walk : 0.06 * Math.sin(w.phase * 0.7); A[j * 4 + 2] = rc; A[j * 4 + 3] = w.look;
+      PA[j * 3] = w.pants.r; PA[j * 3 + 1] = w.pants.g; PA[j * 3 + 2] = w.pants.b;
     }
-    this.drawn = k;
-    this.mesh.count = k;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.mesh.instanceColor!.needsUpdate = true;
+    this.drawn = k + kf;
+    this.drawnFar = kf;
+    for (const [mesh, cnt, an, pa] of [[this.near, k, this.ianim, this.ipants], [this.far, kf, this.fanim, this.fpants]] as const) {
+      mesh.count = cnt;
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor!.needsUpdate = true;
+      an.needsUpdate = true;
+      pa.needsUpdate = true;
+    }
     this.ianim.needsUpdate = true;
     this.ipants.needsUpdate = true;
   }
@@ -389,13 +442,13 @@ export class Pedestrians {
   }
 
   /** Test hook: everyone near the camera (x, z, kind, reaction). */
-  snapshot(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }> {
-    const out: Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }> = [];
+  snapshot(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number; hidden: boolean }> {
+    const out: Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number; hidden: boolean }> = [];
     for (const w of this.peds) {
       const p = w.path >= 0 ? this.paths[w.path] : null;
       let x = w.rx, z = w.rz;
       if (p && !p.near) { const a = this.at(p, w.s); x = a.x; z = a.z; }
-      out.push({ x, z, y: p ? p.y : w.y, walking: !!p, react: w.react, path: w.path });
+      out.push({ x, z, y: p ? p.y : w.y, walking: !!p, react: w.react, path: w.path, hidden: !!w.hid && (!p || p.near) });
     }
     return out;
   }

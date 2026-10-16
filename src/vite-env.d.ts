@@ -44,7 +44,7 @@ interface ThreeGameDiagnostics {
   lastCrash?: { loss: number; wallTop: number; normalY: number; y: number } | null;
   objective: { phase: string; name: string; position: { x: number; y: number; z: number } | null } | null;
   fps: number;
-  camera: { x: number; y: number; z: number; fov: number; aspect: number; view?: { yaw: number; pitch: number; zoom: number; free: number; idle: number; distance: number }; behind?: { yaw: number; elev: number } };
+  camera: { x: number; y: number; z: number; fov: number; aspect: number; view?: { yaw: number; pitch: number; zoom: number; free: number; idle: number; distance: number }; behind?: { yaw: number; elev: number }; corridor?: { w: number; axis: string; roof: boolean } };
   drawCalls: number;
   player: {
     position: { x: number; y: number; z: number };
@@ -107,6 +107,7 @@ interface DroneDashApi {
   readonly state: string;
   diagnostics(): ThreeGameDiagnostics | undefined;
   /** Debug: move the drone (yaw 0 faces -z) and set its horizontal speed along the heading. */
+  camCorridors(): Array<{ axis: "x" | "z"; c: number; hw: number; a0: number; a1: number; roofY: number }>;
   place(x: number, y: number, z: number, yaw: number, speed?: number): void;
   /** Debug: every delivery site in the city. */
   /** Test: read music/SFX bus levels every frame (fills audio.music.meter and lastFanfare). */

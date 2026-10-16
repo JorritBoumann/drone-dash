@@ -24,7 +24,8 @@ export const VDIM: Record<number, { len: number; wid: number; hgt: number }> = {
 };
 
 /** glow codes: 1 headlight, 2 tail light (brighter when braking), 3 always-lit sign / hover pad */
-type Part = { paint?: boolean; glow?: number; glass?: boolean };
+/** round 23: `far` parts make up the low-detail version drawn far from the camera (default: body paint and glass). */
+type Part = { paint?: boolean; glow?: number; glass?: boolean; far?: boolean };
 
 function finish(g: THREE.BufferGeometry, hex: string, type: number, o: Part = {}): THREE.BufferGeometry {
   let n = g.index ? g.toNonIndexed() : g;
@@ -40,8 +41,12 @@ function finish(g: THREE.BufferGeometry, hex: string, type: number, o: Part = {}
   }
   n.setAttribute('color', new THREE.BufferAttribute(col, 3));
   n.setAttribute('vinfo', new THREE.BufferAttribute(info, 4));
+  n.userData = { t: type, far: o.far ?? !!(o.paint || o.glass) };
   return n;
 }
+
+/** Round 23: per vehicle type, where its vertices start, how many there are, and how many make the far version. */
+export type VehicleRange = { first: number; count: number; far: number };
 
 /** A side profile (z forward, y up) extruded across the width, centred on x = 0. */
 function profile(pts: Array<[number, number]>, width: number, x = 0): THREE.BufferGeometry {
@@ -120,7 +125,7 @@ export function buildVehicleGeometry(): THREE.BufferGeometry {
     const t = 4, L = 6.3, W = 2.12, h = L / 2;
     parts.push(finish(profile([[h - 1.95, 0.42], [h, 0.42], [h, 1.0], [h - 0.3, 1.86], [h - 1.95, 1.92]], W - 0.08), '#ffffff', t, { paint: true }));
     parts.push(finish(profile([[h - 1.2, 1.12], [h + 0.02, 1.12], [h - 0.29, 1.8], [h - 1.2, 1.84]], W - 0.05), GLASS, t, { glass: true }));
-    parts.push(finish(box(W, 1.66, 4.1, 0, 0.44 + 0.83, -h + 2.05), '#ece4d4', t));
+    parts.push(finish(box(W, 1.66, 4.1, 0, 0.44 + 0.83, -h + 2.05), '#ece4d4', t, { far: true }));
     parts.push(finish(box(W + 0.02, 0.26, 4.12, 0, 1.6, -h + 2.05), '#e8833a', t));
     parts.push(finish(box(W + 0.03, 0.06, 4.13, 0, 2.08, -h + 2.05), '#c9bba5', t));
     parts.push(finish(box(W - 0.3, 0.3, L - 0.4, 0, 0.42, 0), TRIM_DARK, t));
@@ -141,7 +146,20 @@ export function buildVehicleGeometry(): THREE.BufferGeometry {
     }
     lights(t, parts, W / 2 - 0.32, 0.0, h + 0.01, 0.1, -h - 0.01, 0.4, 0.12);
   }
+  // round 23: order by type, and within a type the far parts first, so each type is one slice of the buffer and its
+  // far version is the start of that slice (drawn with a shorter draw range, no extra buffers)
+  parts.sort((a, b) => a.userData.t - b.userData.t || (a.userData.far ? 0 : 1) - (b.userData.far ? 0 : 1));
+  const ranges: VehicleRange[] = [];
+  let at = 0;
+  for (const p of parts) {
+    const t = p.userData.t as number, n = p.getAttribute('position').count;
+    const r = (ranges[t] ??= { first: at, count: 0, far: 0 });
+    r.count += n;
+    if (p.userData.far) r.far += n;
+    at += n;
+  }
   const g = mergeGeometries(parts)!;
+  g.userData.ranges = ranges;
   for (const p of parts) p.dispose();
   return g;
 }
@@ -211,23 +229,29 @@ function pedPart(g: THREE.BufferGeometry, part: number, limb: number, pivot: num
 }
 
 export function buildPedGeometry(): THREE.BufferGeometry {
-  const P: THREE.BufferGeometry[] = [];
+  // round 23: the far version (legs, arms, torso, head, hair cap: 104 of 188 triangles) comes first in the buffer, so
+  // people far from the camera draw only that slice (userData.farCount vertices)
+  const F: THREE.BufferGeometry[] = [];
+  const N: THREE.BufferGeometry[] = [];
   const hip = 0.88, shoulder = 1.42;
   for (const s of [-1, 1]) {
     const limb = s < 0 ? 1 : 2;
-    P.push(pedPart(box(0.15, 0.8, 0.18, s * 0.095, 0.48, 0), 2, limb, hip));
-    P.push(pedPart(box(0.16, 0.09, 0.27, s * 0.095, 0.045, 0.04), 4, limb, hip));
+    F.push(pedPart(box(0.15, 0.8, 0.18, s * 0.095, 0.48, 0), 2, limb, hip));
+    N.push(pedPart(box(0.16, 0.09, 0.27, s * 0.095, 0.045, 0.04), 4, limb, hip));
     const arm = s < 0 ? 3 : 4;
-    P.push(pedPart(box(0.11, 0.42, 0.13, s * 0.26, 1.2, 0), 1, arm, shoulder));
-    P.push(pedPart(box(0.09, 0.14, 0.1, s * 0.26, 0.93, 0), 0, arm, shoulder));
+    F.push(pedPart(box(0.11, 0.42, 0.13, s * 0.26, 1.2, 0), 1, arm, shoulder));
+    N.push(pedPart(box(0.09, 0.14, 0.1, s * 0.26, 0.93, 0), 0, arm, shoulder));
   }
-  P.push(pedPart(box(0.36, 0.16, 0.22, 0, 0.92, 0), 2, 0, 0)); // hips
-  P.push(pedPart(new THREE.CylinderGeometry(0.22, 0.17, 0.56, 6).scale(1, 1, 0.62).rotateY(Math.PI / 6).translate(0, 1.27, 0), 1, 0, 0)); // torso
-  P.push(pedPart(box(0.09, 0.08, 0.09, 0, 1.58, 0), 0, 5, 1.56)); // neck
-  P.push(pedPart(new THREE.IcosahedronGeometry(0.125, 0).scale(1, 1.12, 1).translate(0, 1.7, 0.01), 0, 5, 1.56)); // head
-  P.push(pedPart(box(0.27, 0.1, 0.27, 0, 1.81, -0.02), 3, 5, 1.56)); // hair cap
-  P.push(pedPart(box(0.26, 0.16, 0.06, 0, 1.72, -0.12), 3, 5, 1.56)); // hair back
+  N.push(pedPart(box(0.36, 0.16, 0.22, 0, 0.92, 0), 2, 0, 0)); // hips
+  F.push(pedPart(new THREE.CylinderGeometry(0.22, 0.17, 0.56, 6).scale(1, 1, 0.62).rotateY(Math.PI / 6).translate(0, 1.27, 0), 1, 0, 0)); // torso
+  N.push(pedPart(box(0.09, 0.08, 0.09, 0, 1.58, 0), 0, 5, 1.56)); // neck
+  F.push(pedPart(new THREE.IcosahedronGeometry(0.125, 0).scale(1, 1.12, 1).translate(0, 1.7, 0.01), 0, 5, 1.56)); // head
+  F.push(pedPart(box(0.27, 0.1, 0.27, 0, 1.81, -0.02), 3, 5, 1.56)); // hair cap
+  N.push(pedPart(box(0.26, 0.16, 0.06, 0, 1.72, -0.12), 3, 5, 1.56)); // hair back
+  const farCount = F.reduce((n, g) => n + g.getAttribute('position').count, 0);
+  const P = [...F, ...N];
   const g = mergeGeometries(P)!;
+  g.userData.farCount = farCount;
   for (const p of P) p.dispose();
   return g;
 }

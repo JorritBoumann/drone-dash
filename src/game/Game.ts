@@ -7,7 +7,7 @@ import { Drone, type FlightEvents } from '../entities/Drone';
 import { MARKER_COLORS, ObjectiveMarker } from '../entities/ObjectiveMarker';
 import { RouteGate } from '../entities/RouteGate';
 import { AudioSystem } from '../systems/AudioSystem';
-import { CameraRig } from '../systems/CameraRig';
+import { CameraRig, type CamCorridor } from '../systems/CameraRig';
 import { CollisionWorld } from '../systems/CollisionWorld';
 import { DebugTools } from '../systems/DebugTools';
 import { DeliverySystem, JOBS } from '../systems/DeliverySystem';
@@ -188,6 +188,7 @@ export class Game {
     this.buildNarrowRects();
     this.openGraph = buildStreetGraph(this.layout.roadCenters, this.layout.blockSize, this.layout.roadWidth, [], this.layout.boulevards, true);
     this.world = new CollisionWorld(this.layout.colliders, 0);
+    this.cameraRig.setCorridors(this.cameraCorridors());
     this.cityMaterial = createCityMaterial();
     const city = new THREE.Mesh(this.layout.geometry, this.cityMaterial);
     city.castShadow = true;
@@ -964,6 +965,22 @@ export class Game {
     }
     return null;
   }
+  /** Round 23: straight alleys and tunnels as camera corridors (walls and bridge underside from the colliders). */
+  private cameraCorridors(): CamCorridor[] {
+    return this.narrowRects.map((r) => {
+      const X = r.x1 - r.x0 > r.z1 - r.z0; // runs along x
+      let roofY = Infinity;
+      if (r.kind === 'tunnel') {
+        for (const b of this.world.boxes) {
+          if (b.soft || b.minY < 2 || b.maxX <= r.rx0 || b.minX >= r.rx1 || b.maxZ <= r.rz0 || b.minZ >= r.rz1) continue;
+          roofY = Math.min(roofY, b.minY);
+        }
+      }
+      return X
+        ? { axis: 'x' as const, c: (r.z0 + r.z1) / 2, hw: (r.z1 - r.z0) / 2, a0: r.x0, a1: r.x1, roofY }
+        : { axis: 'z' as const, c: (r.x0 + r.x1) / 2, hw: (r.x1 - r.x0) / 2, a0: r.z0, a1: r.z1, roofY };
+    });
+  }
   private buildNarrowRects(): void {
     const L = this.layout, B = L.blockSize, R = L.roadWidth;
     this.narrowRects = L.alleys.filter((a) => a.axis === 'x' || a.axis === 'z').map((a) => {
@@ -1492,7 +1509,7 @@ export class Game {
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
       fps: Math.round(this.fps * 10) / 10,
-      camera: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, fov: this.camera.fov, aspect: this.camera.aspect, view: this.cameraRig.view, behind: this.cameraBehind() },
+      camera: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, fov: this.camera.fov, aspect: this.camera.aspect, view: this.cameraRig.view, behind: this.cameraBehind(), corridor: this.cameraRig.corridor },
       drawCalls: this.drawCalls,
       player: {
         position: { x: p.x, y: p.y, z: p.z },
@@ -1584,6 +1601,8 @@ export class Game {
         return window.__THREE_GAME_DIAGNOSTICS__?.state ?? 'title';
       },
       diagnostics: () => window.__THREE_GAME_DIAGNOSTICS__,
+      // round 23 test hook: the camera's alley and tunnel corridors
+      camCorridors: () => this.cameraCorridors(),
       place: (x: number, y: number, z: number, yaw: number, speed = 0) => this.drone.place(new THREE.Vector3(x, y, z), yaw, speed),
       // audio test hooks: per-frame bus meters (fanfare vs music) and the music toggle
       audioMeter: (on: boolean) => this.audio.setMeter(on),

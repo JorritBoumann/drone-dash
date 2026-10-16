@@ -16,7 +16,442 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-16 15:47 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-16 17:32 UTC.</p>
+<section><h2>round 23</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 23 critic report
+
+**Verdict:** The tunnel camera is fixed and passes every acceptance line on four seeds, with and without orbit. Traffic density and the triangle count are fixed too. No regressions. The biggest gap left is the phone HUD, which still covers the pad marker and, at height, the drone.
+
+Build tested: commit 7453512 plus the uncommitted round 23 changes. My own dev server on port 5191, stopped at the end. The owner's server on 5188 was left alone. Every browser ran alone, one at a time, from one job queue (`critic-scripts/queue23.sh`, `jobs23.txt`). I did not read the builder notes.
+
+## Round 22 gap: tunnel camera. Closed.
+
+I copied the round 22 scripts and changed only output folders. One addition: the per-frame sampler (`cam-sampler.js`) now also grabs the real render camera and projects the drone onto the screen. The round 22 "in frame" number guessed the camera aim. The new one is exact. Analysis: `cam-accept23.mjs`. Settled playing frames only.
+
+| Run | Tunnel frames | Camera at 2.5 m or more (tunnel) | Drone in frame (tunnel + alley) | Camera in solid / under ground / drone hidden | Max jump per frame |
+|---|---|---|---|---|---|
+| Seed 22, orbit | 3,465 | 99.7% | 98.1% | 0 / 0 / 0 | 1.70 m |
+| Seed 22, no orbit | 3,465 | 100% | 99.9% | 0 / 0 / 0 | 1.15 m |
+| Seed 130, orbit | 2,768 | 100% | 96.7% | 0 / 0 / 0 | 1.75 m |
+| Seed 130, no orbit | 2,763 | 100% | 99.5% | 0 / 0 / 0 | 0.29 m |
+| Seed 44 (fresh), orbit | 3,468 | 100% | 97.9% | 0 / 0 / 0 | 1.70 m |
+| Seed 44, no orbit | 3,464 | 100% | 100% | 0 / 0 / 0 | 0.56 m |
+| Seed 203 (fresh), orbit | 3,463 | 99.9% | 96.4% (tunnel alone 94.6%) | 0 / 0 / 0 | 1.12 m |
+| Seed 203, no orbit | 3,463 | 99.8% | 99.7% | 0 / 0 / 0 | 0.68 m |
+
+- Needed: 95% at 2.5 m without orbit, 90% with orbit. Got 99.7 to 100%. **Pass.**
+- Camera within 1.5 m of the drone: round 22 had 25 to 60%. Now 0 to 0.13%.
+- Drone in frame at least 95%: **pass** on the combined number in all 8 runs. Seed 203 with orbit is 94.6% on tunnel frames alone. A near miss, not a fail of the test as written.
+- No jump over 2 m: **pass**. The worst is 1.75 m (round 22: 12 m). The builder caps the step at 1.7 m per frame. A hard orbit into a wall can still slide the camera from 7 m to 2 m in 5 frames. I saw this once on seed 130 and once on 22. That is 40 ms here and about 80 ms at 60 Hz. It reads as a quick zoom, not a snap.
+- Where the drone leaves the frame with orbit, it is one of two cases. The player pitched the view to its steepest (over 1.1 rad), and the drone sits on the bottom edge. Or the player swings sideways in a corridor. The camera stays on the tunnel axis, so the drone sits on the side edge (seed 203 Vault Tunnel, 100 frames). Both are mild.
+- Ease-back still 1.13 s (drag), 0.89 s (trackpad), 1.1 s and 1.0 s (touch). Open-street desktop camera: max jump 1.12 m, 0 in solid. Unchanged.
+- Looks right. In `dbg-22-organ-6.jpg` and `cam-clip-44-noorbit-1-tunnel.jpg` the camera sits low and centred under the bridge, the drone is clear, and the exit is in view. That is good tunnel framing.
+- Script note: `cam-clip-22-5-tunnel.jpg` and `cam-clip-44-noorbit-3-tunnel.jpg` show no drone. That is the script, not the game. It takes the shot on a stale position right after a teleport. A real flight through the same tunnel (`dbg-22-organ-0..8.jpg`) is clean.
+
+**Gaps between buildings (`gap-fly23.mjs`).** On seeds 22 and 44, every narrow gap at street level is a marked alley. So I flew the unmarked gaps at 8 m and 16 m (4 to 11 m wide), 10 passes per seed, with and without orbit. 0 frames in a solid. The camera was at 2.5 m or more and the drone in frame in 98 to 100% of every real pass. One exception: on seed 44 with orbit, at 8 m behind a pitched roof, the drone hid behind the roof and chimney (`gap-22-3-y8w5.5.jpg`). Pitched roofs have no full collider, so the camera does not see them as blockers. Minor. (One pass wedged the drone into a 0.9 m slot between two boxes where my script placed it. I discount it.)
+
+**Arrival framing near low pads, no input (`arrival-metrics.mjs`, seeds 22 and 44).** 17 legs, 15 to street pads. The nav marker was off screen in 0.4% of final-approach samples (round 3 to 19 baseline: 1.2 to 2%). It still works. The one timeout is the known bot stall on a rooftop edge with the pad in plain view (`A-seed44-stall-final-approach.jpg`).
+
+## Round 22 leftovers
+
+- **Too few cars: closed.** Cars within 50 m of a street point: 5.8 normal, 7.3 to 7.4 in rush (round 22: 2.3 and 3.9). Seeds 130 and 44 match. Share of nearby cars standing still: 15 to 17% normal, 18 to 24% rush (round 22: about 25%). One soft spot: downtown in rush on seed 4 drops to 3.4 cars, as vans take over (`density23.log`).
+- **Person on an active pad: closed.** 48 legs (24 pickups, 24 drops) on seeds 22, 58, 130, 44. 1,536 samples while hovering nearby, plus the trigger moment. 0 people on the pad by the game's count and by mine. People do walk close by (about 3 within 6 m). The street probe also shows 0 on pad on four seeds.
+- **Triangles doubled: closed.** Street level 327k (round 22: 508k), rush 334k (651k). Phone 300k (438k). Draw calls rose a little: 95 desktop (83), 98 to 102 in rush (84), 79 phone (67). Fine.
+- **Promenade looks like a road: not closed.** The diagonal is still red with a white dashed centre line, now partly lit, plus cross bands. No benches or planters. From 16 m it still reads as a red road with people walking down the middle (`prom-d-22-1-16m.jpg`, `prom-m-4-0-5m.jpg`, `hud23b-m-h06-high-wind.jpg`).
+
+## Regressions
+
+- Hand-fly first payout: desktop 5.7 s, iPhone 13 6.6 to 7.2 s. **Pass.**
+- Flat-frame probe: 1,024 frames, 0 flat, 0 errors. **Pass.**
+- Crash-classify, seeds 22, 58, 130: at 12 m, 22 crashes in 194 s (6.8 a minute, round 22: 6.4), 2 near the target, closest face 2.2 m below the top, **0 pad lips**. At 20 m, 13 crashes (3.5 a minute, round 22: 2.9), 4 near target, closest face 2.8 m below the top, **0 pad lips**. Pass. The small rise is within run-to-run noise.
+- Low bot: 22: 4,463 Silver. 58: 2,923 Silver. 130: 5,035 Gold. **Total 12,421** (round 22: 11,426). 0 crashes.
+- High bot: 22: 366 (two early crashes, run ended at 66 s). Rerun: 2,611 Silver. 58: 2,030 Silver. 130: 2,439 Silver. **Total 4,835, or 7,080 with the rerun** (round 22: 5,476). 6 crashes, 1.3 a minute (round 22: 2.3). The seed 22 drop is the known straight-line bot hitting towers. None were pad lips.
+- No-delivery farm: 0 points on seeds 22, 58, 130, and 0 on smart-farm near. **Pass.**
+- Van slipstream: draft works, the same 325 and 153 points on seeds 58 and 130. Capfarm van on 22: 2,814 Silver (round 22: 2,690). **Pass.**
+- Traffic probe, four seeds, normal plus rush: 0 car overlaps, 0 cars in buildings, 0 off lane, 0 people in solids, 0 people touching cars, 0 people on roads. **Pass.**
+- Breakdown exact (the bot's own check) on all 6 bot runs. **Pass.**
+
+## Performance
+
+Headless Chromium caps at 120 Hz, so these show hitches, not GPU headroom.
+
+| Run | Median | p95 | Max | Over 20 ms | Calls | Triangles |
+|---|---|---|---|---|---|---|
+| Street, desktop | 8.3 | 9.2 | 10.3 | 0 | 95 | 327k |
+| Street rush, desktop | 8.3 | 9.3 | 10.4 | 0 | 98 | 334k |
+| Street, iPhone 13 | 8.3 | 9.6 | 10.4 | 0 | 79 | 300k |
+| Street rush, iPhone 13 | 8.3 | 9.7 | 25.1 | 1 | 81 | 304k |
+| Tunnels/alleys route, desktop | 8.3 | 9.2 | 16.8 | 0 | 84 | 321k |
+| Same, iPhone 13 | 8.3 | 9.6 | 16.7 | 0 | 72 | 299k |
+| Hand-fly 80 s, desktop | 8.3 | 9.4 | 16.8 | 0 | | |
+| Hand-fly 80 s, iPhone 13 (3 runs) | 8.3 | 9.6 to 10.1 | 17 to 25 | 0 to 1 | | |
+
+- p95 under 12 ms everywhere. **Pass.** One 25 ms frame on the phone in two runs. Not the old 200 ms hitch.
+- First load, production build: HTML 11 KB, CSS 38 KB, JS 819 KB (229 KB gzipped). About 0.87 MB. lil-gui loads only with `?debug`. Type check clean. **Pass.**
+
+## Whole game, as a player
+
+After rounds 21 to 23 the camera feels finished. Tunnels look great from behind. The street is busy and believable. Deliveries, rush orders and medals all fire.
+
+**Phone HUD (re-checked).** Still the clearest problem on a phone:
+- The edge arrow and distance for the pad sit on the Fly stick (`m-h04-low-payout-pop.jpg`) and under the climb button (`m-h08-end.jpg`). Open since round 20.
+- At 30 to 40 m height the drone rides up into the top band and hides under the objective and route pills (`hud23b-m-h06-high-wind.jpg`: only the rotors show).
+- Centre pops land on the drone. "Short job · no time bonus" and the slipstream meter cover it in `m-h08-end.jpg`. "+25 Banked", the look hint, the slipstream cue and two meters stack over the street in `m-h04-low-payout-pop.jpg`.
+- The pop over the route pill happens 30 to 42 times per 80 s run (`hf23-mobile*.log`).
+- The round 20 overlap sampler does not see the nav marker (its box is 0 by 0). So "0 marker overlaps" in older logs is not proof.
+
+**Route mark (re-checked, sign bot, the same 12 round 20 cities).** Unchanged. 97 legs, 40 with a mark. The game re-planned the mark 18 times (round 20: 18), dropped it 11 times (8), and showed more than one name on 6 legs (8).
+
+## Biggest remaining gap
+
+**The phone HUD covers what the player steers by.** It covers the pad marker, and at height the drone itself. The phone is a target platform. A bot can see this gap on every run.
+
+**Acceptance test.** Use an iPhone 13 held sideways. Run `hand-fly23.mjs` on seeds 22 and 130, plus a 40 m cruise on seed 130. Sample at 10 Hz. Use the visible child boxes of `#nav-marker`, not its 0-size wrapper. Use the drone's projected screen box.
+1. The nav marker (diamond, arrow and distance) overlaps the stick, climb, dive or boost buttons in 0 samples.
+2. The drone's screen box overlaps the objective pill, the route pill or the timer in under 2% of samples, including at 40 m.
+3. A centre pop covers the drone's screen box in under 5% of the samples where a pop is showing.
+4. Nothing else gets worse: first payout under 10 s, p95 under 12 ms, and the desktop HUD unchanged.
+
+## Other gaps, ranked
+
+1. **Delivery is not yet the main reward. The systems are not taught in layers.** Street bonus, chains, rush, overtime, the slow clock and medals all fire in the first two minutes. In a low run, slip is 2,400 of 4,463 points. **Needs a human player.**
+2. **Route mark still changes its mind.** 18 re-plans and 11 drops in 97 legs. Test: 0 drops while inside the marked run, and at most 1 name per leg. A bot can check this.
+3. **Promenade still reads as a road.** Remove the centre dashes or add benches and planters. **Needs a human eye**, plus screenshots.
+4. **Run variety.** Every city now has the same features in the same mix. **Needs a human player.**
+5. **Camera polish.** The drone can hide behind pitched roofs, which have no collider. With orbit inside a corridor it can sit on the screen edge (seed 203 tunnels 94.6% in frame). Steep look-down puts it on the bottom edge. Small. A bot can check this.
+
+Only polish remains in the camera. The rest above is game-level.
+
+## Screenshots (progress/round-23/critic/)
+
+- Tunnel camera, good: `dbg-22-organ-0.jpg` to `dbg-22-organ-8.jpg` (full pass), `cam-clip-44-noorbit-1-tunnel.jpg`.
+- Tunnel camera with orbit: `cam-clip-130-5-tunnel.jpg` (drone kept clear), `cam-clip-203-7-tunnel.jpg` (drone on the side edge).
+- Other: `cam-clip-*` (all passes, the drone-less ones are taken right after a teleport), `dbg-44-gallery-b.jpg` (drone against a tunnel side wall, still in view).
+- Gaps between buildings: `gap-22-*`, `gap-44-*`. `gap-22-3-y8w5.5.jpg` shows the drone hidden behind a pitched roof.
+- Arrival: `A-seed44-stall-final-approach.jpg` (pad in view, bot stalled on a roof edge).
+- Promenade: `prom-d-22-*`, `prom-d-4-*`, `prom-m-22-*`, `prom-m-4-*`.
+- Phone HUD, bad: `m-h04-low-payout-pop.jpg` (marker on the stick, stacked pops), `m-h08-end.jpg` (marker under the climb button, banner on the drone).
+- Phone HUD, more: `hud23b-m-h06-high-wind.jpg` (drone under the top pills), `hud23-m-*`, `hud23b-m-*`, `hud23*-m-ov*.jpg`.
+- Hand-fly: `d-h*`, `m-h*`.
+</pre></details><details><summary>builder.md</summary><pre># Drone Dash: round 23 builder notes
+
+Main concern: in tunnel passes the chase camera came too close to the drone. Orbiting made it worse, and the camera snapped in by up to 12 m.
+Small leftovers: thin traffic, the road-style line on the promenade, a person on a live pad, and the triangle count.
+
+I used my own dev server on port 5190 and stopped it at the end. I did not touch the owner's server on 5188.
+Every browser ran alone, from one queue (`builder-scripts/queue23.sh`, `jobs23.txt`).
+The critic's scripts are copied into `builder-scripts/`. I changed only the port (5191 to 5190) and the output folders.
+Screenshots go to `../builder-shots/`. The low bot's raw audio goes to `../builder/audio/raw/`.
+
+## What really happened in the tunnel passes
+
+`cam-clip.mjs` puts the drone 10 m before each feature, on the axis that the script detects.
+On seeds 22 and 130, some "tunnel" passes detect the wrong axis.
+Then the drone starts in a slot between two buildings next to the tunnel. The slot is 1.25 to 1.5 m wide (`solid-grid2.mjs` maps it).
+The drone gets stuck in the slot and hovers there for the whole pass.
+So most of the bad "tunnel" frames came from a camera behind a drone in a very narrow slot:
+- The line-of-sight probe used a 0.5 m pad. In a 1.25 m slot it was blocked at once, and the camera fell to its 0.9 m minimum.
+- An orbit turned the view into the slot walls. Then the camera snapped from 9 m to less than 1 m in one frame.
+
+Real tunnels are 7 m wide and 7 m high. Without orbit they were mostly fine. With orbit, the same wall problem applied.
+
+## Camera design (src/systems/CameraRig.ts)
+
+1. **Aim at a view that the walls allow.** Before the camera follows its target point, a spherecast from the drone pulls that point in.
+   So the camera moves in smoothly. Before, it was pulled in only after it was already behind a wall.
+   If the line is blocked close to the drone, the rig tries small moves of the target point.
+   It tries 0.3 to 1 m to the side and 1.5 m or 3 m up. It keeps the point with the most clear room.
+   So the camera finds the gap and does not fall onto the drone.
+2. **Thinner probe.** The pad is now 0.34 m (was 0.5 m). The last pull-in on the actual camera uses 0.2 m.
+   The 0.3 m push-out still keeps the near plane out of walls.
+3. **Orbit only as far as the view is clear.** During an orbit, the rig tests a row of angles (0.12 to 3.2 rad).
+   The test starts straight behind the drone and goes out to the player's angle.
+   It stops at the first angle with a blocked view. So the camera cannot go through a wall to get to an angle.
+   On the open street nothing blocks the view, so the player's angle is used as before.
+   The round 21 orbit, zoom and ease-back do not change.
+   A held-back angle moves to its new limit smoothly (14/s in, 5/s out), and it handles the wrap at 180 degrees.
+4. **Corridor framing in alleys and tunnels.** Game gives the straight alleys and tunnels to the rig as known bounds (`setCorridors`).
+   The bounds come from `narrowRects`, and the bridge underside comes from the colliders.
+   When the drone flies along a corridor, the framing applies inside it and 9 m before and after each mouth.
+   It blends in at 3.2/s and out at 1.8/s.
+   The camera stays on the corridor axis, 5.2 m behind the drone (4.2 to 6.6 m with zoom) and 1.6 m above it.
+   It stays 1.15 m from each wall, 1 m under the bridge, and at least 3.6 m back along the axis.
+   The orbit range in a corridor is 0.42 rad.
+   The "lift" for a blocked view is off in a corridor. It raised the camera into the bridge, and then the camera had to snap back in.
+5. **No snaps.** The camera moves at most 1.7 m relative to the drone in one frame.
+   This limit is off while the camera is more than 18 m away, for example after a teleport or the title orbit.
+
+Kept: the round 3 arrival framing (same code path), the round 21 controls and ease-back, the push-out, and all debug hooks.
+New test hook: `camCorridors()`. New diagnostics: `camera.corridor`.
+
+## Acceptance (critic's cam-clip.mjs and frame-check.mjs, unchanged, settled playing frames)
+
+Numbers per kind come from `cam-accept.mjs`. It uses the same settled-frame rule and in-frame test as frame-check.mjs.
+
+| Run | Tunnel frames | Camera at 2.5 m or more (tunnel) | Drone in frame (tunnel / alley) | Largest jump relative to drone | Inside solid / under ground / drone hidden |
+|---|---|---|---|---|---|
+| Seed 22, orbit, 64 s | 3,459 | **99.2%** (need 90) | 95.9% / 99.0% | 1.70 m | 0 / 0 / 0 |
+| Seed 22, no orbit | 3,464 | **100%** (need 95) | 99.8% / 100% | 0.26 m | 0 / 0 / 0 |
+| Seed 130, orbit, 45 s | 2,771 | **100%** | 97.9% / 98.6% | 0.85 m (1.74 m alley) | 0 / 0 / 0 |
+| Seed 130, no orbit | 2,771 | **100%** | 99.8% / 98.6% | 0.26 m | 0 / 0 / 0 |
+
+Camera within 1.5 m of the drone (the critic's column):
+- Seed 22 with orbit: 9 frames (was 1,723).
+- Seed 130 with orbit: 0 (was 1,765).
+- Seed 130 without orbit: 0 (was 696).
+
+Jumps over 1 m: 13, 4, 0 and 0 (were 60, 25 and 0). Jumps over 2 m: 0 in all four runs.
+Screenshots: `builder-shots/cam-clip-*-tunnel.jpg` and `cam-clip-*-alley.jpg`.
+
+Orbit controls are the same as in round 22 (`cam-desktop.mjs`, `cam-touch.mjs`):
+- Right-drag of 300 px: 94.5 degrees, ease-back 1.14 s. Tilt: 37.7 degrees, ease-back 1.14 s.
+- Wheel: 13.8 m out, 5.4 m in. Trackpad: 72.9 degrees, no zoom. Pinch zooms and does not orbit.
+- Left-click boost starts in 8 ms. Boost during a right-drag works.
+- Touch: 68.7 degrees, the stick keeps 15.2 m/s, ease-back 1.1 s (yaw) and 1.0 s (tilt), 0 pops, 0 errors.
+
+## Leftovers
+
+**A. Traffic (src/world/Traffic.ts).**
+Cars: 40 to 100 (rush 62 to 136). On mobile: 34 to 84 (rush 52 to 112).
+The signal cycle is 12 s (was 18 s): 5 s green for each axis and 1 s all-red. So cars wait less at the stop line.
+- Cars within 50 m (`density-probe.mjs`, 200 street points):
+  - Seed 22: 2.33 to **6.10** (downtown 2.37 to 6.25). Rush: 3.71 to **7.96** (downtown 3.55 to 9.83).
+  - Seed 4: 2.27 to **5.84**. Rush: 4.05 to **7.43**.
+- Share of cars standing still (`street-probe.mjs`, speed below 0.5 m/s): 26 to 31% before. After: **15 to 17%** normal, 18 to 22% rush.
+- Street probe on seeds 22, 130, 58 and 4 (40 s normal and 30 s rush): 0 car overlaps, 0 cars in buildings, 0 cars off lane.
+  Also 0 people in solids, 0 people touching cars, 0 people on the live pad, 0 stuck cars.
+- Cost: traffic takes 0.13 ms a frame (0.18 ms in rush). Before: 0.04 and 0.08 ms.
+
+**B. Promenade (src/world/CityGenerator.ts).**
+Where a boulevard crosses a block, people walk on it. There, light stone bands across the paving replace the amber centre dashes.
+The amber dashes stay only where the boulevard crosses a road.
+This change uses no city random numbers, so the layouts do not change.
+Screenshots: `builder-shots/promenade-22-*.jpg` and `promenade-4-*.jpg`.
+
+**C. Pad keep-out (src/world/Pedestrians.ts).**
+When a pad lights up, the game finds walkers on it (pad radius plus 0.9 m).
+These walkers move on along their loop to a point past the pad.
+Last step: if a sidestep or a nudge puts a person within 0.15 m of the live pad, the person is pulled back.
+If the person is still on the pad, the person is not drawn. The `padHidden` counter counts this.
+`pad-probe.mjs` watched 36 live pads (12 pickups and drops each on seeds 130, 22 and 58).
+It sampled every 0.1 s. Each pad was watched from the time it lit up to the end of its job.
+Result: **0 people on a pad and 0 hidden**. No person came within the pad radius plus 1 m.
+The critic's street probe also shows 0 people on the live pad on all 4 seeds.
+
+**D. Triangles (src/world/StreetKit.ts, Traffic.ts, Pedestrians.ts).**
+- The real cost: the six vehicle bodies were one merged mesh, and every car drew all six. The shader then hid five of them.
+  Now each vehicle type has its own instanced mesh, and it draws only its own part of the shared buffer.
+- LOD for cars: past 55 m, a car draws only its body and glass, and it casts no shadow.
+- LOD for people: past 40 m, a person draws legs, arms, torso, head and hair cap (104 of 188 triangles).
+- Both LODs use a shorter draw range on the same buffers, so they need no extra memory.
+- I saw no popping near the drone. The switch is 40 to 55 m from the camera.
+
+| Run | Triangles before (round 22) | After | Draw calls before / after | p95 after |
+|---|---|---|---|---|
+| Street level, desktop | 508k | **327k** (with 2.5 times the cars) | 83 / 95 | 9.5 ms |
+| Same, rush | 651k | **332k** | 84 / 98 | 9.4 ms |
+| Street level, iPhone 13 | 438k | **300k** | 67 / 79 | 9.8 ms |
+| Same, rush | 567k | **303k** | 68 / 81 | 9.8 ms |
+| perf18 route, desktop | 502k | **321k** | 73 / 84 | 9.0 ms |
+| perf18 route, iPhone 13 | 439k | **299k** | 57 / 72 | 9.4 ms |
+
+Draw calls go up by about 12: one mesh for each vehicle type and LOD, and one for far people. Headless Chromium caps at 120 Hz.
+
+## Regressions
+
+- Hand-fly first payout: desktop **5.7 s**, iPhone **6.6 s** (round 22: 5.6 s and 6.6 s). In the 80 s runs, p95 is 9.5 and 9.6 ms, with 0 frames over 20 ms.
+- Flat-frame probe: 1,019 frames, **0 flat**, 0 errors.
+- Crash-classify on seeds 22, 58 and 130:
+  - 12 m: 21 charged crashes in 225 s (5.6 a minute, round 22: 6.4). 0 hop-like. 4 near the target. The closest face is 2.5 m below the top, so **0 pad lips**.
+  - 20 m: 13 crashes (3.5 a minute, round 22: 2.9). 0 hop-like. 5 near the target. The closest face is 2.8 m below the top, so **0 pad lips**.
+- Van slipstream (`van-draft.mjs`): the same as round 22. It banked 325 on seed 58 and 153 on seed 130.
+- Low bot (`music-run-esc.mjs`, LINE=low): seed 22 4,294 Silver, seed 58 3,075 Silver, seed 130 4,036 Silver. **Total 11,405** (round 22: 11,426). 0 crashes. The breakdown equals the score in all 3 runs.
+- High bot (`route-play-rt-x-m-esc17.mjs`): seed 22 3,371 Silver, seed 58 2,405 Silver, seed 130 1,547 Bronze. **Total 7,323** (round 22: 5,476, round 20: 5,966). 9 crashes (1.6 a minute, round 22: 2.3). The breakdown equals the score in all 3 runs.
+  This total is higher than in round 22. Seed 58 did not stall this time. I did not change the flight or the scoring.
+- `npm run build`: passes, type check clean. JS 819 KB (229 KB gzip), CSS 38 KB, HTML 11 KB.
+- I did not change the bloom clamps in `src/entities/ObjectiveMarker.ts`. The debug hooks are unchanged, and I added `camCorridors`.
+
+## Files changed
+
+- `src/systems/CameraRig.ts`: corridor framing, clear-view aim with small moves, orbit held to the clear angle, thinner probe, step limit for each frame.
+- `src/game/Game.ts`: camera corridors (`cameraCorridors()`), the `camCorridors` hook, `camera.corridor` diagnostics.
+- `src/vite-env.d.ts`: types for the hook and the diagnostics.
+- `src/world/Traffic.ts`: car counts, 12 s signal cycle, one instanced mesh for each type, far LOD.
+- `src/world/StreetKit.ts`: vehicle parts sorted by type with far parts first, and ranges for each type. Far parts first for people too.
+- `src/world/Pedestrians.ts`: near and far meshes for people, live-pad move-on and last-step keep-out, `padHidden`, `hidden` in the snapshot.
+- `src/world/CityGenerator.ts`: stone bands instead of centre dashes where the promenade crosses a block.
+
+New builder scripts: `cam-accept.mjs` (acceptance numbers), `pad-probe.mjs`, `promenade-shots.mjs`, `cor-debug.mjs`, `solid-grid.mjs`, `solid-grid2.mjs`, `queue23.sh` and `jobs23.txt`.
+
+## Still open
+
+- `cam-clip.mjs` puts some "tunnel" passes into a slot between buildings because of its axis detection.
+  The drone is stuck there, so those frames test a slot, not the tunnel. The camera now handles both.
+- The phone HUD overlap from round 20 (the pad marker on the stick and on the climb button) is still open. I did not work on it this round.
+</pre></details><div class="grid"><figure><a href="progress/round-23/critic/A-seed44-stall-final-approach.webp"><img loading="lazy" src="progress/round-23/critic/A-seed44-stall-final-approach.webp" alt="A-seed44-stall-final-approach.webp"></a><figcaption>A-seed44-stall-final-approach.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/C-capfarm19-van-seed22.webp"><img loading="lazy" src="progress/round-23/critic/C-capfarm19-van-seed22.webp" alt="C-capfarm19-van-seed22.webp"></a><figcaption>C-capfarm19-van-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/F-farm-seed130-road66.webp"><img loading="lazy" src="progress/round-23/critic/F-farm-seed130-road66.webp" alt="F-farm-seed130-road66.webp"></a><figcaption>F-farm-seed130-road66.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/F-farm-seed22-road66.webp"><img loading="lazy" src="progress/round-23/critic/F-farm-seed22-road66.webp" alt="F-farm-seed22-road66.webp"></a><figcaption>F-farm-seed22-road66.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/F-farm-seed58-road66.webp"><img loading="lazy" src="progress/round-23/critic/F-farm-seed58-road66.webp" alt="F-farm-seed58-road66.webp"></a><figcaption>F-farm-seed58-road66.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-high-seed130-pass1.webp"><img loading="lazy" src="progress/round-23/critic/M-high-seed130-pass1.webp" alt="M-high-seed130-pass1.webp"></a><figcaption>M-high-seed130-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-high-seed130-pass2.webp"><img loading="lazy" src="progress/round-23/critic/M-high-seed130-pass2.webp" alt="M-high-seed130-pass2.webp"></a><figcaption>M-high-seed130-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-high-seed22-pass1.webp"><img loading="lazy" src="progress/round-23/critic/M-high-seed22-pass1.webp" alt="M-high-seed22-pass1.webp"></a><figcaption>M-high-seed22-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-high-seed22-pass2.webp"><img loading="lazy" src="progress/round-23/critic/M-high-seed22-pass2.webp" alt="M-high-seed22-pass2.webp"></a><figcaption>M-high-seed22-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-high-seed58-pass1.webp"><img loading="lazy" src="progress/round-23/critic/M-high-seed58-pass1.webp" alt="M-high-seed58-pass1.webp"></a><figcaption>M-high-seed58-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-low-seed130-pass1.webp"><img loading="lazy" src="progress/round-23/critic/M-low-seed130-pass1.webp" alt="M-low-seed130-pass1.webp"></a><figcaption>M-low-seed130-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-low-seed130-pass2.webp"><img loading="lazy" src="progress/round-23/critic/M-low-seed130-pass2.webp" alt="M-low-seed130-pass2.webp"></a><figcaption>M-low-seed130-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-low-seed130-pass3.webp"><img loading="lazy" src="progress/round-23/critic/M-low-seed130-pass3.webp" alt="M-low-seed130-pass3.webp"></a><figcaption>M-low-seed130-pass3.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-low-seed22-pass1.webp"><img loading="lazy" src="progress/round-23/critic/M-low-seed22-pass1.webp" alt="M-low-seed22-pass1.webp"></a><figcaption>M-low-seed22-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-low-seed22-pass2.webp"><img loading="lazy" src="progress/round-23/critic/M-low-seed22-pass2.webp" alt="M-low-seed22-pass2.webp"></a><figcaption>M-low-seed22-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-low-seed58-pass1.webp"><img loading="lazy" src="progress/round-23/critic/M-low-seed58-pass1.webp" alt="M-low-seed58-pass1.webp"></a><figcaption>M-low-seed58-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/M-low-seed58-pass2.webp"><img loading="lazy" src="progress/round-23/critic/M-low-seed58-pass2.webp" alt="M-low-seed58-pass2.webp"></a><figcaption>M-low-seed58-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/N-alt12-seed22-t12.0-near.webp"><img loading="lazy" src="progress/round-23/critic/N-alt12-seed22-t12.0-near.webp" alt="N-alt12-seed22-t12.0-near.webp"></a><figcaption>N-alt12-seed22-t12.0-near.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/N-alt12-seed22-t57.8-near.webp"><img loading="lazy" src="progress/round-23/critic/N-alt12-seed22-t57.8-near.webp" alt="N-alt12-seed22-t57.8-near.webp"></a><figcaption>N-alt12-seed22-t57.8-near.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/N-alt20-seed130-t25.2-near.webp"><img loading="lazy" src="progress/round-23/critic/N-alt20-seed130-t25.2-near.webp" alt="N-alt20-seed130-t25.2-near.webp"></a><figcaption>N-alt20-seed130-t25.2-near.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/N-alt20-seed130-t55.8-near.webp"><img loading="lazy" src="progress/round-23/critic/N-alt20-seed130-t55.8-near.webp" alt="N-alt20-seed130-t55.8-near.webp"></a><figcaption>N-alt20-seed130-t55.8-near.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/N-alt20-seed130-t73.0-near.webp"><img loading="lazy" src="progress/round-23/critic/N-alt20-seed130-t73.0-near.webp" alt="N-alt20-seed130-t73.0-near.webp"></a><figcaption>N-alt20-seed130-t73.0-near.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/N-alt20-seed58-t76.3-near.webp"><img loading="lazy" src="progress/round-23/critic/N-alt20-seed58-t76.3-near.webp" alt="N-alt20-seed58-t76.3-near.webp"></a><figcaption>N-alt20-seed58-t76.3-near.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/P-sign-seed38060-crash1.webp"><img loading="lazy" src="progress/round-23/critic/P-sign-seed38060-crash1.webp" alt="P-sign-seed38060-crash1.webp"></a><figcaption>P-sign-seed38060-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/Q-high-seed130-crash1.webp"><img loading="lazy" src="progress/round-23/critic/Q-high-seed130-crash1.webp" alt="Q-high-seed130-crash1.webp"></a><figcaption>Q-high-seed130-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/Q-high-seed130-crash2.webp"><img loading="lazy" src="progress/round-23/critic/Q-high-seed130-crash2.webp" alt="Q-high-seed130-crash2.webp"></a><figcaption>Q-high-seed130-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/Q-high-seed22-crash1.webp"><img loading="lazy" src="progress/round-23/critic/Q-high-seed22-crash1.webp" alt="Q-high-seed22-crash1.webp"></a><figcaption>Q-high-seed22-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/Q-high-seed22-crash2.webp"><img loading="lazy" src="progress/round-23/critic/Q-high-seed22-crash2.webp" alt="Q-high-seed22-crash2.webp"></a><figcaption>Q-high-seed22-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/Q-high-seed58-crash1.webp"><img loading="lazy" src="progress/round-23/critic/Q-high-seed58-crash1.webp" alt="Q-high-seed58-crash1.webp"></a><figcaption>Q-high-seed58-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/Q-high-seed58-crash2.webp"><img loading="lazy" src="progress/round-23/critic/Q-high-seed58-crash2.webp" alt="Q-high-seed58-crash2.webp"></a><figcaption>Q-high-seed58-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/S-smartfarm-near-seed22.webp"><img loading="lazy" src="progress/round-23/critic/S-smartfarm-near-seed22.webp" alt="S-smartfarm-near-seed22.webp"></a><figcaption>S-smartfarm-near-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-130-5-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-130-5-tunnel.webp" alt="cam-clip-130-5-tunnel.webp"></a><figcaption>cam-clip-130-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-130-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-130-6-alley.webp" alt="cam-clip-130-6-alley.webp"></a><figcaption>cam-clip-130-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-130-noorbit-5-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-130-noorbit-5-tunnel.webp" alt="cam-clip-130-noorbit-5-tunnel.webp"></a><figcaption>cam-clip-130-noorbit-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-130-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-130-noorbit-6-alley.webp" alt="cam-clip-130-noorbit-6-alley.webp"></a><figcaption>cam-clip-130-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-2-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-2-alley.webp" alt="cam-clip-203-2-alley.webp"></a><figcaption>cam-clip-203-2-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-4-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-4-alley.webp" alt="cam-clip-203-4-alley.webp"></a><figcaption>cam-clip-203-4-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-5-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-5-tunnel.webp" alt="cam-clip-203-5-tunnel.webp"></a><figcaption>cam-clip-203-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-6-alley.webp" alt="cam-clip-203-6-alley.webp"></a><figcaption>cam-clip-203-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-7-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-7-tunnel.webp" alt="cam-clip-203-7-tunnel.webp"></a><figcaption>cam-clip-203-7-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-noorbit-2-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-noorbit-2-alley.webp" alt="cam-clip-203-noorbit-2-alley.webp"></a><figcaption>cam-clip-203-noorbit-2-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-noorbit-4-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-noorbit-4-alley.webp" alt="cam-clip-203-noorbit-4-alley.webp"></a><figcaption>cam-clip-203-noorbit-4-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-noorbit-5-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-noorbit-5-tunnel.webp" alt="cam-clip-203-noorbit-5-tunnel.webp"></a><figcaption>cam-clip-203-noorbit-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-noorbit-6-alley.webp" alt="cam-clip-203-noorbit-6-alley.webp"></a><figcaption>cam-clip-203-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-203-noorbit-7-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-203-noorbit-7-tunnel.webp" alt="cam-clip-203-noorbit-7-tunnel.webp"></a><figcaption>cam-clip-203-noorbit-7-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-22-10-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-22-10-alley.webp" alt="cam-clip-22-10-alley.webp"></a><figcaption>cam-clip-22-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-22-5-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-22-5-tunnel.webp" alt="cam-clip-22-5-tunnel.webp"></a><figcaption>cam-clip-22-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-22-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-22-6-alley.webp" alt="cam-clip-22-6-alley.webp"></a><figcaption>cam-clip-22-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-22-noorbit-10-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-22-noorbit-10-alley.webp" alt="cam-clip-22-noorbit-10-alley.webp"></a><figcaption>cam-clip-22-noorbit-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-22-noorbit-5-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-22-noorbit-5-tunnel.webp" alt="cam-clip-22-noorbit-5-tunnel.webp"></a><figcaption>cam-clip-22-noorbit-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-22-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-22-noorbit-6-alley.webp" alt="cam-clip-22-noorbit-6-alley.webp"></a><figcaption>cam-clip-22-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-1-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-1-tunnel.webp" alt="cam-clip-44-1-tunnel.webp"></a><figcaption>cam-clip-44-1-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-10-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-10-alley.webp" alt="cam-clip-44-10-alley.webp"></a><figcaption>cam-clip-44-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-2-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-2-alley.webp" alt="cam-clip-44-2-alley.webp"></a><figcaption>cam-clip-44-2-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-3-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-3-tunnel.webp" alt="cam-clip-44-3-tunnel.webp"></a><figcaption>cam-clip-44-3-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-6-alley.webp" alt="cam-clip-44-6-alley.webp"></a><figcaption>cam-clip-44-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-7-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-7-tunnel.webp" alt="cam-clip-44-7-tunnel.webp"></a><figcaption>cam-clip-44-7-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-8-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-8-alley.webp" alt="cam-clip-44-8-alley.webp"></a><figcaption>cam-clip-44-8-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-9-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-9-tunnel.webp" alt="cam-clip-44-9-tunnel.webp"></a><figcaption>cam-clip-44-9-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-1-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-1-tunnel.webp" alt="cam-clip-44-noorbit-1-tunnel.webp"></a><figcaption>cam-clip-44-noorbit-1-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-10-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-10-alley.webp" alt="cam-clip-44-noorbit-10-alley.webp"></a><figcaption>cam-clip-44-noorbit-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-2-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-2-alley.webp" alt="cam-clip-44-noorbit-2-alley.webp"></a><figcaption>cam-clip-44-noorbit-2-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-3-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-3-tunnel.webp" alt="cam-clip-44-noorbit-3-tunnel.webp"></a><figcaption>cam-clip-44-noorbit-3-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-6-alley.webp" alt="cam-clip-44-noorbit-6-alley.webp"></a><figcaption>cam-clip-44-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-7-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-7-tunnel.webp" alt="cam-clip-44-noorbit-7-tunnel.webp"></a><figcaption>cam-clip-44-noorbit-7-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-8-alley.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-8-alley.webp" alt="cam-clip-44-noorbit-8-alley.webp"></a><figcaption>cam-clip-44-noorbit-8-alley.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-clip-44-noorbit-9-tunnel.webp"><img loading="lazy" src="progress/round-23/critic/cam-clip-44-noorbit-9-tunnel.webp" alt="cam-clip-44-noorbit-9-tunnel.webp"></a><figcaption>cam-clip-44-noorbit-9-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-01-title.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-01-title.webp" alt="cam-d-01-title.webp"></a><figcaption>cam-d-01-title.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-02-start-hint.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-02-start-hint.webp" alt="cam-d-02-start-hint.webp"></a><figcaption>cam-d-02-start-hint.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-03-rightdrag-held.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-03-rightdrag-held.webp" alt="cam-d-03-rightdrag-held.webp"></a><figcaption>cam-d-03-rightdrag-held.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-04-drag-pitch.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-04-drag-pitch.webp" alt="cam-d-04-drag-pitch.webp"></a><figcaption>cam-d-04-drag-pitch.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-05-wheel-out.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-05-wheel-out.webp" alt="cam-d-05-wheel-out.webp"></a><figcaption>cam-d-05-wheel-out.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-06-wheel-in.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-06-wheel-in.webp" alt="cam-d-06-wheel-in.webp"></a><figcaption>cam-d-06-wheel-in.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-07-trackpad.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-07-trackpad.webp" alt="cam-d-07-trackpad.webp"></a><figcaption>cam-d-07-trackpad.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-08-pinch-in.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-08-pinch-in.webp" alt="cam-d-08-pinch-in.webp"></a><figcaption>cam-d-08-pinch-in.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-d-09-leftboost.webp"><img loading="lazy" src="progress/round-23/critic/cam-d-09-leftboost.webp" alt="cam-d-09-leftboost.webp"></a><figcaption>cam-d-09-leftboost.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-m-01-title.webp"><img loading="lazy" src="progress/round-23/critic/cam-m-01-title.webp" alt="cam-m-01-title.webp"></a><figcaption>cam-m-01-title.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-m-02-start.webp"><img loading="lazy" src="progress/round-23/critic/cam-m-02-start.webp" alt="cam-m-02-start.webp"></a><figcaption>cam-m-02-start.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-m-03-drag-held.webp"><img loading="lazy" src="progress/round-23/critic/cam-m-03-drag-held.webp" alt="cam-m-03-drag-held.webp"></a><figcaption>cam-m-03-drag-held.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/cam-m-04-after-ease.webp"><img loading="lazy" src="progress/round-23/critic/cam-m-04-after-ease.webp" alt="cam-m-04-after-ease.webp"></a><figcaption>cam-m-04-after-ease.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h01-title.webp"><img loading="lazy" src="progress/round-23/critic/d-h01-title.webp" alt="d-h01-title.webp"></a><figcaption>d-h01-title.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h02-low-drafting.webp"><img loading="lazy" src="progress/round-23/critic/d-h02-low-drafting.webp" alt="d-h02-low-drafting.webp"></a><figcaption>d-h02-low-drafting.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h03-low-meter-half.webp"><img loading="lazy" src="progress/round-23/critic/d-h03-low-meter-half.webp" alt="d-h03-low-meter-half.webp"></a><figcaption>d-h03-low-meter-half.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h04-low-payout-pop.webp"><img loading="lazy" src="progress/round-23/critic/d-h04-low-payout-pop.webp" alt="d-h04-low-payout-pop.webp"></a><figcaption>d-h04-low-payout-pop.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h05-low-payout-chain.webp"><img loading="lazy" src="progress/round-23/critic/d-h05-low-payout-chain.webp" alt="d-h05-low-payout-chain.webp"></a><figcaption>d-h05-low-payout-chain.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h06-high-wind.webp"><img loading="lazy" src="progress/round-23/critic/d-h06-high-wind.webp" alt="d-h06-high-wind.webp"></a><figcaption>d-h06-high-wind.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h07-high-boost.webp"><img loading="lazy" src="progress/round-23/critic/d-h07-high-boost.webp" alt="d-h07-high-boost.webp"></a><figcaption>d-h07-high-boost.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/d-h08-end.webp"><img loading="lazy" src="progress/round-23/critic/d-h08-end.webp" alt="d-h08-end.webp"></a><figcaption>d-h08-end.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-0.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-0.webp" alt="dbg-22-organ-0.webp"></a><figcaption>dbg-22-organ-0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-1.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-1.webp" alt="dbg-22-organ-1.webp"></a><figcaption>dbg-22-organ-1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-2.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-2.webp" alt="dbg-22-organ-2.webp"></a><figcaption>dbg-22-organ-2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-3.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-3.webp" alt="dbg-22-organ-3.webp"></a><figcaption>dbg-22-organ-3.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-4.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-4.webp" alt="dbg-22-organ-4.webp"></a><figcaption>dbg-22-organ-4.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-5.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-5.webp" alt="dbg-22-organ-5.webp"></a><figcaption>dbg-22-organ-5.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-6.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-6.webp" alt="dbg-22-organ-6.webp"></a><figcaption>dbg-22-organ-6.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-7.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-7.webp" alt="dbg-22-organ-7.webp"></a><figcaption>dbg-22-organ-7.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-organ-8.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-organ-8.webp" alt="dbg-22-organ-8.webp"></a><figcaption>dbg-22-organ-8.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-22-wedge.webp"><img loading="lazy" src="progress/round-23/critic/dbg-22-wedge.webp" alt="dbg-22-wedge.webp"></a><figcaption>dbg-22-wedge.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-44-gallery-a.webp"><img loading="lazy" src="progress/round-23/critic/dbg-44-gallery-a.webp" alt="dbg-44-gallery-a.webp"></a><figcaption>dbg-44-gallery-a.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-44-gallery-b.webp"><img loading="lazy" src="progress/round-23/critic/dbg-44-gallery-b.webp" alt="dbg-44-gallery-b.webp"></a><figcaption>dbg-44-gallery-b.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/dbg-44-gallery-c-above.webp"><img loading="lazy" src="progress/round-23/critic/dbg-44-gallery-c-above.webp" alt="dbg-44-gallery-c-above.webp"></a><figcaption>dbg-44-gallery-c-above.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-22-1-y8w4.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-22-1-y8w4.0.webp" alt="gap-22-1-y8w4.0.webp"></a><figcaption>gap-22-1-y8w4.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-22-3-y8w5.5.webp"><img loading="lazy" src="progress/round-23/critic/gap-22-3-y8w5.5.webp" alt="gap-22-3-y8w5.5.webp"></a><figcaption>gap-22-3-y8w5.5.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-22-4-y8w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-22-4-y8w11.0.webp" alt="gap-22-4-y8w11.0.webp"></a><figcaption>gap-22-4-y8w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-22-noorbit-1-y8w4.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-22-noorbit-1-y8w4.0.webp" alt="gap-22-noorbit-1-y8w4.0.webp"></a><figcaption>gap-22-noorbit-1-y8w4.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-22-noorbit-3-y8w5.5.webp"><img loading="lazy" src="progress/round-23/critic/gap-22-noorbit-3-y8w5.5.webp" alt="gap-22-noorbit-3-y8w5.5.webp"></a><figcaption>gap-22-noorbit-3-y8w5.5.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-22-noorbit-4-y8w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-22-noorbit-4-y8w11.0.webp" alt="gap-22-noorbit-4-y8w11.0.webp"></a><figcaption>gap-22-noorbit-4-y8w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-1-y8w4.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-1-y8w4.0.webp" alt="gap-44-1-y8w4.0.webp"></a><figcaption>gap-44-1-y8w4.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-3-y8w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-3-y8w11.0.webp" alt="gap-44-3-y8w11.0.webp"></a><figcaption>gap-44-3-y8w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-4-y8w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-4-y8w11.0.webp" alt="gap-44-4-y8w11.0.webp"></a><figcaption>gap-44-4-y8w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-5-y16w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-5-y16w11.0.webp" alt="gap-44-5-y16w11.0.webp"></a><figcaption>gap-44-5-y16w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-6-y16w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-6-y16w11.0.webp" alt="gap-44-6-y16w11.0.webp"></a><figcaption>gap-44-6-y16w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-noorbit-1-y8w4.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-noorbit-1-y8w4.0.webp" alt="gap-44-noorbit-1-y8w4.0.webp"></a><figcaption>gap-44-noorbit-1-y8w4.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-noorbit-3-y8w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-noorbit-3-y8w11.0.webp" alt="gap-44-noorbit-3-y8w11.0.webp"></a><figcaption>gap-44-noorbit-3-y8w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-noorbit-4-y8w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-noorbit-4-y8w11.0.webp" alt="gap-44-noorbit-4-y8w11.0.webp"></a><figcaption>gap-44-noorbit-4-y8w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-noorbit-5-y16w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-noorbit-5-y16w11.0.webp" alt="gap-44-noorbit-5-y16w11.0.webp"></a><figcaption>gap-44-noorbit-5-y16w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/gap-44-noorbit-6-y16w11.0.webp"><img loading="lazy" src="progress/round-23/critic/gap-44-noorbit-6-y16w11.0.webp" alt="gap-44-noorbit-6-y16w11.0.webp"></a><figcaption>gap-44-noorbit-6-y16w11.0.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h01-title.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h01-title.webp" alt="hud23-m-h01-title.webp"></a><figcaption>hud23-m-h01-title.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h02-low-drafting.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h02-low-drafting.webp" alt="hud23-m-h02-low-drafting.webp"></a><figcaption>hud23-m-h02-low-drafting.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h03-low-meter-half.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h03-low-meter-half.webp" alt="hud23-m-h03-low-meter-half.webp"></a><figcaption>hud23-m-h03-low-meter-half.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h04-low-payout-pop.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h04-low-payout-pop.webp" alt="hud23-m-h04-low-payout-pop.webp"></a><figcaption>hud23-m-h04-low-payout-pop.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h05-low-payout-chain.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h05-low-payout-chain.webp" alt="hud23-m-h05-low-payout-chain.webp"></a><figcaption>hud23-m-h05-low-payout-chain.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h06-high-wind.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h06-high-wind.webp" alt="hud23-m-h06-high-wind.webp"></a><figcaption>hud23-m-h06-high-wind.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h07-high-boost.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h07-high-boost.webp" alt="hud23-m-h07-high-boost.webp"></a><figcaption>hud23-m-h07-high-boost.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-h08-end.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-h08-end.webp" alt="hud23-m-h08-end.webp"></a><figcaption>hud23-m-h08-end.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-ov1.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-ov1.webp" alt="hud23-m-ov1.webp"></a><figcaption>hud23-m-ov1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-ov2.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-ov2.webp" alt="hud23-m-ov2.webp"></a><figcaption>hud23-m-ov2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-ov3.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-ov3.webp" alt="hud23-m-ov3.webp"></a><figcaption>hud23-m-ov3.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23-m-ov4.webp"><img loading="lazy" src="progress/round-23/critic/hud23-m-ov4.webp" alt="hud23-m-ov4.webp"></a><figcaption>hud23-m-ov4.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h01-title.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h01-title.webp" alt="hud23b-m-h01-title.webp"></a><figcaption>hud23b-m-h01-title.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h02-low-drafting.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h02-low-drafting.webp" alt="hud23b-m-h02-low-drafting.webp"></a><figcaption>hud23b-m-h02-low-drafting.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h03-low-meter-half.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h03-low-meter-half.webp" alt="hud23b-m-h03-low-meter-half.webp"></a><figcaption>hud23b-m-h03-low-meter-half.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h04-low-payout-pop.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h04-low-payout-pop.webp" alt="hud23b-m-h04-low-payout-pop.webp"></a><figcaption>hud23b-m-h04-low-payout-pop.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h05-low-payout-chain.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h05-low-payout-chain.webp" alt="hud23b-m-h05-low-payout-chain.webp"></a><figcaption>hud23b-m-h05-low-payout-chain.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h06-high-wind.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h06-high-wind.webp" alt="hud23b-m-h06-high-wind.webp"></a><figcaption>hud23b-m-h06-high-wind.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h07-high-boost.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h07-high-boost.webp" alt="hud23b-m-h07-high-boost.webp"></a><figcaption>hud23b-m-h07-high-boost.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-h08-end.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-h08-end.webp" alt="hud23b-m-h08-end.webp"></a><figcaption>hud23b-m-h08-end.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-ov1.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-ov1.webp" alt="hud23b-m-ov1.webp"></a><figcaption>hud23b-m-ov1.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-ov2.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-ov2.webp" alt="hud23b-m-ov2.webp"></a><figcaption>hud23b-m-ov2.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-ov3.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-ov3.webp" alt="hud23b-m-ov3.webp"></a><figcaption>hud23b-m-ov3.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/hud23b-m-ov4.webp"><img loading="lazy" src="progress/round-23/critic/hud23b-m-ov4.webp" alt="hud23b-m-ov4.webp"></a><figcaption>hud23b-m-ov4.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h01-title.webp"><img loading="lazy" src="progress/round-23/critic/m-h01-title.webp" alt="m-h01-title.webp"></a><figcaption>m-h01-title.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h02-low-drafting.webp"><img loading="lazy" src="progress/round-23/critic/m-h02-low-drafting.webp" alt="m-h02-low-drafting.webp"></a><figcaption>m-h02-low-drafting.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h03-low-meter-half.webp"><img loading="lazy" src="progress/round-23/critic/m-h03-low-meter-half.webp" alt="m-h03-low-meter-half.webp"></a><figcaption>m-h03-low-meter-half.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h04-low-payout-pop.webp"><img loading="lazy" src="progress/round-23/critic/m-h04-low-payout-pop.webp" alt="m-h04-low-payout-pop.webp"></a><figcaption>m-h04-low-payout-pop.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h05-low-payout-chain.webp"><img loading="lazy" src="progress/round-23/critic/m-h05-low-payout-chain.webp" alt="m-h05-low-payout-chain.webp"></a><figcaption>m-h05-low-payout-chain.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h06-high-wind.webp"><img loading="lazy" src="progress/round-23/critic/m-h06-high-wind.webp" alt="m-h06-high-wind.webp"></a><figcaption>m-h06-high-wind.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h07-high-boost.webp"><img loading="lazy" src="progress/round-23/critic/m-h07-high-boost.webp" alt="m-h07-high-boost.webp"></a><figcaption>m-h07-high-boost.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/m-h08-end.webp"><img loading="lazy" src="progress/round-23/critic/m-h08-end.webp" alt="m-h08-end.webp"></a><figcaption>m-h08-end.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-22-0-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-22-0-16m.webp" alt="prom-d-22-0-16m.webp"></a><figcaption>prom-d-22-0-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-22-0-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-22-0-5m.webp" alt="prom-d-22-0-5m.webp"></a><figcaption>prom-d-22-0-5m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-22-1-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-22-1-16m.webp" alt="prom-d-22-1-16m.webp"></a><figcaption>prom-d-22-1-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-22-1-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-22-1-5m.webp" alt="prom-d-22-1-5m.webp"></a><figcaption>prom-d-22-1-5m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-4-0-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-4-0-16m.webp" alt="prom-d-4-0-16m.webp"></a><figcaption>prom-d-4-0-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-4-0-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-4-0-5m.webp" alt="prom-d-4-0-5m.webp"></a><figcaption>prom-d-4-0-5m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-4-1-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-4-1-16m.webp" alt="prom-d-4-1-16m.webp"></a><figcaption>prom-d-4-1-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-d-4-1-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-d-4-1-5m.webp" alt="prom-d-4-1-5m.webp"></a><figcaption>prom-d-4-1-5m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-22-0-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-22-0-16m.webp" alt="prom-m-22-0-16m.webp"></a><figcaption>prom-m-22-0-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-22-0-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-22-0-5m.webp" alt="prom-m-22-0-5m.webp"></a><figcaption>prom-m-22-0-5m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-22-1-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-22-1-16m.webp" alt="prom-m-22-1-16m.webp"></a><figcaption>prom-m-22-1-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-22-1-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-22-1-5m.webp" alt="prom-m-22-1-5m.webp"></a><figcaption>prom-m-22-1-5m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-4-0-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-4-0-16m.webp" alt="prom-m-4-0-16m.webp"></a><figcaption>prom-m-4-0-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-4-0-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-4-0-5m.webp" alt="prom-m-4-0-5m.webp"></a><figcaption>prom-m-4-0-5m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-4-1-16m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-4-1-16m.webp" alt="prom-m-4-1-16m.webp"></a><figcaption>prom-m-4-1-16m.webp</figcaption></figure>
+<figure><a href="progress/round-23/critic/prom-m-4-1-5m.webp"><img loading="lazy" src="progress/round-23/critic/prom-m-4-1-5m.webp" alt="prom-m-4-1-5m.webp"></a><figcaption>prom-m-4-1-5m.webp</figcaption></figure></div></section>
 <section><h2>round 22</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 22 critic report
 
 **Verdict:** Both rounds land. The orbit camera is smooth and easy on desktop and phone, and the street now has believable cars and lively people at no frame cost. One real gap remains: under tunnel bridges the camera crowds the drone, and orbiting makes it much worse.

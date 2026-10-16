@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createSeededRandom, pick, range, type Rng } from '../core/random';
-import { CAR_PAINTS, MOOD_LIGHTS, TAXI_PAINT, VAN_PAINTS, VDIM, VT, buildVehicleGeometry, vehicleMaterial } from './StreetKit';
+import { CAR_PAINTS, MOOD_LIGHTS, TAXI_PAINT, VAN_PAINTS, VDIM, VT, buildVehicleGeometry, vehicleMaterial, type VehicleRange } from './StreetKit';
 
 /**
  * Round 22: street traffic. Cars, taxis, vans and box trucks drive the street grid on the right-hand lane (2.9 m off the
@@ -16,7 +16,9 @@ import { CAR_PAINTS, MOOD_LIGHTS, TAXI_PAINT, VAN_PAINTS, VDIM, VT, buildVehicle
 const LANE = 2.9;
 const BOX = 6; // half road width: the junction box is 12 x 12 m
 const STOP = 2.6; // stop line distance from the box edge
-const CYCLE = 18;
+/** Round 23: vehicles further than this from the camera draw their low-detail version (m). */
+const LOD_FAR = 55;
+const CYCLE = 12; // round 23: 18 -> 12 s, shorter waits at the stop line
 const ACCEL = 2.6;
 const BRAKE = 7;
 
@@ -41,7 +43,11 @@ type Van = { axis: 0 | 1; line: number; dir: 1 | -1; pos: number; speed: number;
 export type VehicleInfo = { kind: 'car' | 'van'; type: number; x: number; y: number; z: number; fx: number; fz: number; len: number; wid: number; y0: number; y1: number; mode: string; lat: number; axis: number };
 
 export class Traffic {
-  readonly mesh: THREE.InstancedMesh;
+  readonly mesh: THREE.Group;
+  private readonly typeMeshes: THREE.InstancedMesh[] = [];
+  private readonly typeInfo: THREE.InstancedBufferAttribute[] = [];
+  private readonly typeCount: number[] = new Array(12).fill(0);
+  private readonly camAt = new THREE.Vector3(0, 0, 0);
   private readonly cars: Car[] = [];
   readonly vans: Van[] = [];
   private readonly rc: number[];
@@ -50,7 +56,6 @@ export class Traffic {
   private readonly rng: Rng;
   private readonly offsets: number[] = [];
   private readonly occupants = new Map<number, Car[]>();
-  private readonly iinfo: THREE.InstancedBufferAttribute;
   private readonly lights = { value: 0.5 };
   private readonly m = new THREE.Matrix4();
   private readonly q = new THREE.Quaternion();
@@ -75,8 +80,9 @@ export class Traffic {
     this.half = half;
     this.rng = createSeededRandom(seed * 131 + 17);
     this.lights.value = MOOD_LIGHTS[mood] ?? 0.5;
-    this.baseCount = mobile ? 34 : 40;
-    this.rushCount = mobile ? 52 : 62;
+    // round 23: busier streets (was 40 / 62, mobile 34 / 52): about a car every 15 to 30 m on a main road
+    this.baseCount = mobile ? 84 : 100;
+    this.rushCount = mobile ? 112 : 136;
     this.target = this.baseCount;
     const carCap = this.rushCount;
     const vanCap = rushLanes.length ? 18 : 0;
@@ -84,20 +90,38 @@ export class Traffic {
     this.rushLines = rushLanes.map((l) => ({ axis: l.axis, line: roadCenters[l.index] }));
     for (let i = 0; i < this.n * this.n; i++) this.offsets.push(this.rng() * CYCLE);
 
+    // round 23: one instanced mesh per vehicle type, each drawing only its own slice of the shared geometry (before,
+    // every instance drew all six bodies and the shader collapsed the five it did not need: about 5x the triangles)
     const { material, depth } = vehicleMaterial(this.lights);
     const geo = buildVehicleGeometry();
-    this.iinfo = new THREE.InstancedBufferAttribute(new Float32Array(this.capacity * 2), 2);
-    this.iinfo.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('iinfo', this.iinfo);
-    this.mesh = new THREE.InstancedMesh(geo, material, this.capacity);
-    this.mesh.customDepthMaterial = depth;
-    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.setColorAt(0, new THREE.Color());
-    this.mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = false;
-    this.mesh.frustumCulled = false;
+    const ranges = geo.userData.ranges as VehicleRange[];
+    this.mesh = new THREE.Group();
     this.mesh.name = 'traffic';
+    // round 23: and a far version of each type (body and glass only, no shadow) beyond LOD_FAR from the camera
+    for (let lod = 0; lod < 2; lod++) for (let t = 0; t <= VT.hover; t++) {
+      const r = ranges[t] ?? { first: 0, count: 0, far: 0 };
+      const g = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(geo.attributes)) g.setAttribute(name, attr);
+      g.setDrawRange(r.first, lod === 0 ? r.count : r.far);
+      g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 4);
+      const cap = Math.max(1, this.capacity);
+      const ii = new THREE.InstancedBufferAttribute(new Float32Array(cap * 2), 2);
+      ii.setUsage(THREE.DynamicDrawUsage);
+      g.setAttribute('iinfo', ii);
+      const m = new THREE.InstancedMesh(g, material, cap);
+      m.customDepthMaterial = depth;
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      m.setColorAt(0, new THREE.Color());
+      m.instanceColor!.setUsage(THREE.DynamicDrawUsage);
+      m.castShadow = lod === 0;
+      m.receiveShadow = false;
+      m.frustumCulled = false;
+      m.count = 0;
+      m.name = (lod === 0 ? 'traffic-' : 'traffic-far-') + t;
+      this.typeMeshes.push(m);
+      this.typeInfo.push(ii);
+      this.mesh.add(m);
+    }
 
     const paints = CAR_PAINTS[mood] ?? CAR_PAINTS[0];
     for (let i = 0; i < carCap; i++) {
@@ -160,7 +184,7 @@ export class Traffic {
 
   private signalAllows(node: number, axis: 0 | 1): boolean {
     const t = (this.clock + this.offsets[node]) % CYCLE;
-    return axis === 0 ? t < 6.6 : t >= 9 && t < 15.6;
+    return axis === 0 ? t < 5 : t >= 6 && t < 11;
   }
 
   /** Room for the whole car past the exit of the junction on its planned lane. */
@@ -480,6 +504,7 @@ export class Traffic {
   update(dt: number, cam: THREE.Vector3): void {
     if (dt <= 0) return;
     this.clock += dt;
+    this.camAt.copy(cam);
     this.updateCars(Math.min(dt, 0.1), cam);
     if (this.vans.length && (this.rushTarget > 0 || this.rushClock === 0)) this.updateVans(Math.min(dt, 0.1));
     this.write();
@@ -487,16 +512,23 @@ export class Traffic {
 
   /** Writes the live vehicles into the instance buffers (compacted, so empty slots cost nothing). */
   private write(): void {
-    let k = 0;
-    const info = this.iinfo.array as Float32Array;
+    const cnt = this.typeCount;
+    cnt.fill(0);
+    const cam = this.camAt, far2 = LOD_FAR * LOD_FAR;
+    const put = (t: number, color: THREE.Color, brake: number) => {
+      const dx = this.v.x - cam.x, dz = this.v.z - cam.z;
+      if (dx * dx + dz * dz > far2) t += VT.hover + 1;
+      const mesh = this.typeMeshes[t], k = cnt[t]++;
+      mesh.setMatrixAt(k, this.m);
+      mesh.setColorAt(k, color);
+      const info = this.typeInfo[t].array as Float32Array;
+      info[k * 2] = t % (VT.hover + 1); info[k * 2 + 1] = brake;
+    };
     for (const c of this.cars) {
       if (!c.active) continue;
       this.q.setFromAxisAngle(this.up, Math.atan2(c.fx, c.fz));
       this.m.compose(this.v.set(c.x, 0, c.z), this.q, this.s1);
-      this.mesh.setMatrixAt(k, this.m);
-      this.mesh.setColorAt(k, c.color);
-      info[k * 2] = c.type; info[k * 2 + 1] = c.brake;
-      k++;
+      put(c.type, c.color, c.brake);
     }
     for (const v of this.vans) {
       if (!this.vanLive(v)) continue;
@@ -504,15 +536,15 @@ export class Traffic {
       if (v.axis === 0) { this.v.set(v.pos, y, v.line + v.lane); this.q.setFromAxisAngle(this.up, v.dir > 0 ? Math.PI / 2 : -Math.PI / 2); }
       else { this.v.set(v.line - v.lane, y, v.pos); this.q.setFromAxisAngle(this.up, v.dir > 0 ? 0 : Math.PI); }
       this.m.compose(this.v, this.q, this.s1);
-      this.mesh.setMatrixAt(k, this.m);
-      this.mesh.setColorAt(k, v.color);
-      info[k * 2] = VT.hover; info[k * 2 + 1] = v.hold || v.speed < v.cruise - 2 ? 1 : 0;
-      k++;
+      put(VT.hover, v.color, v.hold || v.speed < v.cruise - 2 ? 1 : 0);
     }
-    this.mesh.count = k;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.mesh.instanceColor!.needsUpdate = true;
-    this.iinfo.needsUpdate = true;
+    for (let t = 0; t < this.typeMeshes.length; t++) {
+      const mesh = this.typeMeshes[t];
+      mesh.count = cnt[t];
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor!.needsUpdate = true;
+      this.typeInfo[t].needsUpdate = true;
+    }
   }
 
   /** Test hook: every live vehicle as an oriented box. */

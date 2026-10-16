@@ -1,0 +1,25 @@
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 node farm-probe.mjs > farm-$s.log 2>&1; done
+SEED=22 MODE=near SIMT=600 node smart-farm.mjs > smart-near-22.log 2>&1
+SEED=22 MODE=van FARMMAX=12 SIMT=600 node capfarm-narrow.mjs > cfn-van-12-22.log 2>&1
+node hand-fly20.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly20.mjs > hf-mobile.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+node cam-touch.mjs > cam-touch.log 2>&1
+SEED=130 TOTAL=45 node cam-clip.mjs > cam-clip-130.log 2>&1
+node street-shots.mjs > street-shots-d.log 2>&1
+MOBILE=1 SEEDS=58,4 node street-shots.mjs > street-shots-m.log 2>&1
+node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+node van-draft.mjs > van-draft.log 2>&1
+SEED=22 TOTAL=62 node cam-clip.mjs > cam-clip-22b.log 2>&1
+node cam-touch.mjs > cam-touch2.log 2>&1
+NOORBIT=1 SEED=130 TOTAL=45 node cam-clip.mjs > cam-clip-130-noorbit.log 2>&1
+node density-probe.mjs > density.log 2>&1
+# (low ran here)
+node cam-touch.mjs > cam-touch3.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+END

@@ -35,6 +35,10 @@ export type RunSummary = {
   dailyNew: boolean;
 };
 
+/** Round 24: a screen box in CSS px. */
+export type Box = { l: number; t: number; r: number; b: number };
+export type TouchLayout = { w: number; h: number; controls: Box[]; top: Box[]; pillBottom: number; bottomTop: number; slot: Box };
+
 export type CityInfo = { mode: 'seed' | 'random' | 'daily'; label: string; best: number; tier: number };
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -189,6 +193,74 @@ export class Hud {
 
   setTouch(touch: boolean): void {
     this.app.classList.toggle('touch', touch);
+    this.touchAt = -1e9;
+  }
+
+  get isTouch(): boolean {
+    return this.app.classList.contains('touch');
+  }
+
+  // round 24: touch layout (measured from the DOM a few times a second, never per frame)
+  private touchAt = -1e9;
+  private touchGeo: TouchLayout | null = null;
+  private readonly hudCenterEl = document.querySelector('.hud-center') as HTMLElement;
+  private readonly hudScoreEl = document.querySelector('.hud-score') as HTMLElement;
+  private readonly hudRightEl = document.querySelector('.hud-right') as HTMLElement;
+  private readonly hudBottomEl = document.querySelector('.hud-bottom') as HTMLElement;
+  private readonly stickEl = $('touch-stick');
+  private readonly touchButtonsEl = document.querySelector('.touch-buttons') as HTMLElement;
+  private readonly hudEl = $('hud');
+
+  /**
+   * Round 24: where things sit on a touch screen. `controls` are the stick and the button cluster (the objective marker
+   * never overlaps them), `top` the score panel, the timer / objective / route column and the right chips, `pillBottom`
+   * the bottom of the centre column (the camera keeps the drone below it), `popSlot` the box the centre pops use (left
+   * of the drone, above the stick). Re-measured every 300 ms (and at once after a resize or a touch switch).
+   */
+  touchLayout(w: number, h: number): TouchLayout | null {
+    if (!this.isTouch) return null;
+    const now = performance.now();
+    const g = this.touchGeo;
+    if (g && now - this.touchAt < 300 && g.w === w && g.h === h) return g;
+    this.touchAt = now;
+    const R = (el: Element | null): Box | null => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? { l: r.left, t: r.top, r: r.right, b: r.bottom } : null;
+    };
+    const stick = R(this.stickEl);
+    const btns = R(this.touchButtonsEl);
+    const centre = R(this.hudCenterEl);
+    const score = R(this.hudScoreEl);
+    const right = R(this.hudRightEl);
+    const bottom = R(this.hudBottomEl);
+    const controls: Box[] = [];
+    // the stick's "Fly" label sits 20 px above it
+    if (stick) controls.push({ l: stick.l, t: stick.t - 20, r: stick.r, b: stick.b });
+    if (btns) controls.push(btns);
+    const top: Box[] = [centre, score, right].filter((b): b is Box => !!b);
+    const pillBottom = centre ? centre.b : 0;
+    // pop slot: from the left gutter (safe area) to 72 px left of the screen centre (the drone sits on the centre line);
+    // vertically centred between the score panel and the stick
+    const left = stick ? stick.l : 18;
+    const slotR = w / 2 - 72;
+    const upper = Math.max(score ? score.b : 0, pillBottom * 0.6) + 8;
+    const lower = (stick ? stick.t - 20 : h * 0.7) - 6;
+    const cy = Math.max(upper + 30, Math.min((upper + lower) / 2, h * 0.62));
+    const slot: Box = { l: left, t: cy - 42, r: slotR, b: cy + 42 };
+    if (!g || g.slot.l !== slot.l || g.slot.r !== slot.r || Math.abs(g.slot.t - slot.t) > 0.5) {
+      this.hudEl.style.setProperty('--pop-x', `${((slot.l + slot.r) / 2).toFixed(1)}px`);
+      this.hudEl.style.setProperty('--pop-y', `${cy.toFixed(1)}px`);
+      this.hudEl.style.setProperty('--pop-w', `${Math.max(120, slot.r - slot.l).toFixed(1)}px`);
+    }
+    this.touchGeo = { w, h, controls, top, pillBottom, bottomTop: bottom ? bottom.t : h - 80, slot };
+    return this.touchGeo;
+  }
+
+  /** Round 24: a centre pop is on screen (the marker keeps out of the pop slot meanwhile). */
+  get popShowing(): boolean {
+    const a = this.cActive;
+    return !!a && performance.now() - a.shownAt < a.durMs + 400;
   }
 
   showScreen(name: ScreenName): void {

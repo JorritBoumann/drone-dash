@@ -128,6 +128,8 @@ interface DroneDashApi {
   streetLife?(traffic: boolean, people: boolean): void;
   traffic?(): Array<{ kind: 'car' | 'van'; type: number; x: number; y: number; z: number; fx: number; fz: number; len: number; wid: number; y0: number; y1: number; mode: string; lat: number; axis: number }>;
   people?(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }>;
+  /** Round 24: the drone's screen box in CSS px (visible vertices through the render camera) and the touch framing shift. */
+  droneBox?(): { x: number; y: number; w: number; h: number; behind: boolean; shift: number };
 }
 
 interface Window {

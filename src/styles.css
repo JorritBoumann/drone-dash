@@ -1388,3 +1388,33 @@ kbd {
 @media (max-width: 640px), (max-height: 460px) {
   .gate-tag-pill { font-size: 0.64rem; padding: 2px 8px 2px 6px; }
 }
+
+/* Round 24: on a touch screen the centre pops leave the centre line (the drone sits there). They share one slot left of
+   the drone and above the stick; the HUD measures it (--pop-x / --pop-y / --pop-w) and wraps long lines inside it. */
+#app.touch .pop,
+#app.touch .slip-pop,
+#app.touch .medal-pop,
+#app.touch .event-pop {
+  top: var(--pop-y, 50%);
+  left: var(--pop-x, 25%);
+  max-width: var(--pop-w, 40%);
+  white-space: normal;
+  text-align: center;
+}
+#app.touch .pop strong { font-size: 1.8rem; -webkit-text-stroke-width: 6px; }
+#app.touch .pop span { padding: 3px 10px; font-size: 0.72rem; letter-spacing: 0.08em; }
+#app.touch .pop-icon { width: 26px; height: 26px; margin-bottom: 2px; }
+#app.touch .event-pop strong { font-size: 1.5rem; }
+#app.touch .medal-pop strong { font-size: 1.6rem; }
+#app.touch .medal-pop .medal { width: 36px; height: 36px; }
+#app.touch .slip-pop[data-chain='4'] strong { font-size: 2rem; }
+#app.touch .slip-pop[data-chain='5'] strong { font-size: 2.15rem; }
+/* a short rise only, so the pop never climbs into the score panel */
+#app.touch .slip-pop.show { animation-name: slip-rise-touch; }
+#app.touch .pop.show:not(.crash) { animation-name: pop-in-short; }
+@keyframes slip-rise-touch {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  70% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -72%) scale(1); }
+}

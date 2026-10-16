@@ -1,0 +1,21 @@
+// Round 24 builder: quick phone screenshots: start, fly up to 40 m, force pops.
+import { chromium, devices } from '@playwright/test';
+const DEV = process.env.DEV || 'iphone'; const SEED = process.env.SEED || '22'; const TAG = process.env.TAG || 'after';
+const OUT = new URL('../builder-shots/', import.meta.url).pathname;
+const ANDROID = { viewport: { width: 915, height: 412 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true };
+const browser = await chromium.launch({ channel: 'chromium' });
+const ctx = await browser.newContext(DEV === 'iphone' ? { ...devices['iPhone 13 landscape'] } : DEV === 'android' ? ANDROID : { viewport: { width: 1280, height: 720 } });
+const page = await ctx.newPage();
+const errs = []; page.on('pageerror', (e) => errs.push(String(e)));
+await page.goto('http://127.0.0.1:5190/?seed=' + SEED, { waitUntil: 'networkidle' }); await page.waitForTimeout(1000);
+await page.evaluate(() => window.__GAME__.start()); await page.waitForTimeout(1200);
+const shot = (n) => page.screenshot({ path: OUT + `${TAG}-${DEV}-${SEED}-${n}.jpg`, type: 'jpeg', quality: 78 });
+const box = () => page.evaluate(() => window.__GAME__.droneBox());
+await shot('a-start'); console.log('start', JSON.stringify(await box()));
+await page.evaluate(() => window.__GAME__.key('Space', true)); await page.waitForTimeout(4500); await page.evaluate(() => window.__GAME__.key('Space', false));
+await page.evaluate(() => window.__GAME__.key('KeyW', true)); await page.waitForTimeout(1500);
+console.log('high', (await page.evaluate(() => window.__THREE_GAME_DIAGNOSTICS__.player.position.y)).toFixed(1), JSON.stringify(await box()));
+await shot('b-high');
+await page.evaluate(() => window.__GAME__.key('KeyW', false));
+console.log('errors', errs.length, errs.slice(0, 3).join(' | '));
+await browser.close();

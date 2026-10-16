@@ -13,7 +13,7 @@ import { DebugTools } from '../systems/DebugTools';
 import { DeliverySystem, JOBS } from '../systems/DeliverySystem';
 import { Slipstream } from '../systems/Slipstream';
 import { VfxSystem } from '../systems/VfxSystem';
-import { Hud, fmtX } from '../ui/Hud';
+import { Hud, fmtX, type Box, type TouchLayout } from '../ui/Hud';
 import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
@@ -27,6 +27,9 @@ import { buildStreetGraph, routeOnGraph } from '../world/CityFeatures';
 const GATE_FACE = 4.5;
 /** Round 20: an alley or tunnel run is marked (and named) only when it saves this many metres and this share of the best route without one. */
 const GATE_SAVE_M = 10;
+/** Round 24: route mark hysteresis. Seconds of steady disagreement, or metres turned away from the entrance, before it moves. */
+const MARK_COMMIT = 2;
+const MARK_AWAY = 20;
 const GATE_SAVE_SHARE = 0.08;
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
 
@@ -158,6 +161,8 @@ export class Game {
   private manualRender = false;
   private reducedMotion = false;
   private runCount = 0;
+  /** Round 24: touch framing, px the view is shifted down so the drone stays clear of the top pills (0 on desktop). */
+  private touchShift = 0;
   private readonly tmp = new THREE.Vector3();
   private readonly tmp2 = new THREE.Vector3();
 
@@ -653,6 +658,7 @@ export class Game {
     const groundBelow = this.world.surfaceBelow(dp.x, dp.y, dp.z);
     const altAboveGround = Math.max(0, dp.y - groundBelow - 0.85);
     this.cameraRig.update(realDt, d, this.world, altAboveGround, this.marker.position, this.viewIntent);
+    this.updateTouchFraming(realDt);
     this.env.updateOcclusion(this.camera.position, dp);
 
     // feedback: bumps
@@ -1003,6 +1009,9 @@ export class Game {
     legAt: number; shownAt: number; seenAt: number; seenDist: number; tagAt: number; tagOn: boolean; gateIn: boolean;
   } | null = null;
   private marksThisLeg = 0;
+  /** Round 24: seconds the planner has disagreed with the mark in a row, and the closest the drone got to its entrance. */
+  private markDisagree = 0;
+  private markMinGate = Infinity;
   /** Round 20: the street graph without alleys and tunnels (roads and boulevards): the best route that keeps out of them. */
   private openGraph!: ReturnType<typeof buildStreetGraph>;
   // progress on the leg: best street route left so far and seconds since it last improved (a parcel off its route goes stale)
@@ -1059,6 +1068,8 @@ export class Game {
 
   private setMark(m: Game['mark']): void {
     this.mark = m;
+    this.markDisagree = 0;
+    this.markMinGate = m ? Math.hypot(this.drone.group.position.x - m.gate.x, this.drone.group.position.z - m.gate.z) : Infinity;
     if (!m) {
       this.gate.hide();
       return;
@@ -1136,12 +1147,25 @@ export class Game {
     // a mark already up stays while its run still saves half the bar (no flicker at the threshold)
     const next = this.planMark(r, p.x, p.z, t.x, t.z, this.mark ? 0.5 : 1);
     const cur = this.mark;
-    if (cur && next && cur.names.includes(next.name)) return; // still on the marked run
+    if (cur) this.markMinGate = Math.min(this.markMinGate, Math.hypot(p.x - cur.gate.x, p.z - cur.gate.z));
+    if (cur && next && cur.names.includes(next.name)) {
+      this.markDisagree = 0; // still on the marked run
+      return;
+    }
     if (!cur && !next) return;
-    if (cur && !next && cur.stage === 'through') {
-      // inside the run (or at its way out) the route from here may be plain street: keep the exit arch
+    if (cur && cur.stage === 'through') {
+      // round 24: inside the run (or at its way out) the mark never moves or drops, whatever the route from here says
+      // (round 20 kept it only when the new plan had no run at all; a neighbouring alley could still take it over)
       const inRun = this.narrow && cur.names.includes(this.narrow.name);
       if (inRun || Math.hypot(p.x - cur.exit.x, p.z - cur.exit.z) < 10) return;
+    }
+    if (cur) {
+      // round 24 hysteresis: the mark moves or drops only once the pilot has clearly gone another way: the planner has
+      // disagreed for MARK_COMMIT s in a row, or the drone has turned away from the marked entrance (MARK_AWAY m further
+      // than its closest). A route that flips between two neighbouring alleys for a moment no longer moves it.
+      this.markDisagree += 0.25;
+      const away = Math.hypot(p.x - cur.gate.x, p.z - cur.gate.z) - this.markMinGate > MARK_AWAY;
+      if (this.markDisagree < MARK_COMMIT && !away) return;
     }
     if (next) {
       next.legAt = this.routeHint?.at ?? this.rt();
@@ -1423,6 +1447,93 @@ export class Game {
     this.blob.material.opacity = THREE.MathUtils.clamp(1 - h / 30, 0, 1) * 0.75;
   }
 
+  /**
+   * Round 24: touch framing. On a phone held sideways the chase view puts the drone high on the screen once it climbs
+   * (at 30 to 40 m it rode up under the timer, objective and route pills). The view is shifted down on screen (a
+   * projection offset: the camera itself, its collision and the desktop view are unchanged) just enough to keep the
+   * drone's top below the centre column, never pushing it into the bottom meters. Fast to engage, slow to let go.
+   */
+  private updateTouchFraming(dt: number): void {
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    const geo = this.state === 'playing' ? this.hud.touchLayout(w, h) : null;
+    let need = 0;
+    if (geo) {
+      const cam = this.camera;
+      cam.updateMatrixWorld();
+      const p = this.drone.group.position;
+      const v = this.tmp2.copy(p).project(cam);
+      if (v.z < 1) {
+        const yc = (-v.y * 0.5 + 0.5) * h - this.touchShift; // where the drone would sit without the shift
+        const dist = Math.max(1, cam.position.distanceTo(p));
+        const f = h / 2 / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+        const elev = Math.asin(THREE.MathUtils.clamp((cam.position.y - p.y) / dist, -1, 1));
+        // the drone is about 3 m across and 0.6 m tall: its half-height on screen from this distance and elevation
+        const half = (f / dist) * (1.55 * Math.abs(Math.sin(elev)) + 0.35 * Math.cos(elev)) + 4;
+        need = geo.pillBottom + 12 - (yc - half);
+        // never past the bottom meters (and at most a third of the screen)
+        need = Math.min(need, geo.bottomTop - 10 - (yc + half), h * 0.33);
+        need = Math.max(0, need);
+      }
+    }
+    const k = need > this.touchShift ? 12 : 2.2;
+    this.touchShift += (need - this.touchShift) * (1 - Math.exp(-k * dt));
+    if (this.touchShift < 0.5 && need === 0) this.touchShift = 0;
+    if (this.touchShift > 0) this.camera.setViewOffset(w, h, 0, -this.touchShift, w, h);
+    else if (this.camera.view) this.camera.clearViewOffset();
+  }
+
+  /**
+   * Round 24: on a touch screen the edge marker never lands on the stick or the buttons (nor on the top panels or a
+   * showing centre pop). Its real footprint (diamond, distance label and, when clamped, the arrow at its angle) is
+   * tested against those boxes; if it hits one, the marker slides along the screen edge to the nearest free spot.
+   */
+  private navFootprint(x: number, y: number, angle: number, arrow: boolean, dist: number): Box {
+    const lw = 10 + 8 * String(Math.round(dist)).length + 14; // "123 m" pill
+    let l = Math.min(x - 17, x - lw / 2), r = Math.max(x + 17, x + lw / 2), t = y - 17, b = y + 38;
+    if (arrow) {
+      const c = Math.cos(angle), sn = Math.sin(angle);
+      // the arrow's whole box (36 x 24 px, 22 to 46 px out from the centre), turned to its angle
+      for (const [px, py] of [[-18, -22], [18, -22], [-18, -46], [18, -46]]) {
+        const ax = x + px * c - py * sn, ay = y + px * sn + py * c;
+        l = Math.min(l, ax - 4); r = Math.max(r, ax + 4); t = Math.min(t, ay - 4); b = Math.max(b, ay + 4);
+      }
+    }
+    return { l: l - 6, t: t - 6, r: r + 6, b: b + 6 };
+  }
+
+  private navTouch(geo: TouchLayout, w: number, h: number, x: number, y: number, tx: number, ty: number, off: boolean, dist: number): { x: number; y: number; off: boolean; angle: number } {
+    const hit = (a: Box, list: Box[]) => list.some((q) => a.l < q.r && q.l < a.r && a.t < q.b && q.t < a.b);
+    const blocks = [...geo.controls, ...geo.top];
+    if (this.hud.popShowing) blocks.push(geo.slot);
+    const ang = (px: number, py: number) => Math.atan2(ty - py, tx - px) + Math.PI / 2;
+    const a0 = off ? ang(x, y) : 0;
+    if (!hit(this.navFootprint(x, y, a0, off, dist), blocks)) return { x, y, off, angle: a0 };
+    // walk the edge rectangle both ways from the clamped point; the first free spot wins
+    const mx = 40, y0 = 30, y1 = h - 80;
+    const W = w - 2 * mx, H = y1 - y0, P = 2 * (W + H);
+    const at = (s: number): [number, number] => {
+      s = ((s % P) + P) % P;
+      if (s < W) return [mx + s, y0];
+      if (s < W + H) return [w - mx, y0 + s - W];
+      if (s < 2 * W + H) return [w - mx - (s - W - H), y1];
+      return [mx, y1 - (s - 2 * W - H)];
+    };
+    // the clamped point's place along the edge
+    const cx = THREE.MathUtils.clamp(x, mx, w - mx), cy = THREE.MathUtils.clamp(y, y0, y1);
+    const dl = cx - mx, dr = w - mx - cx, dt = cy - y0, db = y1 - cy;
+    const m = Math.min(dl, dr, dt, db);
+    const s0 = m === dt ? cx - mx : m === dr ? W + cy - y0 : m === db ? W + H + (w - mx - cx) : 2 * W + H + (y1 - cy);
+    for (let step = 4; step < P / 2; step += 4) {
+      for (const sgn of [1, -1]) {
+        const [px, py] = at(s0 + sgn * step);
+        const a = ang(px, py);
+        if (!hit(this.navFootprint(px, py, a, true, dist), blocks)) return { x: px, y: py, off: true, angle: a };
+      }
+    }
+    return { x, y, off, angle: a0 };
+  }
+
   private updateNav(): void {
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
@@ -1436,6 +1547,12 @@ export class Game {
     if (behind) {
       x = w - x;
       y = h - y;
+    }
+    // round 24: where the target really is (behind: mirrored), for the touch arrow
+    let tx = x, ty = y;
+    if (behind) {
+      tx = w / 2 + (x - w / 2) * 50;
+      ty = h / 2 + (y - h / 2 || 1) * 50;
     }
     const mx = 40;
     const top = h < 460 ? 140 : 150; // round 20: below the objective pill and the route hint (was 120: it covered the hint on a phone)
@@ -1459,6 +1576,14 @@ export class Game {
       angle = Math.atan2(dy, dx) + Math.PI / 2;
     }
     if (!Number.isFinite(x) || !Number.isFinite(y)) off = false;
+    const geo = this.hud.touchLayout(w, h);
+    if (geo && Number.isFinite(x) && Number.isFinite(y)) {
+      const r = this.navTouch(geo, w, h, x, y, tx, ty, off, dist);
+      x = r.x;
+      y = r.y;
+      off = r.off;
+      angle = r.angle;
+    }
     this.hud.setNav(x, y, off, angle, dist, Number.isFinite(x) && Number.isFinite(y));
   }
 
@@ -1633,6 +1758,30 @@ export class Game {
       traffic: () => this.env.traffic.snapshot(),
       people: () => this.env.people.snapshot(),
       rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),
+      // round 24 test hook: the drone's screen box (CSS px) through the real render camera
+      droneBox: () => {
+        // round 24: every visible vertex projected (a world-space box of the turned drone was far too big)
+        const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, behind = false;
+        const v = new THREE.Vector3();
+        this.drone.group.updateWorldMatrix(true, true);
+        this.drone.group.traverseVisible((o) => {
+          const m = o as THREE.Mesh;
+          if (!m.isMesh) return;
+          const pos = m.geometry.getAttribute('position');
+          const step = Math.max(1, Math.floor(pos.count / 600));
+          for (let i = 0; i < pos.count; i += step) {
+            v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).project(this.camera);
+            if (v.z > 1) behind = true;
+            const sx = (v.x * 0.5 + 0.5) * w, sy = (-v.y * 0.5 + 0.5) * h;
+            if (sx < x0) x0 = sx;
+            if (sx > x1) x1 = sx;
+            if (sy < y0) y0 = sy;
+            if (sy > y1) y1 = sy;
+          }
+        });
+        return { x: x0, y: y0, w: x1 - x0, h: y1 - y0, behind, shift: this.touchShift };
+      },
     };
     window.__THREE_GAME_TEST_HOOKS__ = {
       seed: (value: number) => {

@@ -471,7 +471,7 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
     const st = boulevardStops(b, roadCenters);
     const L = Math.hypot(st[st.length - 1].x - st[0].x, st[st.length - 1].z - st[0].z);
     features.push({ kind: 'diagonal', name: b.name, x: (st[0].x + st[st.length - 1].x) / 2, z: (st[0].z + st[st.length - 1].z) / 2, length: Math.round(L) });
-    // the street part of the paving: one long strip under the sidewalks, with a dashed amber centre line on the roads
+    // the street part of the paving: one long strip under the sidewalks, crossed by light stone bands
     const ry = Math.atan2(1, b.s);
     const cx = (st[0].x + st[st.length - 1].x) / 2, cz = (st[0].z + st[st.length - 1].z) / 2;
     gb.append(new THREE.BoxGeometry(b.halfWidth * 2 - 1.2, 0.04, L), mat(cx, 0.02, cz, 1, 1, 1, ry), color('#a5503d'), Style.paving);
@@ -480,8 +480,9 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
       const onBlock = ((x + half) % (B + R)) > R && ((z + half) % (B + R)) > R;
       // round 23: where it crosses a block (people stroll there) it reads as a promenade: light stone bands across the
       // paving instead of a road-style centre line; the amber dashes stay only where it crosses a road
-      if (onBlock) gb.append(new THREE.BoxGeometry(b.halfWidth * 2 - 2.6, 0.05, 0.55), mat(x, SIDEWALK_H + 0.035, z, 1, 1, 1, ry), color('#e2c9a6'), Style.paving);
-      else gb.append(new THREE.BoxGeometry(0.3, 0.05, 2.2), mat(x, 0.05, z, 1, 1, 1, ry), color('#ffd27a'), Style.emissive);
+      // round 24: no centre line at all any more (the emissive amber dashes on the road crossings bloomed to a white
+      // lane line where people walk). Road crossings get the same stone bands, so the whole diagonal reads as a walk.
+      gb.append(new THREE.BoxGeometry(b.halfWidth * 2 - 2.6, 0.05, 0.55), mat(x, onBlock ? SIDEWALK_H + 0.035 : 0.05, z, 1, 1, 1, ry), color('#e2c9a6'), Style.paving);
     }
   }
   for (const al of alleys) {

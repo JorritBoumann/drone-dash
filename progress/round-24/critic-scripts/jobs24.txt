@@ -1,0 +1,33 @@
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=15 BOX=1 PFX=hud24- node hud-probe.mjs > hud-m-22.log 2>&1
+DEV=iphone SEED=130 OVSHOT=1 SHOTEVERY=15 PFX=hud24- node hud-probe.mjs > hud-m-130.log 2>&1
+DEV=iphone SEED=130 LOWT=8 HIGHT=72 SHOTEVERY=12 PFX=hud24hi- node hud-probe.mjs > hud-m-130-hi.log 2>&1
+DEV=android SEED=317 OVSHOT=1 SHOTEVERY=15 PFX=hud24- node hud-probe.mjs > hud-a-317.log 2>&1
+DEV=android SEED=22 SHOTEVERY=20 PFX=hud24- node hud-probe.mjs > hud-a-22.log 2>&1
+DEV=desktop SEED=22 SHOTEVERY=20 PFX=hud24- node hud-probe.mjs > hud-d-22.log 2>&1
+node promenade23.mjs > prom-d.log 2>&1
+MOBILE=1 node promenade23.mjs > prom-m.log 2>&1
+MODE=sign SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node route-sign24.mjs > acc-sign.log 2>&1
+MODE=grid SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node route-sign24.mjs > acc-grid.log 2>&1
+node hand-fly20.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly20.mjs > hf-mobile.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+ALT=12 SEEDS=11,22,33,44,7,58,91,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=11,22,33,44,7,58,91,130 node crash-classify-v.mjs > ccv20.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 node farm-probe.mjs > farm-$s.log 2>&1; done
+SEED=22 MODE=near SIMT=600 node smart-farm.mjs > smart-near-22.log 2>&1
+SEED=22 MODE=van FARMMAX=12 SIMT=600 node capfarm-narrow.mjs > cfn-van-12-22.log 2>&1
+node van-draft.mjs > van-draft.log 2>&1
+node street-probe.mjs > street-probe.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22.log 2>&1
+NOORBIT=1 SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22-noorbit.log 2>&1
+NOORBIT=1 SEED=130 TOTAL=45 node cam-clip24.mjs > cam-clip-130-noorbit.log 2>&1
+MOBILE=1 NOORBIT=1 SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-m-22-noorbit.log 2>&1
+node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+MODE=sign SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node route-sign24.mjs > acc-sign-tr.log 2>&1
+LINE=low SEEDS=58,130 SIMT=600 node music-run-esc.mjs > m-low-b.log 2>&1
+END

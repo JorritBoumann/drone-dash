@@ -176,6 +176,7 @@ export class Game {
     this.look = cityLook(this.seed);
     applyMood(MOODS[this.look.mood]);
     this.layout = generateCity(createSeededRandom(this.seed), 7, this.look.parks, this.seed);
+    this.buildNarrowRects();
     this.world = new CollisionWorld(this.layout.colliders, 0);
     this.cityMaterial = createCityMaterial();
     const city = new THREE.Mesh(this.layout.geometry, this.cityMaterial);
@@ -208,9 +209,14 @@ export class Game {
 
     this.delivery = new DeliverySystem(this.layout.sites);
     // round 18: legs prefer pads with a shortcut (see JOBS.shortcutBias)
+    // round 19: 2 when the shortest route takes an alley or tunnel and no boulevard, 1 for any other shortcut
     this.delivery.shortcut = (from, s) => {
       const g = routeOnGraph(this.layout.gridGraph, from.x, from.z, s.pos.x, s.pos.z).length;
-      return routeOnGraph(this.layout.graph, from.x, from.z, s.pos.x, s.pos.z).length <= g * 0.85;
+      const r = routeOnGraph(this.layout.graph, from.x, from.z, s.pos.x, s.pos.z);
+      if (r.length > g * 0.85) return 0;
+      // a raised pad is not offered for a tunnel route (the climb out to the roof would start under the bridge)
+      if (s.pos.y > 6 && r.kinds.includes('tunnel')) return 0;
+      return r.kinds.includes('diagonal') || !(r.kinds.includes('alley') || r.kinds.includes('tunnel')) ? 1 : 2;
     };
 
     // Start hovering above a low rooftop / park pad near downtown so every direction shows city.
@@ -543,6 +549,12 @@ export class Game {
     this.drone.guide.copy(t.pos);
     this.drone.hasGuide = true;
     this.hud.setObjective(kind, t.name);
+    if (this.hintPending && this.routeHint) {
+      this.hintPending = false;
+      const h = this.routeHint;
+      this.hud.setRouteHint(h.kind ? { kind: h.kind, names: h.names, save: h.save } : null);
+      if (h.kind) h.shownAt = this.rt();
+    }
   }
 
   // ---------------- frame ----------------
@@ -692,13 +704,14 @@ export class Game {
       const subs = [rush > 0 ? `Rush +${rush}` : sub];
       if (paid > 0) subs.push(otCut > 0 ? `street bonus +${paid} (${Math.round(this.otShare * 100)}%)` : `street bonus +${paid}`);
       this.hud.popText(`+${ev.points + paid + rush}`, subs.join(' · '), 'drop');
-      if (paid > 0) this.hud.slipPop(`+${paid}`, 1, 'Street bonus paid', true);
+      // round 19: the paid street bonus is named in the delivery pop's line (no second pop on top of it)
       if (ev.final) {
         // round 17: the overtime delivery ends the run on a high: no new job, a short beat, then the game-over card
         this.finishHold = 1.6;
         this.scoreLog.push({ t: this.rt(), k: 'otdrop', v: ev.points + paid + rush });
         this.hud.popText(`+${ev.points + paid + rush}`, 'Made it! · overtime delivery', 'drop');
         this.hud.setObjective('drop', 'Run complete');
+        this.hud.setRouteHint(null);
         this.hud.setOvertime(false, true);
         this.audio.setOvertime(false);
         this.marker.hide();
@@ -711,6 +724,7 @@ export class Game {
 
     this.updateRush(dt);
     this.hud.tickBank(realDt);
+    this.hud.tickCentre();
 
     // low-time ticks
     const tl = this.delivery.timeLeft;
@@ -881,6 +895,41 @@ export class Game {
     this.legCap = Math.max(SLIPSTREAM.bankLegMin, Math.round(route * SLIPSTREAM.bankPerMetre));
     this.legBanked = 0;
     this.scoreLog.push({ t: this.rt(), k: 'leg', v: Math.round(route), c: this.legCap });
+    // round 19: name the shortcut on this leg's shortest street route (shown under the objective pill)
+    const g = routeOnGraph(this.layout.gridGraph, from.x, from.z, t.x, t.z).length;
+    const r = routeOnGraph(this.layout.graph, from.x, from.z, t.x, t.z);
+    const narrow = r.kinds.includes('tunnel') ? 'tunnel' : r.kinds.includes('alley') ? 'alley' : r.kinds.includes('diagonal') ? 'diagonal' : '';
+    const save = Math.max(0, g - r.length);
+    // names in route order, alleys and tunnels first, at most two
+    const kindOf = (n: string) => this.layout.features.find((f) => f.name === n)?.kind ?? 'road';
+    const names = [...r.names.filter((n) => kindOf(n) !== 'diagonal'), ...r.names.filter((n) => kindOf(n) === 'diagonal')].slice(0, 2);
+    this.routeHint = narrow ? { kind: narrow, names, save: Math.round(save), grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 } : { kind: '', names: [], save: 0, grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 };
+    this.hintPending = true;
+  }
+  /** Round 19: this leg's route hint (diagnostics and HUD). */
+  private routeHint: { kind: string; names: string[]; save: number; grid: number; route: number; kinds: string[]; at: number; shownAt: number } | null = null;
+  private hintPending = false;
+  /** Round 19: alley and tunnel strips (x/z rectangles) and tunnel roofs, for the alley draft and the tunnel clock. */
+  private narrowRects: Array<{ x0: number; z0: number; x1: number; z1: number; kind: 'alley' | 'tunnel'; name: string; rx0: number; rz0: number; rx1: number; rz1: number }> = [];
+  private narrowAt(p: THREE.Vector3): { kind: 'alley' | 'tunnel'; name: string; roof: boolean } | null {
+    if (p.y > 9) return null;
+    for (const r of this.narrowRects) {
+      if (p.x > r.x0 && p.x < r.x1 && p.z > r.z0 && p.z < r.z1) return { kind: r.kind, name: r.name, roof: r.kind === 'tunnel' && p.x > r.rx0 && p.x < r.rx1 && p.z > r.rz0 && p.z < r.rz1 && p.y < 7.3 };
+    }
+    return null;
+  }
+  private buildNarrowRects(): void {
+    const L = this.layout, B = L.blockSize, R = L.roadWidth;
+    this.narrowRects = L.alleys.filter((a) => a.axis === 'x' || a.axis === 'z').map((a) => {
+      const x0 = L.roadCenters[a.bi] + R / 2, z0 = L.roadCenters[a.bj] + R / 2;
+      const cx = x0 + B / 2, cz = z0 + B / 2, w = a.width / 2;
+      const along = a.axis === 'z';
+      return {
+        x0: along ? cx - w : x0, x1: along ? cx + w : x0 + B, z0: along ? z0 : cz - w, z1: along ? z0 + B : cz + w,
+        rx0: along ? cx - w : cx - 8, rx1: along ? cx + w : cx + 8, rz0: along ? cz - 8 : cz - w, rz1: along ? cz + 8 : cz + w,
+        kind: a.covered ? 'tunnel' as const : 'alley' as const, name: a.name,
+      };
+    });
   }
 
   /**
@@ -938,8 +987,12 @@ export class Game {
   }
 
   /** HUD cue naming the one thing that would fill the meter faster, or praising a wall hug. */
+  private narrow: { kind: 'alley' | 'tunnel'; name: string; roof: boolean } | null = null;
+  private vanDraft = false;
   private slipCue(): string {
     const s = this.slip, d = this.drone;
+    if (this.narrow && s.drafting) return this.narrow.roof ? 'tunnel' : 'alley';
+    if (this.vanDraft && s.drafting) return 'van';
     const t = this.delivery.target;
     const nearPad = t ? Math.hypot(t.pos.x - d.group.position.x, t.pos.z - d.group.position.z) < 25 : false;
     if (nearPad) return '';
@@ -973,11 +1026,14 @@ export class Game {
   /** Low street line reward: draft meter, payouts, wind streaks and the rising whistle. */
   private updateSlipstream(dt: number): void {
     const d = this.drone;
-    const ev = this.slip.update(dt, d.group.position, d.speed, this.world);
+    // round 19: in an alley the walls give the full draft; under a tunnel roof the slow clock runs at full strength
+    this.narrow = this.narrowAt(d.group.position);
+    this.vanDraft = this.env.vanDraft(d.group.position, d.velocity.x, d.velocity.z);
+    const ev = this.slip.update(dt, d.group.position, d.speed, this.world, !!this.narrow, this.vanDraft);
     this.audio.setDraft(this.slip.intensity, this.slip.level);
     // slow clock: good drafting earns clock time smoothly, every frame, instead of in lumps per payout
     // (round 13: only on the way to the objective, and at most `clockBudget` seconds per leg, so it pays delivering)
-    this.slipClockK = this.slipClockPace();
+    this.slipClockK = this.narrow?.roof && d.speed > SLIPSTREAM.minSpeed ? 1 : this.slipClockPace();
     this.slipToward = this.slipClockK > 0 ? this.slipTowardTarget() : 1;
     // round 17: no slow clock in overtime (overtime is a fixed window)
     const want = this.delivery.overtime ? 0 : SLIPSTREAM.clockRate * this.slipClockK * this.slipToward * this.delivery.clockDecay * dt;
@@ -1143,6 +1199,10 @@ export class Game {
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
       slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
       scoreLog: this.scoreLog,
+      routeHint: this.routeHint ? { ...this.routeHint } : null,
+      narrow: this.narrow ? { ...this.narrow } : null,
+      vanDraft: this.vanDraft,
+      centreLog: this.hud.centreLog.slice(-30),
       city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier, mood: MOODS[this.look.mood].name, parks: this.look.parks, features: this.featureCounts, rushLanes: this.env.rushLevel },
       escalation: { kind: 'rush', on: this.rushOn, startedAt: this.rushAt, stage: !this.rushOn ? 0 : this.runTime >= RUSH.everyAt ? 2 : 1, orders: this.rushOrders, made: this.rushMade, missed: this.rushMissed, points: this.rushPoints, active: this.rushActive, left: Math.max(0, this.rushLeft), window: this.rushWindow },
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
@@ -1246,6 +1306,7 @@ export class Game {
         routeOnGraph(features ? this.layout.graph : this.layout.gridGraph, from.x, from.z, to.x, to.z, narrowPenalty),
       features: () => this.layout.features.map((f) => ({ ...f })),
       // round 18: the two rush lanes (axis 0 runs along x at z = at; axis 1 runs along z at x = at)
+      vans: () => this.env.vanPositions(),
       rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),
     };
     window.__THREE_GAME_TEST_HOOKS__ = {

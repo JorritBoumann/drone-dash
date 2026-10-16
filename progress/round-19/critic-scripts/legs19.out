@@ -1,0 +1,26 @@
+grid legs 93
+1a alley/tunnel on shortest route: 55 0.59
+1b alley/tunnel alone 15% cut: 30 0.32 any 15% cut: 52
+   kinds on cut legs: {'alley': 36, 'tunnel': 8, 'diagonal': 21}
+2 matched alley/tunnel cut legs 27: grid 429.8s feat 327.2s faster by 0.239
+  all matched cut legs 36: grid 590.6 feat 458.3 faster by 0.224
+  crashes grid 0 in 1474s (0.00/min), feat 16 in 1554s (0.62/min)
+  crash kinds feat: ['alley', 'alley', 'alley', 'alley', 'alley', 'alley', 'alley', 'alley', 'alley', 'alley', 'alley', 'alley', 'tunnel', 'tunnel', 'tunnel', 'alley']
+3 legs with a feature on the shortest route (both bots) 169, named on screen at 1 s 157; delays ['0', 'None']
+  hint says Tunnel but names no tunnel: 3 ['TunnelLantern Lane + Cinder Alley−70 m', 'TunnelHatter Passage + Cinder Alley−28 m', 'TunnelHatter Passage + Cinder Alley−28 m']
+  narrow route but no hint: 12
+  names unique in all True features per city [22, 23, 23, 23, 21, 25, 24, 22, 24, 24, 21, 22]
+scores grid [(1838, 'Bronze'), (2244, 'Silver'), (2747, 'Silver'), (2816, 'Silver'), (2817, 'Silver'), (3272, 'Silver'), (3399, 'Silver'), (3606, 'Silver'), (3641, 'Silver'), (3782, 'Silver'), (3844, 'Silver'), (3866, 'Silver')]
+scores feat [(0, ''), (1184, 'Bronze'), (3012, 'Silver'), (3360, 'Silver'), (4149, 'Silver'), (5443, 'Gold'), (5642, 'Gold'), (5720, 'Gold'), (6652, 'Gold'), (7200, 'Gold'), (8460, 'Gold'), (8658, 'Gold')]
+16068 grid 2747 0 feat 3012 0 102 [(47.3, ['tunnel'])]
+20540 grid 3272 0 feat 6652 1 150 []
+22132 grid 3606 0 feat 0 4 51 [(39.95, ['alley'])]
+34471 grid 2817 0 feat 1184 0 105 [(46, ['tunnel'])]
+32134 grid 3399 0 feat 5443 1 148 []
+34372 grid 3782 0 feat 4149 2 117 []
+99113 grid 3866 0 feat 5720 0 137 []
+20188 grid 3844 0 feat 5642 1 130 []
+47664 grid 3641 0 feat 7200 1 160 []
+20823 grid 2816 0 feat 8658 2 173 []
+26635 grid 2244 0 feat 8460 3 164 []
+96680 grid 1838 0 feat 3360 1 117 []

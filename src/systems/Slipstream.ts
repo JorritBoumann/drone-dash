@@ -66,7 +66,7 @@ export class Slipstream {
     this.since = 99;
   }
 
-  update(dt: number, p: THREE.Vector3, speed: number, world: CollisionWorld): SlipEvent {
+  update(dt: number, p: THREE.Vector3, speed: number, world: CollisionWorld, narrow = false, van = false): SlipEvent {
     const S = SLIPSTREAM;
     let q = 0;
     this.hug = 0;
@@ -75,6 +75,10 @@ export class Slipstream {
     if (p.y - 0.85 <= S.maxAlt) {
       this.speedFactor = Math.max(0, Math.min(1, (speed - S.minSpeed) / (S.fullSpeed - S.minSpeed)));
       this.wall = this.proximity(p, world);
+      // round 19: inside an alley or tunnel both walls are close: full wall factor and the full hug bonus
+      if (narrow && this.wall > 0) { this.wall = 1; this.hug = 1; }
+      // round 19: tailing a rush-hour van is a full draft (no hug bonus)
+      if (van) this.wall = 1;
       q = this.wall * this.speedFactor;
     }
     this.quality = q;

@@ -1256,3 +1256,57 @@ kbd {
   .over-actions .primary-button { min-width: 0; padding: 10px 20px; font-size: 0.95rem; }
   .over-actions .ghost-button { padding: 8px 14px; font-size: 0.85rem; }
 }
+
+/* Round 19: route hint under the objective pill: the named shortcut on this leg's shortest street route */
+.route-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: -6px;
+  padding: 3px 11px 3px 8px;
+  border-radius: 999px;
+  background: var(--glass-dark);
+  backdrop-filter: blur(8px);
+  color: var(--cream);
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.route-hint.show { opacity: 1; transform: none; }
+.route-hint small { font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb648; }
+.route-hint b { font-weight: 900; }
+.route-hint span { color: #ffe7b0; font-variant-numeric: tabular-nums; }
+.route-hint span:empty { display: none; }
+.route-hint-icon { width: 9px; height: 9px; border-radius: 2px; transform: rotate(45deg); background: #ffb648; box-shadow: 0 0 8px #ffb648; }
+.route-hint[data-kind='tunnel'] small { color: #9fdcff; }
+.route-hint[data-kind='tunnel'] .route-hint-icon { background: #7fd0ff; box-shadow: 0 0 8px #7fd0ff; border-radius: 50% 50% 2px 2px; transform: none; }
+.route-hint[data-kind='diagonal'] small { color: #ff9a7a; }
+.route-hint[data-kind='diagonal'] .route-hint-icon { background: #e0674a; box-shadow: 0 0 8px #e0674a; }
+@media (max-width: 640px), (max-height: 460px) {
+  .route-hint { font-size: 0.66rem; padding: 2px 9px 2px 7px; margin-top: -4px; }
+}
+/* round 19: all centre messages share one slot (they show one at a time), below the HUD column and the route hint */
+.event-pop, .pop, .medal-pop { top: 39%; }
+@media (max-height: 460px) {
+  /* below the objective pill and the route hint (a phone held sideways is about 390 px tall) */
+  .event-pop { top: 58%; }
+  .pop { top: 62%; }
+  .pop strong { font-size: 2.1rem; -webkit-text-stroke-width: 6px; }
+  .pop span { margin-top: 4px; padding: 4px 12px; font-size: 0.8rem; }
+  .pop-icon { width: 32px; height: 32px; }
+  .medal-pop { top: 58%; }
+  .slip-pop { top: 57%; }
+  .pop.show:not(.crash) { animation-name: pop-in-short; }
+}
+/* round 19: on a short screen the pop rises less as it fades, so it stays clear of the route hint */
+@keyframes pop-in-short {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  25% { transform: translate(-50%, -50%) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -58%) scale(0.96); }
+}

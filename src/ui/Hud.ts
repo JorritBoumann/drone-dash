@@ -56,6 +56,14 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
   return el as T;
 };
 
+type CentreKind = 'pop' | 'medal' | 'event' | 'slip';
+const CENTRE: Record<CentreKind, { prio: number; minMs: number; durMs: number; staleMs: number }> = {
+  medal: { prio: 3, minMs: 1500, durMs: 2300, staleMs: 6000 },
+  event: { prio: 2, minMs: 1800, durMs: 3000, staleMs: 6000 },
+  pop: { prio: 1, minMs: 900, durMs: 1500, staleMs: 2500 },
+  slip: { prio: 0, minMs: 650, durMs: 1300, staleMs: 1200 },
+};
+
 export type ScreenName = 'title' | 'playing' | 'paused' | 'over';
 
 /** DOM HUD + menus. Writes only when values change. */
@@ -129,10 +137,18 @@ export class Hud {
   private readonly medalPopEl = $('medal-pop');
   private readonly medalPopName = $('medal-pop-name');
   private readonly medalPopSub = $('medal-pop-sub');
-  private medalTimer = 0;
-  private popAt = -1e9; // performance.now() of the last centre pop (delivery, pickup, crash)
   private readonly popMain = $('pop-main');
   private readonly popSub = $('pop-sub');
+  private readonly routeHint = $('route-hint');
+  private readonly routeHintName = $('route-hint-name');
+  private readonly routeHintSave = $('route-hint-save');
+  private readonly routeHintLabel = $('route-hint-label');
+  private routeHintTimer = 0;
+  // round 19: centre messages (delivery / pickup / crash pop, medal banner, event banner, payout pop) show one at a time
+  private cActive: { kind: CentreKind; el: HTMLElement; shownAt: number; minMs: number; durMs: number } | null = null;
+  private cQueue: Array<{ kind: CentreKind; el: HTMLElement; prio: number; minMs: number; durMs: number; at: number; staleMs: number; apply: () => void }> = [];
+  /** Log of centre messages shown (kind, text, ms), for probes. */
+  centreLog: Array<{ kind: string; text: string; t: number }> = [];
   private readonly titleScreen = $('title-screen');
   private readonly pauseScreen = $('pause-screen');
   private readonly overScreen = $('over-screen');
@@ -231,11 +247,74 @@ export class Hud {
 
   /** Round 15: one-time event banner (rush hour), above the medal banner's spot. */
   eventPop(main: string, sub: string): void {
-    this.eventPopMain.textContent = main;
-    this.eventPopSub.textContent = sub;
-    this.eventPopEl.classList.remove('show');
-    void this.eventPopEl.offsetWidth;
-    this.eventPopEl.classList.add('show');
+    this.centre('event', this.eventPopEl, () => {
+      this.eventPopMain.textContent = main;
+      this.eventPopSub.textContent = sub;
+    }, main);
+  }
+
+  /**
+   * Round 19: one centre message at a time. A message of the same kind replaces the one up (as before). Another kind
+   * waits until the one up has been on screen for its reading time, then takes its place (higher priority first; a
+   * newer message of a kind replaces an older queued one; payout pops that waited too long are dropped). Returns the
+   * seconds until this message shows.
+   */
+  private centre(kind: CentreKind, el: HTMLElement, apply: () => void, text: string, prio?: number): number {
+    const now = performance.now();
+    const c = CENTRE[kind];
+    const msg = { kind, el, prio: prio ?? c.prio, minMs: c.minMs, durMs: c.durMs, staleMs: c.staleMs, at: now, apply: () => { apply(); this.centreLog.push({ kind, text, t: Math.round(performance.now()) }); if (this.centreLog.length > 200) this.centreLog.shift(); } };
+    const a = this.cActive && now - this.cActive.shownAt < this.cActive.durMs ? this.cActive : null;
+    if (!a || a.kind === kind) {
+      this.showCentre(msg, now);
+      return 0;
+    }
+    this.cQueue = this.cQueue.filter((q) => q.kind !== kind);
+    const i = this.cQueue.findIndex((q) => q.prio < msg.prio);
+    if (i < 0) this.cQueue.push(msg);
+    else this.cQueue.splice(i, 0, msg);
+    let wait = Math.max(0, a.shownAt + a.minMs - now);
+    for (const q of this.cQueue) { if (q === msg) break; wait += q.minMs; }
+    return wait / 1000;
+  }
+
+  private showCentre(m: { kind: CentreKind; el: HTMLElement; minMs: number; durMs: number; apply: () => void }, now: number): void {
+    for (const el of [this.pop, this.medalPopEl, this.eventPopEl, this.slipPopEl]) if (el !== m.el) el.classList.remove('show');
+    m.apply();
+    m.el.classList.remove('show');
+    void m.el.offsetWidth;
+    m.el.classList.add('show');
+    this.cActive = { kind: m.kind, el: m.el, shownAt: now, minMs: m.minMs, durMs: m.durMs };
+  }
+
+  /** Every frame: show the next queued centre message once the one up has been read. */
+  tickCentre(): void {
+    if (!this.cQueue.length) return;
+    const now = performance.now();
+    const a = this.cActive;
+    if (a && now - a.shownAt < a.durMs && now - a.shownAt < a.minMs) return;
+    while (this.cQueue.length) {
+      const m = this.cQueue.shift()!;
+      if (now - m.at > m.staleMs) continue;
+      this.showCentre(m, now);
+      return;
+    }
+  }
+
+  /**
+   * Round 19: route hint under the objective pill at the start of each leg: the named alley, tunnel or boulevard on the
+   * shortest street route, and how many metres it saves over the plain grid. Shown for 10 s. null hides it.
+   */
+  setRouteHint(h: { kind: string; names: string[]; save: number } | null): void {
+    window.clearTimeout(this.routeHintTimer);
+    if (!h) { this.routeHint.classList.remove('show'); return; }
+    this.routeHint.dataset.kind = h.kind;
+    this.routeHintLabel.textContent = h.save < 3 ? 'Via' : h.kind === 'tunnel' ? 'Tunnel' : h.kind === 'alley' ? 'Shortcut' : 'Fast lane';
+    this.routeHintName.textContent = h.names.join(' + ');
+    this.routeHintSave.textContent = h.save >= 1 ? `−${Math.round(h.save)} m` : '';
+    this.routeHint.classList.remove('show');
+    void this.routeHint.offsetWidth;
+    this.routeHint.classList.add('show');
+    this.routeHintTimer = window.setTimeout(() => this.routeHint.classList.remove('show'), 10000);
   }
 
   /** In-run goal: the next medal, its score and a thin progress bar from the last medal to it. */
@@ -262,23 +341,15 @@ export class Hud {
    */
   medalPop(tier: number): number {
     const next = nextGoal(GOALS.tiers[tier - 1].score);
-    this.medalPopName.textContent = `${tierName(tier)}!`;
-    this.medalPopSub.textContent = next ? `Next: ${next.name} ${fmt(next.score)}` : 'Top medal';
-    this.medalPopEl.dataset.m = String(tier);
     this.goal.classList.remove('flash');
     void this.goal.offsetWidth;
     this.goal.classList.add('flash');
-    window.clearTimeout(this.medalTimer);
-    const wait = Math.max(0, 1050 - (performance.now() - this.popAt));
-    const show = () => {
-      this.pop.classList.remove('show');
-      this.medalPopEl.classList.remove('show');
-      void this.medalPopEl.offsetWidth;
-      this.medalPopEl.classList.add('show');
-    };
-    if (wait > 0) this.medalTimer = window.setTimeout(show, wait);
-    else show();
-    return wait / 1000;
+    // round 19: through the centre queue (a delivery pop that is still up is read first, then the banner takes its place)
+    return this.centre('medal', this.medalPopEl, () => {
+      this.medalPopName.textContent = `${tierName(tier)}!`;
+      this.medalPopSub.textContent = next ? `Next: ${next.name} ${fmt(next.score)}` : 'Top medal';
+      this.medalPopEl.dataset.m = String(tier);
+    }, `${tierName(tier)}!`);
   }
 
   setScore(v: number): void {
@@ -524,7 +595,7 @@ export class Hud {
     }
     if (cue !== this.slipLast.cue) {
       this.slipLast.cue = cue;
-      this.slipCue.textContent = cue === 'faster' ? 'Faster!' : cue === 'closer' ? 'Closer to wall' : cue === 'hug' ? 'Wall hug!' : '';
+      this.slipCue.textContent = cue === 'faster' ? 'Faster!' : cue === 'closer' ? 'Closer to wall' : cue === 'hug' ? 'Wall hug!' : cue === 'alley' ? 'Alley draft!' : cue === 'tunnel' ? 'Tunnel · clock slowed' : cue === 'van' ? 'Van draft!' : '';
       this.slipCue.dataset.cue = cue;
     }
     if (on !== this.slipLast.on) {
@@ -579,13 +650,12 @@ export class Hud {
    * a second or more, the tag also shows the run's total clock time from the slipstream so far.
    */
   slipPop(points: string, chain: number, sub: string, paid = false): void {
-    this.slipPopMain.textContent = points;
-    this.slipPopSub.textContent = sub;
-    this.slipPopEl.dataset.chain = String(Math.min(chain, 5));
-    this.slipPopEl.classList.toggle('paid', paid);
-    this.slipPopEl.classList.remove('show');
-    void this.slipPopEl.offsetWidth;
-    this.slipPopEl.classList.add('show');
+    this.centre('slip', this.slipPopEl, () => {
+      this.slipPopMain.textContent = points;
+      this.slipPopSub.textContent = sub;
+      this.slipPopEl.dataset.chain = String(Math.min(chain, 5));
+      this.slipPopEl.classList.toggle('paid', paid);
+    }, `${points} ${sub}`);
   }
 
   hitFlash(strength: number, crash = false): void {
@@ -597,16 +667,15 @@ export class Hud {
   }
 
   popText(main: string, sub: string, kind: MarkerKind | 'crash' | 'rush'): void {
-    this.popMain.textContent = main;
-    this.popSub.textContent = sub;
-    this.pop.classList.toggle('drop', kind === 'drop');
-    this.pop.classList.toggle('pickup', kind === 'pickup');
-    this.pop.classList.toggle('crash', kind === 'crash');
-    this.pop.classList.toggle('rush', kind === 'rush');
-    this.popAt = performance.now();
-    this.pop.classList.remove('show');
-    void this.pop.offsetWidth;
-    this.pop.classList.add('show');
+    // a crash jumps the queue (priority above the banners)
+    this.centre('pop', this.pop, () => {
+      this.popMain.textContent = main;
+      this.popSub.textContent = sub;
+      this.pop.classList.toggle('drop', kind === 'drop');
+      this.pop.classList.toggle('pickup', kind === 'pickup');
+      this.pop.classList.toggle('crash', kind === 'crash');
+      this.pop.classList.toggle('rush', kind === 'rush');
+    }, `${main} ${sub}`, kind === 'crash' ? 4 : undefined);
   }
 
   /** Game-over card: medal, score, the points to the next medal, a breakdown that sums to the score, and the clock story. */
@@ -646,9 +715,12 @@ export class Hud {
   }
 
   resetCache(): void {
+    this.cActive = null;
+    this.cQueue = [];
+    for (const el of [this.pop, this.eventPopEl, this.slipPopEl]) el.classList.remove('show');
+    this.setRouteHint(null);
     this.goalLast = { tier: -1, q: -1 };
     this.goal.classList.remove('flash');
-    window.clearTimeout(this.medalTimer);
     this.medalPopEl.classList.remove('show');
     this.slipLast = { level: -1, on: false, drafting: false, chain: -1, hug: false, rate: -1, cue: '' };
     this.slip.classList.remove('on', 'drafting', 'hug', 'hint');

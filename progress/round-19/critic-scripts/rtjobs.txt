@@ -1,0 +1,11 @@
+LINE=low SEEDS=16068,20540,22132,34471,32134,34372,99113,20188,47664,20823,26635,96680 SIMT=600 node route-play-rt-x-m-esc17.mjs > acc-low.log 2>&1
+node hand-fly.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly.mjs > hf-mobile.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=20540,47664,20823,26635 SIMT=600 node balance-probe-m-esc17.mjs > acc-lazy.log 2>&1
+LINE=low SEEDS=34471,32134 SIMT=600 node route-play-rt-x-m-esc17.mjs > rep-low.log 2>&1
+END

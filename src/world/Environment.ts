@@ -319,6 +319,31 @@ export class Environment {
     return [lanes, this.vans, this.vanGlow];
   }
 
+  /**
+   * Round 19: rush-hour vans give a draft. True when the drone is 2 to 10 m behind a live van, in line with it (within
+   * 2.2 m sideways, 1.2 to 5.5 m up) and flying its way at 8 m/s or more. The vans still never collide.
+   */
+  vanDraft(p: THREE.Vector3, vx: number, vz: number): boolean {
+    if (this.rushTarget <= 0) return false;
+    for (const v of this.vanState) {
+      if (this.rushClock <= v.delay) continue;
+      const along = v.axis === 0 ? (p.x - v.pos) * v.dir : (p.z - v.pos) * v.dir; // + ahead of the van
+      const side = v.axis === 0 ? p.z - (v.line + v.lane) : p.x - (v.line - v.lane);
+      const vel = (v.axis === 0 ? vx : vz) * v.dir;
+      if (along < -10 || along > -2 || Math.abs(side) > 2.2 || p.y < 1.2 || p.y > 5.5 || vel < 8) continue;
+      return true;
+    }
+    return false;
+  }
+
+  /** Round 19 test hook: live vans (x, z, direction of travel as a unit vector). */
+  vanPositions(): Array<{ x: number; y: number; z: number; dx: number; dz: number }> {
+    if (this.rushTarget <= 0) return [];
+    return this.vanState.filter((v) => this.rushClock > v.delay).map((v) => v.axis === 0
+      ? { x: v.pos, y: 3.1, z: v.line + v.lane, dx: v.dir, dz: 0 }
+      : { x: v.line - v.lane, y: 3.1, z: v.pos, dx: 0, dz: v.dir });
+  }
+
   private updateVans(dt: number): void {
     if (!this.vans || !this.vanGlow) return;
     const half = this.half;

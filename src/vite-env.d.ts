@@ -23,6 +23,11 @@ interface ThreeGameDiagnostics {
   goals?: { tier: number; tierName: string; next: number; passes: number; passList: { tier: number; name: string; score: number; t: number }[]; best: number; bestTier: number; thresholds: number[] };
   slipstream?: { level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number; clockK: number; clockGain: number; budget: number; toward: number; bank: number; bankTotal: number; bankPaid: number; bankLost: number; legBanked: number; legCap: number };
   scoreLog?: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[];
+  /** Round 19: this leg's route hint, the alley or tunnel the drone is in, and the centre messages shown. */
+  routeHint?: { kind: string; names: string[]; save: number; grid: number; route: number; kinds: string[]; at: number; shownAt: number } | null;
+  narrow?: { kind: string; name: string; roof: boolean } | null;
+  vanDraft?: boolean;
+  centreLog?: Array<{ kind: string; text: string; t: number }>;
   /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
   /** Debug: this frame's contacts (wall impact speed, ledge hop impact, crash-relevant speed loss). */
   contact?: { bump: number; ledge: number; wallLoss: number };
@@ -102,6 +107,7 @@ interface DroneDashApi {
   streetRoute?(from: { x: number; z: number }, to: { x: number; z: number }, features?: boolean, narrowPenalty?: number): { length: number; points: Array<{ x: number; z: number; kind: string; name: string }>; kinds: string[]; names: string[] };
   features?(): Array<{ kind: string; name: string; x: number; z: number; length: number }>;
   rushLanes?(): Array<{ axis: number; at: number }>;
+  vans?(): Array<{ x: number; y: number; z: number; dx: number; dz: number }>;
 }
 
 interface Window {

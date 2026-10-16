@@ -32,6 +32,9 @@ export const JOBS = {
   // widened one step at most) that have a shortcut: an alley, tunnel or boulevard route at least 15% shorter than the
   // plain grid route. Not on the first hop. If no pad qualifies, the leg is picked as before.
   shortcutBias: 0.85,
+  // Round 19: within that, with this chance the picker first looks for a pad whose shortest route takes an alley or a
+  // tunnel and no boulevard and is at least 15% shorter (pads beside alley mouths, on an alley line).
+  narrowBias: 0.5,
 };
 export type LegSpec = { kinds: Site['kind'][]; minY: number; maxY: number; streetMin: number; streetMax: number };
 
@@ -80,7 +83,9 @@ export class DeliverySystem {
   legDistance = 0;
   legRoute = 0;
   /** Round 18: does this pad have a shortcut from `from` (feature route at least 15% under the grid route)? Set by Game. */
-  shortcut: ((from: THREE.Vector3, s: Site) => boolean) | null = null;
+  shortcut: ((from: THREE.Vector3, s: Site) => 0 | 1 | 2) | null = null;
+  /** Round 19: the last few pads picked; a shortcut leg does not go back to them (no ping-pong along one alley). */
+  private recent: number[] = []; // round 19: 2 = alley or tunnel shortcut, 1 = any other
   /** Round 17: overtime is running (the clock hit 0 with a parcel aboard). Once a run. */
   overtime = false;
   /** Round 17: the overtime delivery is made; the run is over (no new job, the clock stops). */
@@ -105,6 +110,7 @@ export class DeliverySystem {
     this.finished = false;
     this.lastCall = false;
     this.lastSiteId = -1;
+    this.recent = [];
     Object.assign(this.tally, newTally());
     this.isClear = isClear;
     this.phase = 'pickup';
@@ -213,19 +219,26 @@ export class DeliverySystem {
       const pool = preferred.length ? preferred : list;
       const s = pool[Math.floor(rng() * pool.length) % pool.length];
       this.lastSiteId = s.id;
+      this.recent.push(s.id);
+      if (this.recent.length > 4) this.recent.shift();
       return s;
     };
     const others = this.sites.filter((s) => s.id !== this.lastSiteId);
     // round 18: a shortcut job first, inside the spec (band widened one step at most), when the roll asks for one
     if (cuts && this.shortcut && cutRoll < JOBS.shortcutBias) {
-      for (let widen = 0; widen <= 1; widen++) {
-        const lo = spec.streetMin * (1 - widen * 0.15), hi = spec.streetMax * (1 + widen * 0.15);
-        const list = others.filter((s) => {
-          if (!spec.kinds.includes(s.kind) || s.pos.y < spec.minY || s.pos.y > spec.maxY) return false;
-          const d = street(s);
-          return d >= lo && d <= hi && this.shortcut!(from, s);
-        });
-        if (list.length) return pickFrom(list);
+      const sc = new Map<number, number>();
+      const cut = (s: Site) => { let v = sc.get(s.id); if (v === undefined) { v = this.shortcut!(from, s); sc.set(s.id, v); } return v; };
+      // round 19: an alley or tunnel shortcut first when the roll asks for one, then any shortcut
+      for (const need of cutRoll < JOBS.narrowBias ? [2, 1] : [1]) {
+        for (let widen = 0; widen <= 1; widen++) {
+          const lo = spec.streetMin * (1 - widen * 0.15), hi = spec.streetMax * (1 + widen * 0.15);
+          const list = others.filter((s) => {
+            if (!spec.kinds.includes(s.kind) || s.pos.y < spec.minY || s.pos.y > spec.maxY) return false;
+            const d = street(s);
+            return d >= lo && d <= hi && !this.recent.includes(s.id) && cut(s) >= need;
+          });
+          if (list.length) return pickFrom(list);
+        }
       }
     }
     for (const strict of [true, false]) {

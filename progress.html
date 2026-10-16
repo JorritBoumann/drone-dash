@@ -16,7 +16,481 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-16 02:30 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-16 05:22 UTC.</p>
+<section><h2>round 19</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 19 critic report
+
+**Verdict:** The round 18 gap is closed on route variety and naming: alleys and tunnels now decide the route on most legs and every real shortcut is named at the leg start. But the name points at nothing a player can find. No alley or tunnel shows its name in the world and there is no map, so the hint says "a shortcut exists" without saying where. One gate also fails: the high line now beats the street line (low over high 0.78).
+
+Build tested: working tree on commit 38a35fa plus the uncommitted round 19 changes. Dev server port 5188, stopped at the end. Scripts in `progress/round-19/critic-scripts/` (round 18 copies. Their output folder is the relative `../critic/`, so only the folder changed. I also edited the path in `legs18.py`). New: `route-feat19.mjs` (route-feat18 with logging only, control unchanged), `legs19.py`, `capfarm-narrow.mjs`, `looks19.mjs`, `det19.sh`, `det19b.sh`. `alley-entry19-unused.mjs` is a broken probe (my pilot cut corners). I use no numbers from it.
+
+Fresh cities (picked by a seeded random draw, none found in builder scripts, builder shots, round 17 or 18): 16068, 20540, 22132, 34471, 32134, 34372, 99113, 20188, 47664, 20823, 26635, 96680. Pad audit: 19860, 85749, 96382, 14820, 29724, 70006, 84383, 23893, 61564, 39178, 94202, 49588, 72214, 65264, 34173, 50169, 36880, 98757, 46825, 65279.
+
+## Round 18 gap: shortcuts one-note and silent. Closed, with one clause missed
+
+| Test (12 fresh cities, deterministic) | Needed | Result | Pass |
+|---|---|---|---|
+| Alley or tunnel on the shortest route | 25% of legs | 55 of 93 (59%). Round 18: 13% | Yes |
+| Alley or tunnel alone gives a 15% shortcut | 1 in 8 | 30 of 93 (32%). Round 18: 2 of 97 | Yes |
+| Kinds on 15% shortcut legs | | alley 36, tunnel 8, boulevard 21 (of 52) | Varied now |
+| Shortcut bot faster on alley/tunnel cut legs | 10% | 23.9% faster on 27 matched legs (327 s against 430 s) | Yes |
+| Shortcut bot crashes | at most 0.5 a minute | 0.62 a minute (16 in 1,554 s). Grid bot 0. Without one city where the bot hit the same alley 4 times (22132): 0.48 | No, just |
+| Feature named within 1 s of leg start | 12 of 12 | Shown at 0.0 s on every leg with a real shortcut. 157 of 169 feature legs. The 12 misses: 10 first hops (16 to 23 m, never hinted) and 2 legs where the route from the pad has no shortcut | Yes |
+| No name repeats in a city | 0 | 0 repeats, 21 to 25 features per city | Yes |
+| Centre messages never overlap | 0 | 443 centre messages, 232 kind changes, smallest gap 650 ms, 0 shown together | Yes |
+
+- 15 of the 16 shortcut-bot crashes are in alleys (12) or tunnels (3). Most hit at 14 to 18 m/s, many at 25 m from the pad: the bot leaves an alley mouth fast and turns hard onto a doorstep pad set 2.2 m beside the mouth. Same control as round 18, which had 0.19 a minute. The new mouth pads make the end of an alley leg sharper.
+- Straight through every alley and tunnel at 20 m/s, 4.5 m, W only: 447 of 452 passes clean, 5 scrape (bumps, no charged crash). Same as round 18 (5 of 398).
+- Scores: grid bot 1,838 to 3,866 (median 3,340). Shortcut bot 0 to 8,658, Gold on 7 of 12, best 87% of Ace. Round 18 gap 3 (Gold needs shortcuts, Ace far) is mostly fixed. The 0 (22132) and 1,184 (34471) are my bot. On 22132 it hit one alley 4 times. On two tunnel legs to 20 m rooftop pads it stayed under the tunnel roof for 46 s.
+- Hint honesty, small faults: 3 hints say "Tunnel" but name only two alleys (the tunnel is the third feature and is cut off by the two-name limit). 6 of 61 alley or tunnel hints point at a raised pad. The job picker avoids tunnels to raised pads, but the hint does not.
+- Repetition: 21 of 77 hinted legs (grid bot) and 31 of 91 (shortcut bot) share a named feature with the leg before. Back and forth along one alley line (V-d-seed20540-leg2/leg3: "Sparrow Row + Ink Alley" twice in a row).
+
+## Exploits
+
+- **Van tailing:** not an exploit. Tailing a van gives full draft, but the bank is capped per leg and the slow clock has its per-leg budget. A carry farm that tails vans scores 0.66 to 0.83 of honest points a minute (25 s and 12 s a leg). It never beats honest flying on any seed (best 0.85 on 130). "Forever" does not pay: the 25 s version scores less than the 12 s one.
+- **Tunnel shuttle:** the full slow clock under a tunnel roof does not stack: whole-run slow-clock seconds stay 12 to 15 s, as for honest runs. No exploit.
+- **But the street bonus can carry a run.** A tunnel carry farm on seed 58 scores 2,132 Silver with 2 drops. Street bonus is 1,666 of it (78%). Leg caps on long legs reach 1,106.
+- **No-delivery farms:** all 0 (farm-probe on 22, 58, 130, farm-loop, smart-farm near, pickupline, spendpickup).
+
+## Guards (real time, one run at a time)
+
+| City | Street (grid bot) | Lazy |
+|---|---|---|
+| 16068 | 2,556 Silver | not run |
+| 20540 | 2,480 Silver | 1,116 Bronze |
+| 22132 | 2,872 Silver | not run |
+| 34471 | 1,151 Bronze (under load), rerun 2,705 Silver | not run |
+| 32134 | 1,818 Bronze (under load), rerun 2,985 Silver | not run |
+| 34372 | 3,642 Silver | not run |
+| 99113 | 3,978 Silver | not run |
+| 20188 | 3,736 Silver | not run |
+| 47664 | 3,657 Silver | 1,255 Bronze |
+| 20823 | 2,713 Silver | 847 none |
+| 26635 | 2,286 Silver | 987 none |
+| 96680 | 2,501 Silver | not run |
+
+- Street Silver or better: 12 of 12 on clean runs (10 first runs plus the 2 reruns). The two Bronze runs ran 06:35 to 06:39 while my deterministic farm batch pushed the load to 12 to 17 on 10 cores. The deterministic grid bot scores Silver on both (2,817 and 3,399). I count them as contaminated but flag it.
+- Lazy: cut to 4 cities for time. All Bronze or below (best 1,255). Not 12 of 12 measured.
+- No Ace: best of anything 8,658 (shortcut bot, deterministic). Best real time 4,876.
+- Best lazy 1,255 against worst clean street 2,286: gap 1,031. Pass on the cities measured.
+
+## Gates (seeds 22, 58, 130, real time)
+
+| Run | 22 | 58 | 130 | Total |
+|---|---|---|---|---|
+| Low (music-run) | 2,941 Silver, 3 drops | 3,099 Silver, 4 | 1,757 Bronze, 3 | 7,797 |
+| High | **4,876 Gold**, 8 drops | 2,290 Silver, 5 | 2,832 Silver, 6 | 9,998 |
+
+- **Low over high 0.78. The line is 0.85, so this fails.** In round 18 it was 0.84 once the 130 stall was set aside. 130 did not stall this time. The high line on 22 made 8 drops and Gold.
+- No-delivery farms 0. Carry farm (round 18 capfarm, 60 s cap) 0.47 of honest, as the builder measured. New narrow farms: tunnel 0.50 (25 s) and 0.69 (12 s), alley 0.32 and 0.74, van 0.66 and 0.83. **Over 0.5 as written** for the short farm phases, but none beats honest flying, so this is a weak gate, not an exploit.
+- One-delivery farms: every 1-drop farm run is Bronze or below (best 1,379). Pass.
+- Breakdown exact, card medal equals tier from score and saved tier, in all real-time runs. Rush at 60.0 s in all 15 runs that reached it. Overtime: started in 3 street runs, finished in 2, ran out in 1.
+
+## Regressions
+
+- Crash-classify, 8 seeds. 12 m: 594 s, 46 charged, 0 hop-like, 17 near the target, all on faces at least 2.8 m below the wall top: 0 pad lip. 20 m: 518 s, 32 charged, 5 near target (faces 3.5 m or more below the top). 1 rise of 0.9 m without climb (seed 130, face 7.7 m below the top), a real wall hit. Pass.
+- Pad audit, 20 fresh cities: 1,987 pads, 0 issues, 0 inside an alley strip, 160 within 22 m of a tunnel (round 18: 72), none flagged.
+- Flat-frame probe: 942 frames, 0 flat, 0 errors.
+- Music adaptive: chain 0 to 3 gives layers 1 to 4, mean intensity 0.34 to 0.86. Pass.
+- Hand-fly first payout: desktop **5.6 s**, mobile **6.5 s** (round 18: 8.8 and 9.9). Pass.
+
+## Player feel (desktop 1280x720 and iPhone 13 landscape, touch)
+
+- **Alley entries at speed:** you must brake, and then they are fair. A straight line through is clean at 20 m/s. Turning in off a cross street at 15 m/s or more hits the mouth corner (V-d-seed20540-leg2-t5, V-m-...-leg2-t8). The wider apron and lit posts help you see the slot. The harsh part is the exit: doorstep pads now sit 2.2 m beside the mouths, so an alley leg often ends with a hard turn at speed.
+- **Route hint:** it does not fly the game for you. It does not really help either. "Shortcut · Sparrow Row + Ink Alley −41 m" names places the world never labels: the mouth "name boards" are plain glowing boxes, and the nav marker points straight at the pad. In a new random city each run, a name tells you nothing. What a player can use is "there is an alley shortcut on this leg" plus the lit mouths they happen to see.
+- **Mobile HUD:** less clear than desktop. The centre pop ("Parcel secured!", "Crash! -3 SEC") lands on the slipstream and boost meters and the cue line (V-m-seed20540-leg2-t3, -t8). The pad marker and distance sit on the shortcut pill. The pill itself reads well.
+
+## Whole game against the best polished indie arcade flying and delivery games
+
+- **First 10 seconds:** strong. A pretty city, a clear first pickup, a payout in about 6 s.
+- **Onboarding:** good. The draft rule teaches itself. The cues name the next thing to do.
+- **Core loop:** pick up, thread streets, drop, bank. Shortcuts now matter on most legs and double a good pilot's score.
+- **Game feel:** still the best part. Alleys with both walls feeding the draft are the best moments.
+- **Art:** warm, cohesive low-poly with lit alleys and tunnels. Good.
+- **Audio:** adaptive music that follows the chain. Good.
+- **UI:** clean on desktop, crowded at the bottom centre on phones.
+- **Difficulty curve:** rush hour at 60 s, then every parcel a rush. Fine.
+- **Run variety:** random cities and named features, but legs often go back along the same alley line.
+- **Game over and restart:** clear card with an exact breakdown and medal. Fast restart.
+- **Replay pull:** medals, daily city, a real score ceiling. But a player cannot learn a city, so mastery comes from reading streets live, and the game gives no way to read the route ahead.
+
+## Single biggest remaining gap: the route is not readable from the screen
+
+**The concern.** Route choice is now the game's depth: on 59% of legs the best route goes through an alley or tunnel, and taking it is 24% faster. But nothing on screen shows where that route starts. The hint names a feature the world never labels, the marker points as the crow flies, and every city is new. Good players will find shortcuts by luck or by flying high to look. The best games of this kind make the line visible: a sign, a glow on the right entrance, a small map.
+
+**Acceptance test** (12 fresh cities, desktop and iPhone 13 landscape):
+1. On every leg whose shortest route uses an alley or tunnel, the entrance the route uses is marked on screen in a way that differs from other mouths (for example its name in the world, or a lit arrow on that mouth only). The diagnostics expose the marked mouth position. A probe confirms it projects inside the viewport within 3 s of the leg start, or as soon as it is within 80 m in front.
+2. A "sign follower" bot that steers only by what is marked (the marked mouth, then the pad marker), with no street graph, is at least 15% faster than the grid bot on those legs, at most 0.5 charged crashes a minute.
+3. The hint's label matches its names (no "Tunnel" without a tunnel), and no hint suggests a tunnel to a raised pad.
+4. All guards and gates still pass, including low over high at least 0.85.
+
+## Other gaps (ranked)
+
+1. **The high line beats the street line** (low over high 0.78, high Gold on seed 22). The game's identity is low street flying. Test: low over high at least 0.85 on 22, 58 and 130, high bot at most Silver.
+2. **Mobile HUD crowding.** Centre pops cover the slipstream and boost meters. The pad marker covers the shortcut pill. Test: on iPhone 13 landscape in 3 full runs, no centre message rectangle intersects a meter, cue or pill rectangle, and the nav marker never covers the pill.
+3. **Alley exits into mouth pads are sharp.** The shortcut bot crashes 0.62 a minute, mostly at alley ends next to pads. Test: shortcut bot at most 0.4 charged crashes a minute on 12 fresh cities, same control.
+4. **Street bonus can carry a run.** A 2-drop tunnel farm reaches Silver with 78% street bonus. Test: no run with 2 drops or fewer scores Silver on 22, 58, 130. Narrow carry farms under 0.6 of honest at 12 s farm phases.
+5. **Back-and-forth legs.** About a third of hinted legs reuse the last leg's alley line. Test: at most 15% of consecutive legs share a named feature.
+
+## Performance
+
+Headless Chromium caps at 120 Hz.
+- Flight through 2 tunnels, 2 alleys and a boulevard (`perf18.mjs`, 12.5 s): desktop 1,502 frames, median 8.3 ms, p95 9.6, max 10.4, 0 over 20 ms. iPhone 13 landscape: median 8.3, p95 9.4, max 10.4, 0 over 20 ms. 262k triangles, 58 to 74 draw calls.
+- Hand-fly 80 s mobile: 9,580 frames, median 8.3, p95 9.8, max 24.7, 1 over 20 ms.
+- First load, production build: about 0.81 MB (JS 767 KB, 211 KB gzipped, CSS 36 KB, HTML 11 KB). lil-gui 31 KB only for `?debug`. Budget 15 MB: pass. Page errors 0.
+
+## Screenshots (progress/round-19/critic/)
+
+- V-d-seed20540-leg1..3-t* and V-m-seed20540-leg1..3-t*: first three legs, desktop and iPhone (hint pill, alley entry crash, mobile HUD crowding: V-m-...-leg2-t3, -leg2-t8).
+- T-feat-seed*-alley*/tunnel*/diagonal*: shortcut bot in features. P-feat-seed*-crash*: its crashes (22132 alley pile-up).
+- A-seed*: alley-fly scrapes. C-capfarm19-*: narrow carry farms. C-capfarm-*, F-farm-*, S-smartfarm-*: farms. M-low-*, Q-*: gate medal moments. N-alt12-*, N-alt20-*: crash-classify. d-h*, m-h*: hand-fly.
+
+## Order and contamination
+
+Deterministic batches (nice 19) ran 06:30 to 06:39 beside the first real-time street runs. Street runs 34471 and 32134 ran at load 12 to 17. Everything after 06:40 ran with nothing in parallel. Lazy guard was cut to 4 cities and the lazy gate on 22, 58, 130 was not run, to stay near the time budget.
+</pre></details><details><summary>builder.md</summary><pre># Drone Dash, round 19 builder: shortcuts you choose, and the game names them
+
+Concern from the round 18 critic: shortcuts are one-note and silent. Boulevards made 33 of 35 shortcut legs. An alley or tunnel was on the shortest route in 13% of legs and decided the route alone on 2 of 97. No route was a trade, and the game never named a shortcut. Centre messages stacked.
+
+Time box: 04:31 to 07:01. Dev server on port 5188, stopped at the end. Scripts and logs: `progress/round-19/builder-scripts/`. Shots: `progress/round-19/builder-shots/`. The critic's round 18 scripts are copied unchanged except their output folder (`../builder-shots/`) and the log path in `legs18.py`.
+
+**Result in short:** every acceptance line passes on 12 fresh cities. An alley or tunnel is on the shortest route in 47% of legs (needed 25%). It alone gives a 15% shortcut on 19% of legs (needed 12.5%). The shortcut bot is 21.8% faster on shortcut legs and 24.8% faster on alley and tunnel legs, with 0.25 crashes a minute (limit 0.5). The HUD named the feature within 1 s on 140 of 140 legs whose shortest route uses one (desktop and iPhone). No name repeats. Centre messages never overlapped. Guards, gates, pad audit and regressions: see sections 4 and 5.
+
+## 1. Design
+
+### Alleys and tunnels on useful lines
+- **Alley lines** (`CityFeatures.planAlleys`). Each city gets three lines of alleys along z and three along x, 3 to 5 blocks long, through the middle of the blocks. An alley now carries on across the street into the next block. So it is a narrow straight lane through part of the city, not a lone slot. Parks and depots break a line. 16 to 22 alleys a city. The most central ones are tunnels (at least 2 a city).
+- **Pads at the mouths** (`CityGenerator`). A lot beside an alley mouth gets a doorstep more often (0.8 against 0.42). The doorstep sits 2.2 m from the alley wall, on the alley's line, not in the middle of the face. So a leg can start at one mouth and end at another mouth further down the line. Going round the block costs about 12 m more at each end than going through.
+- **Job picker** (`DeliverySystem.pickLeg`, `JOBS.narrowBias` 0.5). The existing shortcut bias (0.85) stays. Inside it, half the legs first look for a special pad. Its shortest route takes an alley or tunnel, no boulevard, and is at least 15% shorter. Then any shortcut, then the old rules. The leg spec (kind, height, distance band) is unchanged. A shortcut leg never goes back to one of the last 4 pads (no ping-pong along one alley). A raised pad is never offered for a tunnel route. The climb to the roof must not start under the bridge.
+
+### Each route is a readable trade
+- **Alley:** shorter, and the draft runs at full strength: inside the strip the wall factor is 1 and the hug bonus is full (1.6x fill). HUD cue "Alley draft!". The entry is a 90-degree turn into a 6 m slot: a fast turn-in can hit a wall and costs the usual crash (3 s, combo, bank cut). Crash rules unchanged.
+- **Tunnel:** shorter and darker (ice-blue lights). Under the bridge the slow clock runs at full strength. It uses the leg's existing budget (8 s a leg, only toward the objective), so it cannot be farmed. HUD cue "Tunnel · clock slowed". Clear height 7 m, so a fast high line has to drop to get in.
+- **Boulevard:** wide, open, no tight entry. When an alley line points your way, the boulevard is usually longer.
+- **Fair mouths** (drawn only, flush on the faces): glowing corner posts on both sides of every mouth and a lit board on each side. Two chevrons on the apron point in. They are amber for an alley and ice blue for a tunnel. The faces at an alley mouth are set back 1.5 m (`MOUTH_SET`). This gives a 4.5 m apron between the street and the slot to finish a turn. This is the funnel: a wider space before the slot, not a wider slot.
+
+### The game names the route
+- **Route hint** (`Hud.setRouteHint`, `Game.newLeg`). At the start of every leg, the game finds the shortest street route to the objective. It uses the same graph as the `streetRoute` hook. If the route uses a feature, a small pill shows under the objective pill at once, in the same glass style. Examples: "SHORTCUT Lantern Alley −24 m", "TUNNEL Clock Tunnel −31 m", "FAST LANE Kestrel Boulevard −27 m". If the saving is under 3 m, the label is "VIA". Alleys and tunnels are named first, at most two names. It stays 10 s. Diagnostics: `routeHint` (kind, names, saving, grid and route length, leg start and shown time).
+- **Unique names:** alleys draw a distinct first word from 30 (Lantern, Tinker, Quill, Walnut ...) with Alley, Lane, Row, Passage or Walk. Tunnels draw from 10 names, boulevards from 6, all without repeats.
+
+### Centre messages one at a time
+`Hud.centre` is a small queue for the four centre messages (delivery and pickup and crash pop, medal banner, rush hour and overtime banner, payout pop). Only one is visible. A message of the same kind replaces the one up (as before). Another kind waits until the one up has been read (0.65 to 1.8 s). Then it takes its place. A crash jumps the queue. A newer message replaces an older queued one of its kind. A payout pop that waited more than 1.2 s is dropped. The medal fanfare is still timed to its banner. The extra "Street bonus paid" pop on a delivery is gone (the delivery pop's line already says "street bonus +N"). All four share one slot below the HUD column and the route hint: 39% down on desktop, 53% on a phone held sideways (the old spots overlapped the objective pill on iPhone).
+
+### Rush-hour vans (optional)
+Tailing a hover-van (2 to 10 m behind it, in its lane, at 8 m/s or more) is a full draft, cue "Van draft!". The vans still have no collider, so rush hour cannot get unfair. `van-probe19.mjs`: behind a van the draft was on for 20 to 94 of 160 frames and banked up to 630.
+
+### Small extra
+The run's first meter is 2.5 draft metres (was 3), so the first payout comes a little sooner on a phone (mobile hand-fly was 9.9 s against a 10 s line).
+
+## 2. Acceptance (12 fresh cities)
+
+Fresh cities from `pick-seeds.mjs` after the last game change (16 loads with no `?seed`, first 12 used): 77984, 51714, 55642, 15336, 80212, 55130, 41128, 23571, 72971, 37812, 15756, 63138. Pad audit adds the other 4 loads (57267, 96431, 24640, 47005) and 1001 to 1014.
+
+Deterministic, the critic's `route-feat18.mjs` (FEAT=0 grid bot, FEAT=1 shortcut bot), 6 processes each, logs merged into `feat-grid.log` and `feat-feat.log`, then `legs18.py` (output `legs19.out`) and `legsum19.py`.
+
+| Test | Needed | Result | Pass |
+|---|---|---|---|
+| Alley or tunnel on the shortest route | 25% of legs | 40 of 86 (47%) | Yes |
+| Alley or tunnel alone gives a 15% shortcut (no boulevard) | 1 in 8 | 16 of 86 (19%) | Yes |
+| Shortcut bot faster on 15% shortcut legs | 10% | 37 matched legs: 614 s against 481 s, 21.8% faster. Alley or tunnel only legs (13): 24.8% faster | Yes |
+| Shortcut bot crashes | at most 0.5 a minute | 7 in 1,653 s (0.25 a minute). Grid bot 0. 5 of the 7 are fast entries into an alley (10 to 15 m/s), 1 a tunnel mouth, 1 a boulevard | Yes |
+| Feature named within 1 s of the leg start | every leg whose shortest route has one | `hint-probe19.mjs`: desktop 122 of 122 legs (144 legs, 12 cities), iPhone 13 sideways 18 of 18 (24 legs, 4 cities). Shown at 0.0 s every time | Yes |
+| No name repeats within a city | 0 | 0 of 12 cities (and 0 of 30 in the pad audit list) | Yes |
+
+Per city (grid bot legs; on route / alone 15%): 77984 5/2 of 8, 51714 4/2 of 6, 55642 2/2 of 8, 15336 4/0 of 8, 80212 5/1 of 6, 55130 3/1 of 6, 41128 2/2 of 8, 23571 1/1 of 8, 72971 6/3 of 8, 37812 4/1 of 8, 15756 1/0 of 6, 63138 3/1 of 6.
+
+Scores (deterministic): grid bot 2,304 to 3,682. Shortcut bot 3,421 to 9,100. No Ace (10,000).
+
+## 3. Centre messages
+
+`msg-probe19.mjs`, real time, one browser, nothing else running. One run fires every trigger, several close together. It finishes legs by placing the drone on the pad (deliveries, pickups, medals). It places the drone fast in an alley (payouts) and fast at a wall with W held (crashes). It does a delivery and a crash right on the 60 s rush hour. Then it lets the clock run out with a parcel aboard (overtime) and makes the overtime delivery. Every 50 ms it reads the four centre elements. Two visible at once with overlapping boxes counts as an overlap.
+
+| Run | Frames | Overlaps | Triggers seen | Centre message over the objective pill or route hint |
+|---|---|---|---|---|
+| Desktop, seed 22 (`msg-d-22e.log`) | 3,358 | **0** | 13 deliveries, 6 crashes, 5 payouts, Bronze to Gold, rush hour at 60 s, overtime and its delivery | 0 frames |
+| iPhone 13 sideways, seed 58 (`msg-m-58e.log`) | 3,167 | **0** | 12 deliveries, 6 crashes, 1 payout, Bronze to Gold, rush hour at 60 s, overtime and its delivery | 0 frames |
+
+Earlier runs (`msg-d-22.log`, `msg-d-22b/c.log`, `msg-m-58*.log`) also had 0 overlaps between centre messages. Their crash trigger missed (W was not held), and on the phone the pop still touched the route hint as it faded. The fix: the centre slot is lower on a short screen, the pop is a little smaller, and it rises less as it fades. Shot: O-d-seed22-overtime.
+
+
+## 4. Guards and gates
+
+Real time, one script at a time (`rtqueue19.sh`, `rtjobs19.txt`), after the deterministic batch. The critic's street bot `route-play-rt-x-m-esc17.mjs` (LINE low) and lazy bot `balance-probe-m-esc17.mjs` (CRUISE 10, NOBOOST). Summary with `rt18.py`.
+
+| City | Street | Lazy |
+|---|---|---|
+| 77984 | 3,268 Silver | 1,041 Bronze |
+| 51714 | 2,644 Silver | 714 none |
+| 55642 | 2,516 Silver | 1,413 Bronze |
+| 15336 | 3,889 Silver | 1,083 Bronze |
+| 80212 | 2,273 Silver | 658 none |
+| 55130 | 2,680 Silver | 813 none |
+| 41128 | 2,303 Silver | 1,039 Bronze |
+| 23571 | 3,230 Silver | 1,596 Bronze |
+| 72971 | 3,297 Silver | 1,002 Bronze |
+| 37812 | 2,998 Silver | 1,339 Bronze |
+| 15756 | 2,283 Silver | 1,026 Bronze |
+| 63138 | 2,878 Silver | 715 none |
+
+- Street Silver or better: **12 of 12** (worst 2,273).
+- Lazy Bronze or below: **12 of 12** (best 1,596).
+- No Ace: best real time 3,889. Best of any bot: the deterministic shortcut bot, 9,100 on 72971. Ace is 10,000.
+- Best lazy against worst street: 2,273 − 1,596 = **677** (needed 300).
+- Saved medal: in all 33 real-time runs (guards and gates) the run's tier equals the tier from the score, and the game-over card names the same medal. Breakdown exact (bdOk, domOk) in all 33.
+
+**Gates, seeds 22, 58, 130:**
+
+| Run | 22 | 58 | 130 | Total |
+|---|---|---|---|---|
+| Low, real time (music-run-esc) | 2,932 Silver | 3,492 Silver | 2,007 Silver | 8,431 |
+| High, real time | 2,783 Silver | 2,086 Silver | 3,161 Silver | 8,030 |
+| Lazy, real time | 566 | 895 | 932 | |
+| Low, deterministic (route-legs17) | 2,982 | 3,731 | 1,873 | 8,586 |
+| High, deterministic | 4,792 | 1,995 | 2,539 | 9,326 |
+
+- Low over high: real time **1.05**, deterministic 0.92 (needed 0.85). The high-line bot did not stall on 130 this round (the layout near that pad changed), so I did not change the bot.
+- No-delivery farms: farm-probe on 22, 58, 130, farm-loop 22, smart-farm near 22, pickupline 130: **all 0**. capfarm carry on 22 also delivered nothing: 0.
+- Carry farm against honest (capfarm, deterministic): honest 1,690 + 1,740 + 1,167 = 4,597 a minute; carry 0 + 1,328 + 826 = 2,154. Ratio **0.47** (needed under 0.5). Close to the line: seed 58's carry farm alone is 0.76.
+- One-delivery farms (capfarm both, FARMMAX 12): 1,443 Bronze, 1,426 Bronze, 818 none. Bronze or below.
+- Rush hour starts at 60.0 s in all 33 real-time runs. Overtime started in 17 of them and was finished in all 17, and in both final message probes.
+
+## 5. Pad audit and regressions
+
+- **Pad audit** (`pad-audit18.mjs`, 30 seeds: the 16 fresh loads and 1001 to 1014): 2,862 pads, **0 issues** (buried, overhang, awning, outside). 0 pads inside an alley strip. 287 pads within 22 m of a tunnel; none flagged, none under a ceiling.
+- **Crash-classify** (`crash-classify-v.mjs`, 8 seeds). 12 m: 657 s, 58 charged, 0 hop-like, 20 near the target, all on faces 2.8 to 43.8 m below the wall top, so **0 pad lip**. 20 m: 589 s, 35 charged, 0 hop-like, 4 near the target, faces 4.0 to 22 m below the top, **0 pad lip**. The 12 m rate is a little higher than round 18 (5.3 against 4.6 a minute): the alley lines put more narrow gaps across a straight 12 m line.
+- **Flat-frame probe** (`acceptance-probe.mjs`): 875 frames, 0 flat, 0 errors.
+- **Music:** adaptive. Chains 0 to 3 give 1 to 4 layers (mean intensity 0.34 to 0.87). The final section starts at 9.97 to 9.99 s left with 5 layers. 0 late notes, 0 resyncs, 0 errors. Fanfare 14 to 20 dB over the music.
+- **Hand-fly first payout:** desktop **5.6 s**, mobile **6.7 s** (round 18: 8.8 and 9.9; needed 10).
+- **Frame time.** Hand-fly 80 s: desktop 9,572 frames, median 8.30 ms, p95 9.80 ms, 0 over 20 ms. Mobile 9,578 frames, median 8.30, p95 9.50, 1 over 20 ms. Feature flight (`perf18.mjs`, 2 tunnels, 2 alleys, a boulevard): desktop p95 9.0 ms, mobile p95 9.4 ms, max 10.4, 0 over 20 ms, 262k triangles, 58 to 74 draw calls. Headless Chromium caps at 120 Hz.
+- **Build:** `npm run build` passes. First load about 0.81 MB (JS 767 KB, CSS 36 KB, HTML 11 KB); lil-gui 31 KB loads only for `?debug`.
+
+**Order and load.** The deterministic batch (`det19.sh`, up to 14 processes, nice 5) ran 04:46 to 04:56. The real-time queue ran alone from 04:57 to 06:15. The last message probes and the screenshots ran alone after it. Three CSS-only edits (the centre slot) were hot-swapped during the real-time queue; they change no game logic. Tuning runs on seeds 1201 to 1204 are in `tune/` and `tune2/` (the first ones ran while I was still editing, so they are not clean).
+
+**Not done:** rush vans block nothing (by design, to keep rush fair). I did not rerun the critic's `alley-fly18.mjs` straight-through test.
+
+## Screenshots (progress/round-19/builder-shots/)
+- Route hint: H-d-seed77984-hint1..3 (desktop), H-m-seed77984-hint1..3 (iPhone; taken before the phone pop fix).
+- Lit mouths: F-d/F-m-seed72971-alley-*/tunnel-* and F-d-seed1202-*. The first frames still show the title card fading, as in round 18.
+- Messages: O-d-seed22-overtime.
+- Shortcut bot crashes: P-feat-seed*-crash1. Crash-classify near-target hits: N-alt12-*, N-alt20-*. Farms: C-*, F-farm-*.
+
+## 6. Files changed
+
+- `src/world/CityFeatures.ts`: alley lines, at least 2 tunnels, unique names (30 alley first words, 10 tunnels).
+- `src/world/CityGenerator.ts`: mouth setback (`MOUTH_SET`), lit mouths (corner posts, name boards, chevrons), mouth doorsteps.
+- `src/systems/DeliverySystem.ts`: `JOBS.narrowBias`, alley or tunnel shortcut first, no return to the last 4 pads on a shortcut leg.
+- `src/game/Game.ts`: shortcut classes for the picker (no tunnel route to a raised pad), route hint at each leg start, alley and tunnel strips (full draft, tunnel slow clock), van draft, centre queue tick, diagnostics (`routeHint`, `narrow`, `vanDraft`, `centreLog`), test hook `vans()`.
+- `src/systems/Slipstream.ts`: `narrow` and `van` inputs.
+- `src/world/Environment.ts`: `vanDraft`, `vanPositions`.
+- `src/ui/Hud.ts`: centre message queue, route hint, new cues.
+- `index.html`, `src/styles.css`: route hint pill, one centre slot.
+- `src/game/config.ts`: `introMeter` 3 to 2.5.
+- `src/vite-env.d.ts`: new diagnostics and hook types.
+- Kept: bloom clamps in `src/entities/ObjectiveMarker.ts` (untouched) and every debug hook the bots use.
+
+New scripts: `hint-probe19.mjs`, `msg-probe19.mjs`, `van-probe19.mjs`, `legsum19.py`, `det19.sh`, `rtqueue19.sh` with `rtjobs19.txt`.
+</pre></details><div class="grid"><figure><a href="progress/round-19/critic/A-seed20540-InkAlley--1.webp"><img loading="lazy" src="progress/round-19/critic/A-seed20540-InkAlley--1.webp" alt="A-seed20540-InkAlley--1.webp"></a><figcaption>A-seed20540-InkAlley--1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/A-seed22132-ArcadeTunnel-1.webp"><img loading="lazy" src="progress/round-19/critic/A-seed22132-ArcadeTunnel-1.webp" alt="A-seed22132-ArcadeTunnel-1.webp"></a><figcaption>A-seed22132-ArcadeTunnel-1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/A-seed32134-VaultTunnel-1.webp"><img loading="lazy" src="progress/round-19/critic/A-seed32134-VaultTunnel-1.webp" alt="A-seed32134-VaultTunnel-1.webp"></a><figcaption>A-seed32134-VaultTunnel-1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/A-seed47664-KiteWalk--1.webp"><img loading="lazy" src="progress/round-19/critic/A-seed47664-KiteWalk--1.webp" alt="A-seed47664-KiteWalk--1.webp"></a><figcaption>A-seed47664-KiteWalk--1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/A-seed96680-MarblePassage--1.webp"><img loading="lazy" src="progress/round-19/critic/A-seed96680-MarblePassage--1.webp" alt="A-seed96680-MarblePassage--1.webp"></a><figcaption>A-seed96680-MarblePassage--1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-both-seed130.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-both-seed130.webp" alt="C-capfarm-both-seed130.webp"></a><figcaption>C-capfarm-both-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-both-seed22.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-both-seed22.webp" alt="C-capfarm-both-seed22.webp"></a><figcaption>C-capfarm-both-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-carry-seed130.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-carry-seed130.webp" alt="C-capfarm-carry-seed130.webp"></a><figcaption>C-capfarm-carry-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-carry-seed22.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-carry-seed22.webp" alt="C-capfarm-carry-seed22.webp"></a><figcaption>C-capfarm-carry-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-carry-seed58.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-carry-seed58.webp" alt="C-capfarm-carry-seed58.webp"></a><figcaption>C-capfarm-carry-seed58.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-honest-seed130.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-honest-seed130.webp" alt="C-capfarm-honest-seed130.webp"></a><figcaption>C-capfarm-honest-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-honest-seed22.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-honest-seed22.webp" alt="C-capfarm-honest-seed22.webp"></a><figcaption>C-capfarm-honest-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm-honest-seed58.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm-honest-seed58.webp" alt="C-capfarm-honest-seed58.webp"></a><figcaption>C-capfarm-honest-seed58.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-alley-seed130.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-alley-seed130.webp" alt="C-capfarm19-alley-seed130.webp"></a><figcaption>C-capfarm19-alley-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-alley-seed22.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-alley-seed22.webp" alt="C-capfarm19-alley-seed22.webp"></a><figcaption>C-capfarm19-alley-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-alley-seed58.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-alley-seed58.webp" alt="C-capfarm19-alley-seed58.webp"></a><figcaption>C-capfarm19-alley-seed58.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-tunnel-seed130.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-tunnel-seed130.webp" alt="C-capfarm19-tunnel-seed130.webp"></a><figcaption>C-capfarm19-tunnel-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-tunnel-seed22.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-tunnel-seed22.webp" alt="C-capfarm19-tunnel-seed22.webp"></a><figcaption>C-capfarm19-tunnel-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-tunnel-seed58.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-tunnel-seed58.webp" alt="C-capfarm19-tunnel-seed58.webp"></a><figcaption>C-capfarm19-tunnel-seed58.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-van-seed130.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-van-seed130.webp" alt="C-capfarm19-van-seed130.webp"></a><figcaption>C-capfarm19-van-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-van-seed22.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-van-seed22.webp" alt="C-capfarm19-van-seed22.webp"></a><figcaption>C-capfarm19-van-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/C-capfarm19-van-seed58.webp"><img loading="lazy" src="progress/round-19/critic/C-capfarm19-van-seed58.webp" alt="C-capfarm19-van-seed58.webp"></a><figcaption>C-capfarm19-van-seed58.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/F-farm-seed130-road66.webp"><img loading="lazy" src="progress/round-19/critic/F-farm-seed130-road66.webp" alt="F-farm-seed130-road66.webp"></a><figcaption>F-farm-seed130-road66.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/F-farm-seed22-road66.webp"><img loading="lazy" src="progress/round-19/critic/F-farm-seed22-road66.webp" alt="F-farm-seed22-road66.webp"></a><figcaption>F-farm-seed22-road66.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/F-farm-seed58-road66.webp"><img loading="lazy" src="progress/round-19/critic/F-farm-seed58-road66.webp" alt="F-farm-seed58-road66.webp"></a><figcaption>F-farm-seed58-road66.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-high-seed130-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-high-seed130-pass1.webp" alt="M-high-seed130-pass1.webp"></a><figcaption>M-high-seed130-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-high-seed130-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-high-seed130-pass2.webp" alt="M-high-seed130-pass2.webp"></a><figcaption>M-high-seed130-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-high-seed22-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-high-seed22-pass1.webp" alt="M-high-seed22-pass1.webp"></a><figcaption>M-high-seed22-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-high-seed22-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-high-seed22-pass2.webp" alt="M-high-seed22-pass2.webp"></a><figcaption>M-high-seed22-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-high-seed22-pass3.webp"><img loading="lazy" src="progress/round-19/critic/M-high-seed22-pass3.webp" alt="M-high-seed22-pass3.webp"></a><figcaption>M-high-seed22-pass3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-high-seed58-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-high-seed58-pass1.webp" alt="M-high-seed58-pass1.webp"></a><figcaption>M-high-seed58-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-high-seed58-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-high-seed58-pass2.webp" alt="M-high-seed58-pass2.webp"></a><figcaption>M-high-seed58-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-c10-seed20540-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-c10-seed20540-pass1.webp" alt="M-low-c10-seed20540-pass1.webp"></a><figcaption>M-low-c10-seed20540-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-c10-seed47664-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-c10-seed47664-pass1.webp" alt="M-low-c10-seed47664-pass1.webp"></a><figcaption>M-low-c10-seed47664-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed130-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed130-pass1.webp" alt="M-low-seed130-pass1.webp"></a><figcaption>M-low-seed130-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed16068-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed16068-pass1.webp" alt="M-low-seed16068-pass1.webp"></a><figcaption>M-low-seed16068-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed16068-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed16068-pass2.webp" alt="M-low-seed16068-pass2.webp"></a><figcaption>M-low-seed16068-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed20188-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed20188-pass1.webp" alt="M-low-seed20188-pass1.webp"></a><figcaption>M-low-seed20188-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed20188-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed20188-pass2.webp" alt="M-low-seed20188-pass2.webp"></a><figcaption>M-low-seed20188-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed20540-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed20540-pass1.webp" alt="M-low-seed20540-pass1.webp"></a><figcaption>M-low-seed20540-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed20540-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed20540-pass2.webp" alt="M-low-seed20540-pass2.webp"></a><figcaption>M-low-seed20540-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed20823-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed20823-pass1.webp" alt="M-low-seed20823-pass1.webp"></a><figcaption>M-low-seed20823-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed20823-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed20823-pass2.webp" alt="M-low-seed20823-pass2.webp"></a><figcaption>M-low-seed20823-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed22-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed22-pass1.webp" alt="M-low-seed22-pass1.webp"></a><figcaption>M-low-seed22-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed22132-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed22132-pass1.webp" alt="M-low-seed22132-pass1.webp"></a><figcaption>M-low-seed22132-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed22132-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed22132-pass2.webp" alt="M-low-seed22132-pass2.webp"></a><figcaption>M-low-seed22132-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed26635-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed26635-pass1.webp" alt="M-low-seed26635-pass1.webp"></a><figcaption>M-low-seed26635-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed26635-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed26635-pass2.webp" alt="M-low-seed26635-pass2.webp"></a><figcaption>M-low-seed26635-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed32134-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed32134-pass1.webp" alt="M-low-seed32134-pass1.webp"></a><figcaption>M-low-seed32134-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed32134-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed32134-pass2.webp" alt="M-low-seed32134-pass2.webp"></a><figcaption>M-low-seed32134-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed34372-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed34372-pass1.webp" alt="M-low-seed34372-pass1.webp"></a><figcaption>M-low-seed34372-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed34372-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed34372-pass2.webp" alt="M-low-seed34372-pass2.webp"></a><figcaption>M-low-seed34372-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed34471-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed34471-pass1.webp" alt="M-low-seed34471-pass1.webp"></a><figcaption>M-low-seed34471-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed34471-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed34471-pass2.webp" alt="M-low-seed34471-pass2.webp"></a><figcaption>M-low-seed34471-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed47664-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed47664-pass1.webp" alt="M-low-seed47664-pass1.webp"></a><figcaption>M-low-seed47664-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed47664-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed47664-pass2.webp" alt="M-low-seed47664-pass2.webp"></a><figcaption>M-low-seed47664-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed58-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed58-pass1.webp" alt="M-low-seed58-pass1.webp"></a><figcaption>M-low-seed58-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed58-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed58-pass2.webp" alt="M-low-seed58-pass2.webp"></a><figcaption>M-low-seed58-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed96680-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed96680-pass1.webp" alt="M-low-seed96680-pass1.webp"></a><figcaption>M-low-seed96680-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed96680-pass2.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed96680-pass2.webp" alt="M-low-seed96680-pass2.webp"></a><figcaption>M-low-seed96680-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/M-low-seed99113-pass1.webp"><img loading="lazy" src="progress/round-19/critic/M-low-seed99113-pass1.webp" alt="M-low-seed99113-pass1.webp"></a><figcaption>M-low-seed99113-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed11-t22.0-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed11-t22.0-near.webp" alt="N-alt12-seed11-t22.0-near.webp"></a><figcaption>N-alt12-seed11-t22.0-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed11-t53.1-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed11-t53.1-near.webp" alt="N-alt12-seed11-t53.1-near.webp"></a><figcaption>N-alt12-seed11-t53.1-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed11-t63.5-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed11-t63.5-near.webp" alt="N-alt12-seed11-t63.5-near.webp"></a><figcaption>N-alt12-seed11-t63.5-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed11-t75.6-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed11-t75.6-near.webp" alt="N-alt12-seed11-t75.6-near.webp"></a><figcaption>N-alt12-seed11-t75.6-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed130-t106.4-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed130-t106.4-near.webp" alt="N-alt12-seed130-t106.4-near.webp"></a><figcaption>N-alt12-seed130-t106.4-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed22-t20.5-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed22-t20.5-near.webp" alt="N-alt12-seed22-t20.5-near.webp"></a><figcaption>N-alt12-seed22-t20.5-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed22-t26.1-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed22-t26.1-near.webp" alt="N-alt12-seed22-t26.1-near.webp"></a><figcaption>N-alt12-seed22-t26.1-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed22-t32.5-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed22-t32.5-near.webp" alt="N-alt12-seed22-t32.5-near.webp"></a><figcaption>N-alt12-seed22-t32.5-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed22-t38.1-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed22-t38.1-near.webp" alt="N-alt12-seed22-t38.1-near.webp"></a><figcaption>N-alt12-seed22-t38.1-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed58-t20.2-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed58-t20.2-near.webp" alt="N-alt12-seed58-t20.2-near.webp"></a><figcaption>N-alt12-seed58-t20.2-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed58-t50.1-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed58-t50.1-near.webp" alt="N-alt12-seed58-t50.1-near.webp"></a><figcaption>N-alt12-seed58-t50.1-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed58-t66.5-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed58-t66.5-near.webp" alt="N-alt12-seed58-t66.5-near.webp"></a><figcaption>N-alt12-seed58-t66.5-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed7-t13.5-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed7-t13.5-near.webp" alt="N-alt12-seed7-t13.5-near.webp"></a><figcaption>N-alt12-seed7-t13.5-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed7-t2.9-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed7-t2.9-near.webp" alt="N-alt12-seed7-t2.9-near.webp"></a><figcaption>N-alt12-seed7-t2.9-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed91-t32.8-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed91-t32.8-near.webp" alt="N-alt12-seed91-t32.8-near.webp"></a><figcaption>N-alt12-seed91-t32.8-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed91-t71.8-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed91-t71.8-near.webp" alt="N-alt12-seed91-t71.8-near.webp"></a><figcaption>N-alt12-seed91-t71.8-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt12-seed91-t72.9-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt12-seed91-t72.9-near.webp" alt="N-alt12-seed91-t72.9-near.webp"></a><figcaption>N-alt12-seed91-t72.9-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt20-seed11-t59.1-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt20-seed11-t59.1-near.webp" alt="N-alt20-seed11-t59.1-near.webp"></a><figcaption>N-alt20-seed11-t59.1-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt20-seed130-t69.9-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt20-seed130-t69.9-near.webp" alt="N-alt20-seed130-t69.9-near.webp"></a><figcaption>N-alt20-seed130-t69.9-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt20-seed22-t32.2-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt20-seed22-t32.2-near.webp" alt="N-alt20-seed22-t32.2-near.webp"></a><figcaption>N-alt20-seed22-t32.2-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt20-seed44-t12.4-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt20-seed44-t12.4-near.webp" alt="N-alt20-seed44-t12.4-near.webp"></a><figcaption>N-alt20-seed44-t12.4-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/N-alt20-seed91-t36.0-near.webp"><img loading="lazy" src="progress/round-19/critic/N-alt20-seed91-t36.0-near.webp" alt="N-alt20-seed91-t36.0-near.webp"></a><figcaption>N-alt20-seed91-t36.0-near.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed20188-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed20188-crash1.webp" alt="P-feat-seed20188-crash1.webp"></a><figcaption>P-feat-seed20188-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed20540-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed20540-crash1.webp" alt="P-feat-seed20540-crash1.webp"></a><figcaption>P-feat-seed20540-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed20540-crash2.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed20540-crash2.webp" alt="P-feat-seed20540-crash2.webp"></a><figcaption>P-feat-seed20540-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed20823-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed20823-crash1.webp" alt="P-feat-seed20823-crash1.webp"></a><figcaption>P-feat-seed20823-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed20823-crash2.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed20823-crash2.webp" alt="P-feat-seed20823-crash2.webp"></a><figcaption>P-feat-seed20823-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed22132-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed22132-crash1.webp" alt="P-feat-seed22132-crash1.webp"></a><figcaption>P-feat-seed22132-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed22132-crash2.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed22132-crash2.webp" alt="P-feat-seed22132-crash2.webp"></a><figcaption>P-feat-seed22132-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed22132-crash3.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed22132-crash3.webp" alt="P-feat-seed22132-crash3.webp"></a><figcaption>P-feat-seed22132-crash3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed26635-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed26635-crash1.webp" alt="P-feat-seed26635-crash1.webp"></a><figcaption>P-feat-seed26635-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed26635-crash2.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed26635-crash2.webp" alt="P-feat-seed26635-crash2.webp"></a><figcaption>P-feat-seed26635-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed26635-crash3.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed26635-crash3.webp" alt="P-feat-seed26635-crash3.webp"></a><figcaption>P-feat-seed26635-crash3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed32134-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed32134-crash1.webp" alt="P-feat-seed32134-crash1.webp"></a><figcaption>P-feat-seed32134-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed34372-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed34372-crash1.webp" alt="P-feat-seed34372-crash1.webp"></a><figcaption>P-feat-seed34372-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed34372-crash2.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed34372-crash2.webp" alt="P-feat-seed34372-crash2.webp"></a><figcaption>P-feat-seed34372-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed47664-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed47664-crash1.webp" alt="P-feat-seed47664-crash1.webp"></a><figcaption>P-feat-seed47664-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/P-feat-seed96680-crash1.webp"><img loading="lazy" src="progress/round-19/critic/P-feat-seed96680-crash1.webp" alt="P-feat-seed96680-crash1.webp"></a><figcaption>P-feat-seed96680-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-high-seed130-crash1.webp"><img loading="lazy" src="progress/round-19/critic/Q-high-seed130-crash1.webp" alt="Q-high-seed130-crash1.webp"></a><figcaption>Q-high-seed130-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-high-seed130-crash2.webp"><img loading="lazy" src="progress/round-19/critic/Q-high-seed130-crash2.webp" alt="Q-high-seed130-crash2.webp"></a><figcaption>Q-high-seed130-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-high-seed130-crash3.webp"><img loading="lazy" src="progress/round-19/critic/Q-high-seed130-crash3.webp" alt="Q-high-seed130-crash3.webp"></a><figcaption>Q-high-seed130-crash3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-high-seed22-crash1.webp"><img loading="lazy" src="progress/round-19/critic/Q-high-seed22-crash1.webp" alt="Q-high-seed22-crash1.webp"></a><figcaption>Q-high-seed22-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-high-seed58-crash1.webp"><img loading="lazy" src="progress/round-19/critic/Q-high-seed58-crash1.webp" alt="Q-high-seed58-crash1.webp"></a><figcaption>Q-high-seed58-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-high-seed58-crash2.webp"><img loading="lazy" src="progress/round-19/critic/Q-high-seed58-crash2.webp" alt="Q-high-seed58-crash2.webp"></a><figcaption>Q-high-seed58-crash2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-high-seed58-crash3.webp"><img loading="lazy" src="progress/round-19/critic/Q-high-seed58-crash3.webp" alt="Q-high-seed58-crash3.webp"></a><figcaption>Q-high-seed58-crash3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-low-seed22132-crash1.webp"><img loading="lazy" src="progress/round-19/critic/Q-low-seed22132-crash1.webp" alt="Q-low-seed22132-crash1.webp"></a><figcaption>Q-low-seed22132-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-low-seed32134-crash1.webp"><img loading="lazy" src="progress/round-19/critic/Q-low-seed32134-crash1.webp" alt="Q-low-seed32134-crash1.webp"></a><figcaption>Q-low-seed32134-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/Q-low-seed34471-crash1.webp"><img loading="lazy" src="progress/round-19/critic/Q-low-seed34471-crash1.webp" alt="Q-low-seed34471-crash1.webp"></a><figcaption>Q-low-seed34471-crash1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/S-smartfarm-near-seed130.webp"><img loading="lazy" src="progress/round-19/critic/S-smartfarm-near-seed130.webp" alt="S-smartfarm-near-seed130.webp"></a><figcaption>S-smartfarm-near-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/S-smartfarm-near-seed22.webp"><img loading="lazy" src="progress/round-19/critic/S-smartfarm-near-seed22.webp" alt="S-smartfarm-near-seed22.webp"></a><figcaption>S-smartfarm-near-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/S-smartfarm-pickupline-seed22.webp"><img loading="lazy" src="progress/round-19/critic/S-smartfarm-pickupline-seed22.webp" alt="S-smartfarm-pickupline-seed22.webp"></a><figcaption>S-smartfarm-pickupline-seed22.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/S-smartfarm-spendpickup-seed58.webp"><img loading="lazy" src="progress/round-19/critic/S-smartfarm-spendpickup-seed58.webp" alt="S-smartfarm-spendpickup-seed58.webp"></a><figcaption>S-smartfarm-spendpickup-seed58.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed16068-diagonal1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed16068-diagonal1.webp" alt="T-feat-seed16068-diagonal1.webp"></a><figcaption>T-feat-seed16068-diagonal1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed16068-diagonal2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed16068-diagonal2.webp" alt="T-feat-seed16068-diagonal2.webp"></a><figcaption>T-feat-seed16068-diagonal2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed16068-tunnel3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed16068-tunnel3.webp" alt="T-feat-seed16068-tunnel3.webp"></a><figcaption>T-feat-seed16068-tunnel3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed16068-tunnel4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed16068-tunnel4.webp" alt="T-feat-seed16068-tunnel4.webp"></a><figcaption>T-feat-seed16068-tunnel4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20188-alley1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20188-alley1.webp" alt="T-feat-seed20188-alley1.webp"></a><figcaption>T-feat-seed20188-alley1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20188-alley2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20188-alley2.webp" alt="T-feat-seed20188-alley2.webp"></a><figcaption>T-feat-seed20188-alley2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20188-alley3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20188-alley3.webp" alt="T-feat-seed20188-alley3.webp"></a><figcaption>T-feat-seed20188-alley3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20188-alley4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20188-alley4.webp" alt="T-feat-seed20188-alley4.webp"></a><figcaption>T-feat-seed20188-alley4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20540-alley1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20540-alley1.webp" alt="T-feat-seed20540-alley1.webp"></a><figcaption>T-feat-seed20540-alley1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20540-diagonal2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20540-diagonal2.webp" alt="T-feat-seed20540-diagonal2.webp"></a><figcaption>T-feat-seed20540-diagonal2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20540-diagonal3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20540-diagonal3.webp" alt="T-feat-seed20540-diagonal3.webp"></a><figcaption>T-feat-seed20540-diagonal3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20540-diagonal4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20540-diagonal4.webp" alt="T-feat-seed20540-diagonal4.webp"></a><figcaption>T-feat-seed20540-diagonal4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20823-alley1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20823-alley1.webp" alt="T-feat-seed20823-alley1.webp"></a><figcaption>T-feat-seed20823-alley1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20823-alley2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20823-alley2.webp" alt="T-feat-seed20823-alley2.webp"></a><figcaption>T-feat-seed20823-alley2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20823-alley3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20823-alley3.webp" alt="T-feat-seed20823-alley3.webp"></a><figcaption>T-feat-seed20823-alley3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed20823-alley4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed20823-alley4.webp" alt="T-feat-seed20823-alley4.webp"></a><figcaption>T-feat-seed20823-alley4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed26635-alley3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed26635-alley3.webp" alt="T-feat-seed26635-alley3.webp"></a><figcaption>T-feat-seed26635-alley3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed26635-alley4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed26635-alley4.webp" alt="T-feat-seed26635-alley4.webp"></a><figcaption>T-feat-seed26635-alley4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed26635-diagonal1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed26635-diagonal1.webp" alt="T-feat-seed26635-diagonal1.webp"></a><figcaption>T-feat-seed26635-diagonal1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed26635-diagonal2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed26635-diagonal2.webp" alt="T-feat-seed26635-diagonal2.webp"></a><figcaption>T-feat-seed26635-diagonal2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed32134-alley1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed32134-alley1.webp" alt="T-feat-seed32134-alley1.webp"></a><figcaption>T-feat-seed32134-alley1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed32134-alley2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed32134-alley2.webp" alt="T-feat-seed32134-alley2.webp"></a><figcaption>T-feat-seed32134-alley2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed32134-alley3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed32134-alley3.webp" alt="T-feat-seed32134-alley3.webp"></a><figcaption>T-feat-seed32134-alley3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed32134-alley4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed32134-alley4.webp" alt="T-feat-seed32134-alley4.webp"></a><figcaption>T-feat-seed32134-alley4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34372-alley1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34372-alley1.webp" alt="T-feat-seed34372-alley1.webp"></a><figcaption>T-feat-seed34372-alley1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34372-alley2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34372-alley2.webp" alt="T-feat-seed34372-alley2.webp"></a><figcaption>T-feat-seed34372-alley2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34372-alley3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34372-alley3.webp" alt="T-feat-seed34372-alley3.webp"></a><figcaption>T-feat-seed34372-alley3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34372-diagonal4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34372-diagonal4.webp" alt="T-feat-seed34372-diagonal4.webp"></a><figcaption>T-feat-seed34372-diagonal4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34471-alley3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34471-alley3.webp" alt="T-feat-seed34471-alley3.webp"></a><figcaption>T-feat-seed34471-alley3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34471-alley4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34471-alley4.webp" alt="T-feat-seed34471-alley4.webp"></a><figcaption>T-feat-seed34471-alley4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34471-diagonal1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34471-diagonal1.webp" alt="T-feat-seed34471-diagonal1.webp"></a><figcaption>T-feat-seed34471-diagonal1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed34471-diagonal2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed34471-diagonal2.webp" alt="T-feat-seed34471-diagonal2.webp"></a><figcaption>T-feat-seed34471-diagonal2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed47664-alley4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed47664-alley4.webp" alt="T-feat-seed47664-alley4.webp"></a><figcaption>T-feat-seed47664-alley4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed47664-diagonal1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed47664-diagonal1.webp" alt="T-feat-seed47664-diagonal1.webp"></a><figcaption>T-feat-seed47664-diagonal1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed47664-diagonal2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed47664-diagonal2.webp" alt="T-feat-seed47664-diagonal2.webp"></a><figcaption>T-feat-seed47664-diagonal2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed47664-diagonal3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed47664-diagonal3.webp" alt="T-feat-seed47664-diagonal3.webp"></a><figcaption>T-feat-seed47664-diagonal3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed96680-diagonal1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed96680-diagonal1.webp" alt="T-feat-seed96680-diagonal1.webp"></a><figcaption>T-feat-seed96680-diagonal1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed96680-diagonal2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed96680-diagonal2.webp" alt="T-feat-seed96680-diagonal2.webp"></a><figcaption>T-feat-seed96680-diagonal2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed96680-diagonal3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed96680-diagonal3.webp" alt="T-feat-seed96680-diagonal3.webp"></a><figcaption>T-feat-seed96680-diagonal3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed96680-diagonal4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed96680-diagonal4.webp" alt="T-feat-seed96680-diagonal4.webp"></a><figcaption>T-feat-seed96680-diagonal4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed99113-alley2.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed99113-alley2.webp" alt="T-feat-seed99113-alley2.webp"></a><figcaption>T-feat-seed99113-alley2.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed99113-alley3.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed99113-alley3.webp" alt="T-feat-seed99113-alley3.webp"></a><figcaption>T-feat-seed99113-alley3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed99113-diagonal1.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed99113-diagonal1.webp" alt="T-feat-seed99113-diagonal1.webp"></a><figcaption>T-feat-seed99113-diagonal1.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/T-feat-seed99113-diagonal4.webp"><img loading="lazy" src="progress/round-19/critic/T-feat-seed99113-diagonal4.webp" alt="T-feat-seed99113-diagonal4.webp"></a><figcaption>T-feat-seed99113-diagonal4.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg1-t0.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg1-t0.webp" alt="V-d-seed20540-leg1-t0.webp"></a><figcaption>V-d-seed20540-leg1-t0.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg1-t3.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg1-t3.webp" alt="V-d-seed20540-leg1-t3.webp"></a><figcaption>V-d-seed20540-leg1-t3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg1-t5.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg1-t5.webp" alt="V-d-seed20540-leg1-t5.webp"></a><figcaption>V-d-seed20540-leg1-t5.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg1-t8.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg1-t8.webp" alt="V-d-seed20540-leg1-t8.webp"></a><figcaption>V-d-seed20540-leg1-t8.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg2-t0.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg2-t0.webp" alt="V-d-seed20540-leg2-t0.webp"></a><figcaption>V-d-seed20540-leg2-t0.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg2-t10.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg2-t10.webp" alt="V-d-seed20540-leg2-t10.webp"></a><figcaption>V-d-seed20540-leg2-t10.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg2-t13.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg2-t13.webp" alt="V-d-seed20540-leg2-t13.webp"></a><figcaption>V-d-seed20540-leg2-t13.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg2-t3.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg2-t3.webp" alt="V-d-seed20540-leg2-t3.webp"></a><figcaption>V-d-seed20540-leg2-t3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg2-t5.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg2-t5.webp" alt="V-d-seed20540-leg2-t5.webp"></a><figcaption>V-d-seed20540-leg2-t5.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg2-t8.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg2-t8.webp" alt="V-d-seed20540-leg2-t8.webp"></a><figcaption>V-d-seed20540-leg2-t8.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg3-t0.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg3-t0.webp" alt="V-d-seed20540-leg3-t0.webp"></a><figcaption>V-d-seed20540-leg3-t0.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg3-t10.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg3-t10.webp" alt="V-d-seed20540-leg3-t10.webp"></a><figcaption>V-d-seed20540-leg3-t10.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg3-t13.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg3-t13.webp" alt="V-d-seed20540-leg3-t13.webp"></a><figcaption>V-d-seed20540-leg3-t13.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg3-t3.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg3-t3.webp" alt="V-d-seed20540-leg3-t3.webp"></a><figcaption>V-d-seed20540-leg3-t3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg3-t5.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg3-t5.webp" alt="V-d-seed20540-leg3-t5.webp"></a><figcaption>V-d-seed20540-leg3-t5.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-d-seed20540-leg3-t8.webp"><img loading="lazy" src="progress/round-19/critic/V-d-seed20540-leg3-t8.webp" alt="V-d-seed20540-leg3-t8.webp"></a><figcaption>V-d-seed20540-leg3-t8.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg1-t0.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg1-t0.webp" alt="V-m-seed20540-leg1-t0.webp"></a><figcaption>V-m-seed20540-leg1-t0.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg1-t3.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg1-t3.webp" alt="V-m-seed20540-leg1-t3.webp"></a><figcaption>V-m-seed20540-leg1-t3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg1-t5.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg1-t5.webp" alt="V-m-seed20540-leg1-t5.webp"></a><figcaption>V-m-seed20540-leg1-t5.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg1-t8.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg1-t8.webp" alt="V-m-seed20540-leg1-t8.webp"></a><figcaption>V-m-seed20540-leg1-t8.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg2-t0.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg2-t0.webp" alt="V-m-seed20540-leg2-t0.webp"></a><figcaption>V-m-seed20540-leg2-t0.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg2-t10.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg2-t10.webp" alt="V-m-seed20540-leg2-t10.webp"></a><figcaption>V-m-seed20540-leg2-t10.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg2-t13.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg2-t13.webp" alt="V-m-seed20540-leg2-t13.webp"></a><figcaption>V-m-seed20540-leg2-t13.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg2-t3.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg2-t3.webp" alt="V-m-seed20540-leg2-t3.webp"></a><figcaption>V-m-seed20540-leg2-t3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg2-t5.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg2-t5.webp" alt="V-m-seed20540-leg2-t5.webp"></a><figcaption>V-m-seed20540-leg2-t5.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg2-t8.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg2-t8.webp" alt="V-m-seed20540-leg2-t8.webp"></a><figcaption>V-m-seed20540-leg2-t8.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg3-t0.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg3-t0.webp" alt="V-m-seed20540-leg3-t0.webp"></a><figcaption>V-m-seed20540-leg3-t0.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg3-t10.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg3-t10.webp" alt="V-m-seed20540-leg3-t10.webp"></a><figcaption>V-m-seed20540-leg3-t10.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg3-t13.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg3-t13.webp" alt="V-m-seed20540-leg3-t13.webp"></a><figcaption>V-m-seed20540-leg3-t13.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg3-t3.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg3-t3.webp" alt="V-m-seed20540-leg3-t3.webp"></a><figcaption>V-m-seed20540-leg3-t3.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg3-t5.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg3-t5.webp" alt="V-m-seed20540-leg3-t5.webp"></a><figcaption>V-m-seed20540-leg3-t5.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/V-m-seed20540-leg3-t8.webp"><img loading="lazy" src="progress/round-19/critic/V-m-seed20540-leg3-t8.webp" alt="V-m-seed20540-leg3-t8.webp"></a><figcaption>V-m-seed20540-leg3-t8.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/d-h01-title.webp"><img loading="lazy" src="progress/round-19/critic/d-h01-title.webp" alt="d-h01-title.webp"></a><figcaption>d-h01-title.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/d-h02-low-drafting.webp"><img loading="lazy" src="progress/round-19/critic/d-h02-low-drafting.webp" alt="d-h02-low-drafting.webp"></a><figcaption>d-h02-low-drafting.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/d-h03-low-meter-half.webp"><img loading="lazy" src="progress/round-19/critic/d-h03-low-meter-half.webp" alt="d-h03-low-meter-half.webp"></a><figcaption>d-h03-low-meter-half.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/d-h04-low-payout-pop.webp"><img loading="lazy" src="progress/round-19/critic/d-h04-low-payout-pop.webp" alt="d-h04-low-payout-pop.webp"></a><figcaption>d-h04-low-payout-pop.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/d-h05-low-payout-chain.webp"><img loading="lazy" src="progress/round-19/critic/d-h05-low-payout-chain.webp" alt="d-h05-low-payout-chain.webp"></a><figcaption>d-h05-low-payout-chain.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/d-h06-high-wind.webp"><img loading="lazy" src="progress/round-19/critic/d-h06-high-wind.webp" alt="d-h06-high-wind.webp"></a><figcaption>d-h06-high-wind.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/d-h08-end.webp"><img loading="lazy" src="progress/round-19/critic/d-h08-end.webp" alt="d-h08-end.webp"></a><figcaption>d-h08-end.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/m-h01-title.webp"><img loading="lazy" src="progress/round-19/critic/m-h01-title.webp" alt="m-h01-title.webp"></a><figcaption>m-h01-title.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/m-h02-low-drafting.webp"><img loading="lazy" src="progress/round-19/critic/m-h02-low-drafting.webp" alt="m-h02-low-drafting.webp"></a><figcaption>m-h02-low-drafting.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/m-h03-low-meter-half.webp"><img loading="lazy" src="progress/round-19/critic/m-h03-low-meter-half.webp" alt="m-h03-low-meter-half.webp"></a><figcaption>m-h03-low-meter-half.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/m-h04-low-payout-pop.webp"><img loading="lazy" src="progress/round-19/critic/m-h04-low-payout-pop.webp" alt="m-h04-low-payout-pop.webp"></a><figcaption>m-h04-low-payout-pop.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/m-h05-low-payout-chain.webp"><img loading="lazy" src="progress/round-19/critic/m-h05-low-payout-chain.webp" alt="m-h05-low-payout-chain.webp"></a><figcaption>m-h05-low-payout-chain.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/m-h06-high-wind.webp"><img loading="lazy" src="progress/round-19/critic/m-h06-high-wind.webp" alt="m-h06-high-wind.webp"></a><figcaption>m-h06-high-wind.webp</figcaption></figure>
+<figure><a href="progress/round-19/critic/m-h08-end.webp"><img loading="lazy" src="progress/round-19/critic/m-h08-end.webp" alt="m-h08-end.webp"></a><figcaption>m-h08-end.webp</figcaption></figure></div></section>
 <section><h2>round 18</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 18 critic report
 
 **Verdict:** Route choice is real now, but it is one-note. The diagonal boulevards make 33 of the 35 shortcut legs. The alleys and tunnels look great and fly cleanly. But they almost never change the best route. The game also never names or points out a shortcut. Both leftovers are closed. All guards and gates pass, with two notes: one street run under heavy machine load scored Bronze (clean reruns: Silver), and the high-line bot still stalls on seed 130 (a bot fault, explained below).

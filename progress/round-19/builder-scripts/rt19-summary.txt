@@ -1,0 +1,134 @@
+== acc-low.log
+77984 3268 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999968
+   ending ot False finished False otSec 0 partial 0
+   del 4 crashes 0 simT 123
+51714 2644 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999966
+   ending ot False finished False otSec 0 partial 0
+   del 3 crashes 0 simT 104
+55642 2516 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999999966
+   ending ot True finished True otSec 11.425300000000059 partial 0
+   del 4 crashes 0 simT 127
+15336 3889 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 2 made 2 rushLanes 0.9999999999999964
+   ending ot False finished False otSec 0 partial 0
+   del 4 crashes 0 simT 126
+80212 2273 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot False finished False otSec 0 partial 0
+   del 3 crashes 0 simT 97
+55130 2680 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot False finished False otSec 0 partial 9
+   del 3 crashes 0 simT 100
+41128 2303 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999967
+   ending ot False finished False otSec 0 partial 0
+   del 3 crashes 0 simT 98
+23571 3230 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999999966
+   ending ot True finished True otSec 6.406999999999982 partial 0
+   del 4 crashes 0 simT 132
+72971 3297 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 2 made 1 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 8.441899999999954 partial 0
+   del 4 crashes 0 simT 134
+37812 2998 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999967
+   ending ot True finished True otSec 1.1239999999999988 partial 0
+   del 4 crashes 0 simT 120
+15756 2283 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999966
+   ending ot False finished False otSec 0 partial 0
+   del 3 crashes 0 simT 100
+63138 2878 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot False finished False otSec 0 partial 61
+   del 3 crashes 0 simT 109
+== acc-lazy.log
+77984 1041 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 10.658300000000013 partial 0
+   del 3 crashes 0 simT 97
+51714 714  tierOk True card NO MEDAL YET bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999999966
+   ending ot True finished True otSec 10.78330000000005 partial 0
+   del 2 crashes 0 simT 88
+55642 1413 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 10.82540000000003 partial 0
+   del 3 crashes 0 simT 98
+15336 1083 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999452
+   ending ot True finished True otSec 5.483299999999972 partial 0
+   del 2 crashes 0 simT 78
+80212 658  tierOk True card NO MEDAL YET bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999985302
+   ending ot True finished True otSec 4.508299999999987 partial 0
+   del 2 crashes 0 simT 76
+55130 813  tierOk True card NO MEDAL YET bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999825207133
+   ending ot True finished True otSec 1.5086999999999944 partial 0
+   del 2 crashes 0 simT 70
+41128 1039 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 9.766500000000002 partial 0
+   del 3 crashes 0 simT 95
+23571 1596 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 9.033299999999997 partial 0
+   del 3 crashes 0 simT 100
+72971 1002 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999457668245
+   ending ot False finished False otSec 0 partial 0
+   del 2 crashes 0 simT 69
+37812 1339 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 3.891299999999992 partial 0
+   del 3 crashes 0 simT 89
+15756 1026 Bronze tierOk True card BRONZE MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999915728569
+   ending ot False finished False otSec 0 partial 0
+   del 2 crashes 0 simT 71
+63138 715  tierOk True card NO MEDAL YET bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 8.624899999999958 partial 0
+   del 2 crashes 0 simT 84
+== m-low-a.log
+22 2932 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999966
+   del 3 crashes 0 simT 106
+58 3492 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999999966
+   del 4 crashes 0 simT 131
+130 2007 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   del 3 crashes 0 simT 99
+== m-high-a.log
+22 2783 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 2 made 2 rushLanes 0.9999999999999966
+   ending ot False finished False otSec 0 partial 20
+   del 6 crashes 4 simT 118
+58 2086 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot False finished False otSec 0 partial 0
+   del 4 crashes 2 simT 114
+130 3161 Silver tierOk True card SILVER MEDAL bdOk True domOk True trunc False
+   rush startedAt 60 orders 2 made 2 rushLanes 0.9999999999999967
+   ending ot True finished True otSec 5.696944000000011 partial 0
+   del 7 crashes 4 simT 125
+== m-lazy-a.log
+22 566  tierOk True card NO MEDAL YET bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 0 rushLanes 0.9999999999999964
+   ending ot True finished True otSec 10.166300000000005 partial 0
+   del 2 crashes 0 simT 84
+58 895  tierOk True card NO MEDAL YET bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999999964
+   ending ot False finished False otSec 0 partial 23
+   del 2 crashes 0 simT 85
+130 932  tierOk True card NO MEDAL YET bdOk True domOk True trunc False
+   rush startedAt 60 orders 1 made 1 rushLanes 0.9999999999632319
+   ending ot True finished True otSec 4.25819999999998 partial 0
+   del 2 crashes 0 simT 74

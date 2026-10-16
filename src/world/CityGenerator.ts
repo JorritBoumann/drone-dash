@@ -44,6 +44,8 @@ const PAD_CLEAR = 1.2;
 const AWNING_DEPTH = 0.5;
 const SIDEWALK_H = 0.25;
 const SIDEWALK_W = 3;
+/** Round 19: alley blocks set their mouth faces back this far (a wider apron to turn into the alley from the street). */
+const MOUTH_SET = 1.5;
 
 const WALLS = ['#f2d7b6', '#e8b48a', '#d98f6c', '#c9705c', '#f4e6cf', '#a9c2a8', '#86adae', '#c9bdd9', '#ecc871', '#d6a676', '#adc0cf', '#f1eee4', '#e0a39a'];
 const TOWER_WALLS = ['#dfe3e6', '#bccad4', '#a4b6c6', '#e6dac8', '#8fa5b5', '#cdbba7', '#f0e5d3'];
@@ -261,16 +263,18 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
 
         let cols = down > 0.55 ? randInt(rng, 1, 2) : randInt(rng, 2, 3);
         let rows = down > 0.55 ? randInt(rng, 1, 2) : randInt(rng, 2, 3);
-        const ix0 = x0 + SIDEWALK_W, iz0 = z0 + SIDEWALK_W;
-        const inner = B - SIDEWALK_W * 2;
+        // round 19: an alley block sets its mouth faces back by MOUTH_SET (a wider apron to turn in from the street)
+        const setX = alley?.axis === 'x' ? MOUTH_SET : 0, setZ = alley?.axis === 'z' ? MOUTH_SET : 0;
+        const ix0 = x0 + SIDEWALK_W + setX, iz0 = z0 + SIDEWALK_W + setZ;
+        const innerX = B - SIDEWALK_W * 2 - setX * 2, innerZ = B - SIDEWALK_W * 2 - setZ * 2;
         const gap = 0.9;
         // round 18: an alley is a wide gap between two columns (axis z) or two rows (axis x) of lots
         let gapX = gap, gapZ = gap;
         if (alley?.axis === 'z') { cols = 2; gapX = alley.width; }
         if (alley?.axis === 'x') { rows = 2; gapZ = alley.width; }
         if (blockCuts.length) { cols = Math.max(cols, 2); rows = Math.max(rows, 2); }
-        const lw = (inner - gapX * (cols - 1)) / cols;
-        const ld = (inner - gapZ * (rows - 1)) / rows;
+        const lw = (innerX - gapX * (cols - 1)) / cols;
+        const ld = (innerZ - gapZ * (rows - 1)) / rows;
         for (let c = 0; c < cols; c++) {
           for (let r = 0; r < rows; r++) {
             const lx0 = ix0 + c * (lw + gapX);
@@ -302,13 +306,21 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
               pad(res.padRoof.x, res.padRoof.y - 0.2, res.padRoof.z, 3, '#f2f2f2');
             }
             // Doorstep delivery spots on street-facing facades.
-            if (chance(rng, 0.42)) {
-              const faces: Array<[number, number, number, number]> = [];
+            // round 19: lots beside an alley mouth get a doorstep more often, placed beside the mouth (on the line the
+            // alley carries across the street), so legs can start and end on an alley line
+            const mouthLot = alley?.axis === 'z' ? (edgeN || edgeS) : alley?.axis === 'x' ? (edgeW || edgeE) : false;
+            if (chance(rng, mouthLot ? 0.8 : 0.42)) {
+              let faces: Array<[number, number, number, number]> = [];
               const ok = (x: number, z: number, bx: number, bz: number) => !cutLot || (outside(x, z, 3) && outside(bx, bz, 2.5));
-              if (edgeN && ok(lx0 + lw / 2, lz0 - 1.5, lx0 + lw / 2, lz0 + 1)) faces.push([lx0 + lw / 2, lz0 - 1.5, 0, -1]);
-              if (edgeS && ok(lx0 + lw / 2, lz0 + ld + 1.5, lx0 + lw / 2, lz0 + ld - 1)) faces.push([lx0 + lw / 2, lz0 + ld + 1.5, 0, 1]);
-              if (edgeW && ok(lx0 - 1.5, lz0 + ld / 2, lx0 + 1, lz0 + ld / 2)) faces.push([lx0 - 1.5, lz0 + ld / 2, -1, 0]);
-              if (edgeE && ok(lx0 + lw + 1.5, lz0 + ld / 2, lx0 + lw - 1, lz0 + ld / 2)) faces.push([lx0 + lw + 1.5, lz0 + ld / 2, 1, 0]);
+              // x (or z) of the doorstep on a mouth face: 2.2 m from the alley wall, else the middle of the face
+              const fx = alley?.axis === 'z' ? (lx0 + lw / 2 < cx ? lx0 + lw - 2.2 : lx0 + 2.2) : lx0 + lw / 2;
+              const fz = alley?.axis === 'x' ? (lz0 + ld / 2 < cz ? lz0 + ld - 2.2 : lz0 + 2.2) : lz0 + ld / 2;
+              const mouthFaces: typeof faces = [];
+              if (edgeN && ok(fx, lz0 - 1.5, fx, lz0 + 1)) (alley?.axis === 'z' ? mouthFaces : faces).push([fx, lz0 - 1.5, 0, -1]);
+              if (edgeS && ok(fx, lz0 + ld + 1.5, fx, lz0 + ld - 1)) (alley?.axis === 'z' ? mouthFaces : faces).push([fx, lz0 + ld + 1.5, 0, 1]);
+              if (edgeW && ok(lx0 - 1.5, fz, lx0 + 1, fz)) (alley?.axis === 'x' ? mouthFaces : faces).push([lx0 - 1.5, fz, -1, 0]);
+              if (edgeE && ok(lx0 + lw + 1.5, fz, lx0 + lw - 1, fz)) (alley?.axis === 'x' ? mouthFaces : faces).push([lx0 + lw + 1.5, fz, 1, 0]);
+              if (mouthFaces.length) faces = mouthFaces;
               if (faces.length) {
                 const f = pick(rng, faces);
                 const p = new THREE.Vector3(f[0], SIDEWALK_H + 0.12, f[1]);
@@ -332,6 +344,39 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
         const az0 = alley.axis === 'x' ? cz - W / 2 : z0, az1 = alley.axis === 'x' ? cz + W / 2 : z1;
         gb.box(ax0, SIDEWALK_H, az0, ax1, SIDEWALK_H + 0.03, az1, color(alley.covered ? '#8a7f74' : '#a8664c', 0.2, rng), Style.paving);
         clearRects.push(alley.axis === 'z' ? [ax0 - 1.6, z0 - 0.5, ax1 + 1.6, z1 + 0.5] : [x0 - 0.5, az0 - 1.6, x1 + 0.5, az1 + 1.6]);
+        // round 19: a lit mouth at both ends (drawn only, flush on the faces): glowing corner posts, a name board on each
+        // side and two chevrons on the apron pointing in, amber for an alley, ice blue for a tunnel
+        {
+          const glow = color(alley.covered ? '#7fd0ff' : '#ffb648');
+          const chev = color(alley.covered ? '#9fdcff' : '#ffd27a');
+          const face = SIDEWALK_W + MOUTH_SET; // the mouth faces stand this far in from the block edge
+          for (const end of [-1, 1]) {
+            // u: along the alley (into the block is -end), v: across it
+            const along = alley.axis === 'z';
+            const mouthU = (along ? cz : cx) + end * (B / 2 - face); // face line
+            const edgeU = (along ? cz : cx) + end * (B / 2); // block edge
+            const cV = along ? cx : cz;
+            const P = (u: number, v: number): [number, number] => (along ? [v, u] : [u, v]);
+            for (const side of [-1, 1]) {
+              const v0 = cV + side * (W / 2), v1 = cV + side * (W / 2 + 0.35);
+              const [ax0, az0] = P(mouthU, Math.min(v0, v1)), [ax1, az1] = P(mouthU + end * 0.06, Math.max(v0, v1));
+              gb.box(Math.min(ax0, ax1), SIDEWALK_H + 0.4, Math.min(az0, az1), Math.max(ax0, ax1), SIDEWALK_H + 6.2, Math.max(az0, az1), glow, Style.emissive);
+              const s0 = cV + side * (W / 2 + 0.6), s1 = cV + side * (W / 2 + 2.2);
+              const [bx0, bz0] = P(mouthU, Math.min(s0, s1)), [bx1, bz1] = P(mouthU + end * 0.08, Math.max(s0, s1));
+              gb.box(Math.min(bx0, bx1), SIDEWALK_H + 4.1, Math.min(bz0, bz1), Math.max(bx0, bx1), SIDEWALK_H + 4.9, Math.max(bz0, bz1), glow, Style.emissive);
+            }
+            for (let k = 0; k < 2; k++) {
+              const tipU = edgeU - end * (1.6 + k * 1.5);
+              for (const side of [-1, 1]) {
+                // arm from the tip back toward the street and out to the side
+                const du = end * 0.55, dv = side * 0.55;
+                const [mx, mz] = P(tipU + du, cV + dv);
+                const [vx, vz] = P(du, dv);
+                gb.append(new THREE.BoxGeometry(0.3, 0.04, 1.55), mat(mx, SIDEWALK_H + 0.05, mz, 1, 1, 1, Math.atan2(vx, vz)), chev, Style.emissive);
+              }
+            }
+          }
+        }
         // wall lanterns every 5 m on both sides (drawn only)
         const lantern = color(alley.covered ? '#bfe3ff' : '#ffc46b');
         const len = B - 2;

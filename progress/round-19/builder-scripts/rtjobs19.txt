@@ -1,0 +1,16 @@
+SEED=22 node msg-probe19.mjs > msg-d-22.log 2>&1
+node hand-fly.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly.mjs > hf-mobile.log 2>&1
+LINE=low SEEDS=77984,51714,55642,15336,80212,55130,41128,23571,72971,37812,15756,63138 SIMT=600 node route-play-rt-x-m-esc17.mjs > acc-low.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=77984,51714,55642,15336,80212,55130,41128,23571,72971,37812,15756,63138 SIMT=600 node balance-probe-m-esc17.mjs > acc-lazy.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > m-lazy-a.log 2>&1
+SEED=22 node msg-probe19.mjs > msg-d-22b.log 2>&1
+MOBILE=1 SEED=58 node msg-probe19.mjs > msg-m-58.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+SEED=22 node msg-probe19.mjs > msg-d-22c.log 2>&1
+MOBILE=1 SEED=58 node msg-probe19.mjs > msg-m-58c.log 2>&1
+END

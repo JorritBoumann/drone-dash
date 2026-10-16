@@ -17,8 +17,11 @@ export type Alley = { bi: number; bj: number; axis: 'x' | 'z' | 'd+' | 'd-'; cov
 export type RushLane = { axis: 0 | 1; index: number };
 
 const DIAG_NAMES = ['Kestrel Boulevard', 'Old Tram Way', 'Copper Diagonal', 'Harbor Slant', 'Union Cut', 'Lumen Parade'];
-const ALLEY_NAMES = ['Lantern Alley', 'Tinker Lane', 'Cobble Row', 'Paper Lane', 'Ginger Alley', 'Kite Lane', 'Tailor Row', 'Ink Alley', 'Bell Lane', 'Mint Alley', 'Plum Row', 'Rope Lane'];
-const TUNNEL_NAMES = ['Arcade Tunnel', 'Clock Tunnel', 'Gallery Tunnel', 'Market Tunnel', 'Echo Tunnel', 'Station Tunnel'];
+// Round 19: names never repeat within a city. Alleys draw a distinct first word (30) and a random second word.
+const ALLEY_FIRST = ['Lantern', 'Tinker', 'Cobble', 'Paper', 'Ginger', 'Kite', 'Tailor', 'Ink', 'Bell', 'Mint', 'Plum', 'Rope', 'Candle', 'Button',
+  'Thimble', 'Saffron', 'Pepper', 'Velvet', 'Sparrow', 'Hatter', 'Fiddle', 'Quill', 'Barrel', 'Cinder', 'Honey', 'Pigeon', 'Ribbon', 'Walnut', 'Teacup', 'Marble'];
+const ALLEY_SECOND = ['Alley', 'Lane', 'Row', 'Passage', 'Walk'];
+const TUNNEL_NAMES = ['Arcade Tunnel', 'Clock Tunnel', 'Gallery Tunnel', 'Market Tunnel', 'Echo Tunnel', 'Station Tunnel', 'Vault Tunnel', 'Bridge Tunnel', 'Organ Tunnel', 'Lamplight Tunnel'];
 
 export const ALLEY_WIDTH = 6;
 export const TUNNEL_CLEAR = 7; // m above the sidewalk
@@ -61,24 +64,43 @@ export function boulevardStops(b: Boulevard, roadCenters: number[]): Array<{ x: 
   return [...pts.values()].sort((p, q) => p.x - q.x);
 }
 
-/** Alleys and tunnels in ordinary blocks (not parks, depots or the diagonal's blocks). */
+/**
+ * Round 19: alleys and tunnels in **lines**. Each city gets three lines through the blocks along z and three along x,
+ * 3 to 5 blocks long, at the middle of the blocks. So an alley carries on across the street into the next block, and a
+ * pad near an alley mouth has a straight narrow line to pads near the mouths further down it (the job picker uses
+ * that). Parks and depots break a line. Alleys near the middle of the city may be covered (tunnels, at least 2).
+ * Every alley and tunnel has its own name.
+ */
 export function planAlleys(rng: Rng, blocks: number, blocked: Set<string>): Alley[] {
   const alleys: Alley[] = [];
-  let a = randInt(rng, 0, ALLEY_NAMES.length - 1), t = randInt(rng, 0, TUNNEL_NAMES.length - 1);
+  const used = new Set<string>(blocked);
+  const firsts = ALLEY_FIRST.slice();
+  const tunnels = TUNNEL_NAMES.slice();
+  const alleyName = () => `${firsts.splice(randInt(rng, 0, firsts.length - 1), 1)[0]} ${pick(rng, ALLEY_SECOND)}`;
   const c = (blocks - 1) / 2;
-  for (let bi = 0; bi < blocks; bi++) {
-    for (let bj = 0; bj < blocks; bj++) {
-      if (blocked.has(`${bi},${bj}`)) { rng(); rng(); rng(); continue; }
-      const roll = rng(), axisRoll = rng(), coverRoll = rng();
-      if (roll > 0.4) continue;
-      const central = Math.hypot(bi - c, bj - c) < 2.6;
-      const covered = central && coverRoll < 0.4;
-      alleys.push({
-        bi, bj, axis: axisRoll < 0.5 ? 'x' : 'z', covered, width: true ? ALLEY_WIDTH : DIAG_ALLEY_HALF * 2,
-        name: covered ? TUNNEL_NAMES[t++ % TUNNEL_NAMES.length] : ALLEY_NAMES[a++ % ALLEY_NAMES.length],
-      });
+  const lines: Array<{ axis: 'x' | 'z'; at: number; from: number; len: number }> = [];
+  for (const axis of ['z', 'x'] as const) {
+    const ats = Array.from({ length: blocks }, (_, i) => i);
+    for (let k = 0; k < 3; k++) {
+      const at = ats.splice(randInt(rng, 0, ats.length - 1), 1)[0];
+      const len = randInt(rng, 3, 5);
+      lines.push({ axis, at, from: randInt(rng, 0, blocks - len), len });
     }
   }
+  for (const ln of lines) {
+    for (let t = ln.from; t < ln.from + ln.len; t++) {
+      const bi = ln.axis === 'z' ? ln.at : t, bj = ln.axis === 'z' ? t : ln.at;
+      const coverRoll = rng();
+      if (used.has(`${bi},${bj}`)) continue;
+      used.add(`${bi},${bj}`);
+      const central = Math.hypot(bi - c, bj - c) < 2.6;
+      alleys.push({ bi, bj, axis: ln.axis, covered: central && coverRoll < 0.35, width: ALLEY_WIDTH, name: '' });
+    }
+  }
+  // at least two tunnels: cover the most central open alleys
+  const byCentre = alleys.filter((a) => !a.covered && Math.hypot(a.bi - c, a.bj - c) < 2.6).sort((p, q) => Math.hypot(p.bi - c, p.bj - c) - Math.hypot(q.bi - c, q.bj - c));
+  while (alleys.filter((a) => a.covered).length < 2 && byCentre.length) byCentre.shift()!.covered = true;
+  for (const a of alleys) a.name = a.covered && tunnels.length ? tunnels.splice(randInt(rng, 0, tunnels.length - 1), 1)[0] : alleyName();
   return alleys;
 }
 

@@ -196,6 +196,14 @@ export class Environment {
   private readonly dummy = new THREE.Object3D();
   private readonly half: number;
   readonly props: PropRec[] = [];
+  // round 18: rush lanes (two streets that light up at rush hour) and the hover-vans that stream along them
+  private rushTarget = 0;
+  rushLevel = 0;
+  private laneMat: THREE.MeshStandardMaterial | null = null;
+  private vans: THREE.InstancedMesh | null = null;
+  private vanGlow: THREE.InstancedMesh | null = null;
+  private readonly vanState: Array<{ axis: 0 | 1; line: number; dir: 1 | -1; pos: number; speed: number; lane: number; bob: number; delay: number }> = [];
+  private rushClock = 0;
 
   constructor(private readonly layout: CityLayout, seed: number) {
     const rng = createSeededRandom(seed * 31 + 7);
@@ -237,6 +245,111 @@ export class Environment {
     this.group.add(this.cars);
     this.group.add(this.createSkyline(rng));
     this.group.add(this.createRailings());
+    if (layout.rushLanes.length) this.group.add(...this.createRushLanes());
+  }
+
+  /** Round 18: rush hour on (true) or reset (false). The lanes light up and hover-vans stream in from the city edge. */
+  setRush(on: boolean): void {
+    this.rushTarget = on ? 1 : 0;
+    this.rushClock = 0;
+    if (!on) this.rushLevel = 0;
+    if (this.laneMat && !on) this.laneMat.emissiveIntensity = 0;
+    this.updateVans(0);
+  }
+
+  private createRushLanes(): THREE.Object3D[] {
+    const { roadCenters, half } = this.layout;
+    const parts: THREE.BufferGeometry[] = [];
+    const len = half * 2;
+    for (const lane of this.layout.rushLanes) {
+      const c = roadCenters[lane.index];
+      for (const off of [-5.2, -0.6, 0.6, 5.2]) {
+        const g = new THREE.PlaneGeometry(lane.axis === 0 ? len : 0.35, lane.axis === 0 ? 0.35 : len).rotateX(-Math.PI / 2);
+        g.translate(lane.axis === 0 ? 0 : c + off, 0.045, lane.axis === 0 ? c + off : 0);
+        parts.push(g);
+      }
+      // chevrons every 11 m pointing both ways down the lanes
+      for (let t = -half + 6; t < half - 4; t += 11) {
+        for (const side of [-1, 1]) {
+          for (const arm of [-1, 1]) {
+            const g = new THREE.PlaneGeometry(0.4, 2.0).rotateX(-Math.PI / 2).rotateY(arm * 0.6 * side);
+            const along = t + arm * 0.0;
+            const across = c + side * 2.9 + arm * 0.55;
+            g.translate(lane.axis === 0 ? along : across, 0.05, lane.axis === 0 ? across : along);
+            parts.push(g);
+          }
+        }
+      }
+    }
+    const geo = mergeGeometries(parts)!;
+    this.laneMat = new THREE.MeshStandardMaterial({
+      color: '#c08a3a', emissive: '#ffae3c', emissiveIntensity: 0, roughness: 0.7,
+      polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+    });
+    const lanes = new THREE.Mesh(geo, this.laneMat);
+    lanes.name = 'rush-lanes';
+    lanes.receiveShadow = true;
+
+    // hover-vans: boxy delivery vans on a glowing hover pad, 3 m up, hidden until rush hour
+    const body = mergeGeometries([
+      coloredBox(2.1, 1.7, 4.6, 0, 0, 0, '#f4efe6'),
+      coloredBox(2.12, 0.32, 4.62, 0, -0.35, 0, '#e8833a'),
+      coloredBox(1.9, 0.62, 0.1, 0, 0.35, 2.3, '#2b3440'),
+      coloredBox(0.5, 0.2, 0.06, -0.7, -0.45, 2.32, '#fff6d8'),
+      coloredBox(0.5, 0.2, 0.06, 0.7, -0.45, 2.32, '#fff6d8'),
+      coloredBox(0.5, 0.2, 0.06, -0.7, -0.45, -2.32, '#d23a2a'),
+      coloredBox(0.5, 0.2, 0.06, 0.7, -0.45, -2.32, '#d23a2a'),
+      coloredBox(1.6, 0.25, 3.6, 0, -1.0, 0, '#3a4654'),
+    ])!;
+    const n = 18;
+    this.vans = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.1 }), n);
+    this.vanGlow = new THREE.InstancedMesh(new THREE.BoxGeometry(1.4, 0.06, 3.2).translate(0, -1.16, 0), new THREE.MeshBasicMaterial({ color: '#8fe3ff' }), n);
+    const rng = createSeededRandom(this.layout.rushLanes[0].index * 977 + this.layout.rushLanes[1].index * 31 + 5);
+    for (let i = 0; i < n; i++) {
+      const lane = this.layout.rushLanes[i % this.layout.rushLanes.length];
+      const dir = (i >> 1) % 2 === 0 ? 1 : -1;
+      this.vanState.push({ axis: lane.axis, line: roadCenters[lane.index], dir, pos: -dir * (half + 4), speed: range(rng, 15, 20), lane: dir * 2.9, bob: rng() * 6.28, delay: Math.floor(i / 4) * 2.2 + rng() * 1.5 });
+    }
+    for (const m of [this.vans, this.vanGlow]) {
+      m.frustumCulled = false;
+      m.castShadow = m === this.vans;
+    }
+    this.vans.name = 'hover-vans';
+    this.updateVans(0);
+    return [lanes, this.vans, this.vanGlow];
+  }
+
+  private updateVans(dt: number): void {
+    if (!this.vans || !this.vanGlow) return;
+    const half = this.half;
+    this.rushClock += dt;
+    for (let i = 0; i < this.vanState.length; i++) {
+      const v = this.vanState[i];
+      const live = this.rushTarget > 0 && this.rushClock > v.delay;
+      if (!live) {
+        v.pos = -v.dir * (half + 4);
+        this.dummy.scale.setScalar(0);
+      } else {
+        v.pos += v.dir * v.speed * dt;
+        if (v.pos > half + 6) v.pos -= half * 2 + 12;
+        if (v.pos < -half - 6) v.pos += half * 2 + 12;
+        this.dummy.scale.setScalar(1);
+      }
+      v.bob += dt * 2.2;
+      const y = 3.1 + Math.sin(v.bob) * 0.15;
+      if (v.axis === 0) {
+        this.dummy.position.set(v.pos, y, v.line + v.lane);
+        this.dummy.rotation.set(0, v.dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+      } else {
+        this.dummy.position.set(v.line - v.lane, y, v.pos);
+        this.dummy.rotation.set(0, v.dir > 0 ? 0 : Math.PI, 0);
+      }
+      this.dummy.updateMatrix();
+      this.vans.setMatrixAt(i, this.dummy.matrix);
+      this.vanGlow.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.vans.instanceMatrix.needsUpdate = true;
+    this.vanGlow.instanceMatrix.needsUpdate = true;
   }
 
   private createMarkings(): THREE.InstancedMesh {
@@ -582,6 +695,12 @@ export class Environment {
 
   update(dt: number, time: number): void {
     this.updateCars(dt);
+    if (this.laneMat) {
+      this.rushLevel += (this.rushTarget - this.rushLevel) * Math.min(1, dt * 1.5);
+      // lit lanes pulse gently once rush hour is on
+      this.laneMat.emissiveIntensity = this.rushLevel * (0.85 + 0.25 * Math.sin(time * 3.2));
+    }
+    if (this.rushTarget > 0 || this.rushClock === 0) this.updateVans(dt);
     this.waterNormal.offset.set(time * 0.004, time * 0.0025);
     for (const m of this.treeMaterials) {
       const shader = m.userData.shader as { uniforms: Record<string, THREE.IUniform> } | undefined;

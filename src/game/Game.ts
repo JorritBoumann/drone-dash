@@ -20,6 +20,7 @@ import { radialTexture } from '../world/Textures';
 import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
 import { cityLook, cityUrl, dateLabel, readDaily, resolveCity, writeDaily, type CityLook, type CityPick } from './cities';
 import { auditPads } from '../world/padAudit';
+import { routeOnGraph } from '../world/CityFeatures';
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
@@ -174,7 +175,7 @@ export class Game {
     // round 16: the city's look (light mood, park count) comes from its seed
     this.look = cityLook(this.seed);
     applyMood(MOODS[this.look.mood]);
-    this.layout = generateCity(createSeededRandom(this.seed), 7, this.look.parks);
+    this.layout = generateCity(createSeededRandom(this.seed), 7, this.look.parks, this.seed);
     this.world = new CollisionWorld(this.layout.colliders, 0);
     this.cityMaterial = createCityMaterial();
     const city = new THREE.Mesh(this.layout.geometry, this.cityMaterial);
@@ -206,6 +207,11 @@ export class Game {
     this.scene.add(this.blob);
 
     this.delivery = new DeliverySystem(this.layout.sites);
+    // round 18: legs prefer pads with a shortcut (see JOBS.shortcutBias)
+    this.delivery.shortcut = (from, s) => {
+      const g = routeOnGraph(this.layout.gridGraph, from.x, from.z, s.pos.x, s.pos.z).length;
+      return routeOnGraph(this.layout.graph, from.x, from.z, s.pos.x, s.pos.z).length <= g * 0.85;
+    };
 
     // Start hovering above a low rooftop / park pad near downtown so every direction shows city.
     const byCentre = (a: { pos: THREE.Vector3 }, b: { pos: THREE.Vector3 }) => a.pos.lengthSq() - b.pos.lengthSq();
@@ -337,6 +343,7 @@ export class Game {
     this.rushMissed = 0;
     this.rushPoints = 0;
     this.lastWasRush = false;
+    this.env.setRush(false);
     this.hud.setRush(0, 0);
     this.scoreLog = [];
     this.newLeg(this.startPos);
@@ -391,9 +398,13 @@ export class Game {
    * Only on a run that has delivered at least once, so a no-delivery farm still scores 0.
    */
   private timeUp(): void {
-    if (this.bank > 0 && this.delivery.deliveries > 0 && this.legRoute3 > 1 && this.onSchedule()) {
+    const D = this.delivery;
+    if (this.bank > 0 && D.deliveries >= RUN.partialMinDrops && this.legRoute3 > 1 && this.onSchedule()) {
       const share = this.legShare();
-      const pts = this.delivery.addPartial(this.bank * share);
+      // Round 18: capped at the street bonus the run has paid per delivery so far, so a farmed bank on a run with few
+      // drops cannot pay more at time-up than an honest drop would have.
+      const perDrop = (D.tally.slip - D.tally.partial) / Math.max(1, D.deliveries);
+      const pts = D.addPartial(Math.min(this.bank * share, perDrop));
       this.partialShare = share;
       this.scoreLog.push({ t: this.rt(), k: 'partial', v: pts, c: Math.round(share * 100) });
       this.bank -= pts;
@@ -427,6 +438,13 @@ export class Game {
     this.scoreLog.push({ t: this.rt(), k: 'end', v: this.bank });
     this.audio.gameOver(tierFor(score));
     this.audio.setMusicScene('over', tierFor(score));
+    // Round 18: points paid at time-up (the last-leg share) can cross a medal line after the last checkMedal, so the
+    // run's medal is settled here from the final score (no fanfare: the game-over card shows it).
+    const finalTier = tierFor(score);
+    if (finalTier > this.tier) {
+      for (let k = this.tier + 1; k <= finalTier; k++) this.tierPasses.push({ tier: k, name: tierName(k), score, t: this.rt() });
+      this.tier = finalTier;
+    }
     const newBest = score > this.best;
     if (newBest) {
       this.best = score;
@@ -875,6 +893,7 @@ export class Game {
     if (!this.rushOn && this.runTime >= RUSH.startAt && this.delivery.timeLeft > 0) {
       this.rushOn = true;
       this.rushAt = this.rt();
+      this.env.setRush(true);
       this.scoreLog.push({ t: this.rt(), k: 'rushhour', v: 0 });
       const aboard = this.delivery.phase === 'deliver';
       this.hud.eventPop('Rush hour', aboard ? `This parcel is a rush order: +${RUSH.bonus} if you beat the tag` : `Rush parcels pay +${RUSH.bonus} if you beat the tag`);
@@ -1124,7 +1143,7 @@ export class Game {
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
       slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
       scoreLog: this.scoreLog,
-      city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier, mood: MOODS[this.look.mood].name, parks: this.look.parks },
+      city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier, mood: MOODS[this.look.mood].name, parks: this.look.parks, features: this.featureCounts, rushLanes: this.env.rushLevel },
       escalation: { kind: 'rush', on: this.rushOn, startedAt: this.rushAt, stage: !this.rushOn ? 0 : this.runTime >= RUSH.everyAt ? 2 : 1, orders: this.rushOrders, made: this.rushMade, missed: this.rushMissed, points: this.rushPoints, active: this.rushActive, left: Math.max(0, this.rushLeft), window: this.rushWindow },
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
@@ -1164,6 +1183,13 @@ export class Game {
         dpr: Math.min(window.devicePixelRatio || 1, QUALITY.maxDpr),
       },
     };
+  }
+
+  /** Round 18: how many of each route-choice feature this city has (diagnostics). */
+  private get featureCounts(): Record<string, number> {
+    const c: Record<string, number> = { diagonal: 0, alley: 0, tunnel: 0 };
+    for (const f of this.layout.features) c[f.kind] = (c[f.kind] ?? 0) + 1;
+    return c;
   }
 
   private installHooks(): void {
@@ -1208,12 +1234,19 @@ export class Game {
       // round 15 test hook: build cities for these seeds (no rendering) and audit every pad (see world/padAudit.ts)
       padAudit: (seeds: number[]) =>
         seeds.map((seed) => {
-          const layout = generateCity(createSeededRandom(seed), 7, cityLook(seed).parks);
+          const layout = generateCity(createSeededRandom(seed), 7, cityLook(seed).parks, seed);
           const issues = auditPads(layout, FLIGHT.maxAltitude, 1.2, FLIGHT.radius);
           layout.geometry.dispose();
           return { seed, sites: layout.sites.length, issues };
         }),
       city: () => ({ ...this.city }),
+      // round 18 test hook: shortest street route between two points, on the full street graph (roads, alleys, tunnels,
+      // the diagonal) or on the plain grid (features = false). Bots and the route-choice probe use it.
+      streetRoute: (from: { x: number; z: number }, to: { x: number; z: number }, features = true, narrowPenalty = 0) =>
+        routeOnGraph(features ? this.layout.graph : this.layout.gridGraph, from.x, from.z, to.x, to.z, narrowPenalty),
+      features: () => this.layout.features.map((f) => ({ ...f })),
+      // round 18: the two rush lanes (axis 0 runs along x at z = at; axis 1 runs along z at x = at)
+      rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),
     };
     window.__THREE_GAME_TEST_HOOKS__ = {
       seed: (value: number) => {

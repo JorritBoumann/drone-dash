@@ -134,7 +134,7 @@ export class Slipstream {
     // first pass: nearest face
     for (const i of ids) {
       const b = world.boxes[i];
-      if (b.soft || b.maxY < p.y - S.roofSlack || b.minY > p.y + 0.5 || b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4) continue;
+      if (b.soft || b.maxY < p.y - S.roofSlack || b.minY > p.y + 0.5 || (!b.facade && (b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4))) continue;
       const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ));
       const dx = cx - p.x, dz = cz - p.z;
       const d = Math.hypot(dx, dz);
@@ -151,7 +151,7 @@ export class Slipstream {
     let across = r;
     for (const i of ids) {
       const b = world.boxes[i];
-      if (b.soft || b.maxY < p.y - S.roofSlack || b.minY > p.y + 0.5 || b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4) continue;
+      if (b.soft || b.maxY < p.y - S.roofSlack || b.minY > p.y + 0.5 || (!b.facade && (b.maxX - b.minX < 4 || b.maxZ - b.minZ < 4))) continue;
       const cx = Math.max(b.minX, Math.min(p.x, b.maxX)), cz = Math.max(b.minZ, Math.min(p.z, b.maxZ));
       const dx = cx - p.x, dz = cz - p.z;
       const d = Math.hypot(dx, dz);

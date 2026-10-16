@@ -1,9 +1,15 @@
 import * as THREE from 'three';
 import { chance, pick, randInt, range, type Rng } from '../core/random';
 import { GeometryBuilder, Style, color } from './GeometryBuilder';
+import {
+  TUNNEL_CLEAR, buildStreetGraph, boulevardStops, featureRng, planAlleys, planBoulevards, planRushLanes,
+  type Alley, type Boulevard, type FeatureKind, type RushLane, type StreetGraph,
+} from './CityFeatures';
 
 /** `soft` colliders (trees, lamp posts) block the drone but not the camera; those props are hidden near the camera instead. */
-export type Box = { minX: number; minY: number; minZ: number; maxX: number; maxY: number; maxZ: number; soft?: boolean };
+export type Box = { minX: number; minY: number; minZ: number; maxX: number; maxY: number; maxZ: number; soft?: boolean; facade?: boolean };
+/** Round 18: a named city feature (diagnostics, HUD): where it is and what kind. */
+export type CityFeature = { kind: FeatureKind; name: string; x: number; z: number; length: number };
 export type SiteKind = 'rooftop' | 'doorstep' | 'depot' | 'park';
 export type Site = { id: number; pos: THREE.Vector3; kind: SiteKind; name: string; radius: number };
 export type TreeSpec = { x: number; y: number; z: number; scale: number; color: THREE.Color; pine: boolean };
@@ -23,6 +29,13 @@ export type CityLayout = {
   awnings: Box[];
   geometry: THREE.BufferGeometry;
   buildingCount: number;
+  /** Round 18: route-choice features (diagonal avenue, alleys, tunnels) and the rush lanes. */
+  features: CityFeature[];
+  alleys: Alley[];
+  boulevards: Boulevard[];
+  rushLanes: RushLane[];
+  graph: StreetGraph;
+  gridGraph: StreetGraph;
 };
 
 const FLOOR_H = 3.2;
@@ -56,7 +69,7 @@ const cyl8 = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
 const cyl16 = new THREE.CylinderGeometry(1, 1, 1, 20, 1);
 const cone8 = new THREE.ConeGeometry(1, 1, 10, 1);
 
-export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
+export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | null = null): CityLayout {
   const B = 32;
   const R = 12;
   const size = blocks * B + (blocks + 1) * R;
@@ -85,6 +98,25 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
     gb.append(cyl16, mat(x, y + 0.08, z, r * 0.72, 0.12, r * 0.72), color('#454b54'), Style.plain);
   };
 
+  // Round 18: route-choice features from their own stream (seed hash). Blocks a boulevard clips are kept free of
+  // depots (their hangar fills the corners); parks may be clipped (only trees go).
+  const frng = seed === null ? null : featureRng(seed);
+  const boulevards = frng ? planBoulevards(frng) : [];
+  type Cut = { Pz: number; m: number; hw: number };
+  const cutsOf = (rx0: number, rz0: number, rx1: number, rz1: number, pad = 0): Cut[] =>
+    boulevards
+      .filter((b) => {
+        const v = [rz0 - b.s * rx0 - b.c, rz0 - b.s * rx1 - b.c, rz1 - b.s * rx0 - b.c, rz1 - b.s * rx1 - b.c];
+        const w = (b.halfWidth + pad) * Math.SQRT2;
+        return Math.max(...v) > -w && Math.min(...v) < w;
+      })
+      .map((b) => ({ Pz: b.c, m: b.s, hw: b.halfWidth }));
+  const reserved = new Set<string>();
+  for (let bi = 0; bi < blocks; bi++) for (let bj = 0; bj < blocks; bj++) {
+    const x0 = -half + R + bi * (B + R), z0 = -half + R + bj * (B + R);
+    if (cutsOf(x0, z0, x0 + B, z0 + B, 1).length) reserved.add(`${bi},${bj}`);
+  }
+
   // Special blocks: parks and depots, kept away from each other.
   const special = new Map<string, 'park' | 'depot'>();
   const centerIdx = Math.floor(blocks / 2);
@@ -94,7 +126,7 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
       const i = randInt(rng, 0, blocks - 1);
       const j = randInt(rng, 0, blocks - 1);
       const key = `${i},${j}`;
-      if (special.has(key)) continue;
+      if (special.has(key) || (type === 'depot' && reserved.has(key))) continue;
       if (type === 'depot' && Math.abs(i - centerIdx) + Math.abs(j - centerIdx) < 2) continue;
       if (type === 'park' && i === centerIdx && j === centerIdx) continue;
       special.set(key, type);
@@ -104,6 +136,19 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
   choose('depot', 2);
   choose('park', parks); // round 16: 2 to 4 parks per city (cities.cityLook); with 3 the layout is unchanged
   let depotNo = 0;
+  const blockedForAlleys = new Set<string>([...special.keys()]);
+  const alleys = frng ? planAlleys(frng, blocks, blockedForAlleys) : [];
+  const alleyAt = new Map(alleys.map((a) => [`${a.bi},${a.bj}`, a]));
+  const rushLanes = frng ? planRushLanes(frng, blocks) : [];
+  // z intervals the given cuts' corridors cover over x in [a, b]
+  const cutZRanges = (cs: Cut[]) => (a: number, b: number): Array<[number, number]> =>
+    cs.map((c) => {
+      const za = c.Pz + c.m * a, zb = c.Pz + c.m * b;
+      const w = c.hw * Math.SQRT2;
+      return [Math.min(za, zb) - w, Math.max(za, zb) + w] as [number, number];
+    });
+  // trees, lamps and soft props are kept out of these zones (alley mouths, the diagonal)
+  const clearRects: Array<[number, number, number, number]> = [];
 
   for (let bi = 0; bi < blocks; bi++) {
     for (let bj = 0; bj < blocks; bj++) {
@@ -136,6 +181,8 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
       }
 
       const doorsteps: THREE.Vector3[] = [];
+      const lotTops: Array<{ x0: number; z0: number; x1: number; z1: number; top: number }> = [];
+      const cutTops: number[] = [];
 
       if (type === 'park') {
         const ix0 = x0 + SIDEWALK_W, iz0 = z0 + SIDEWALK_W, ix1 = x1 - SIDEWALK_W, iz1 = z1 - SIDEWALK_W;
@@ -209,20 +256,46 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
         const dx = (cx) / half;
         const dz = (cz) / half;
         const down = 1 - Math.min(1, Math.hypot(dx, dz) / 1.05); // 1 at center, 0 at edge
-        const cols = down > 0.55 ? randInt(rng, 1, 2) : randInt(rng, 2, 3);
-        const rows = down > 0.55 ? randInt(rng, 1, 2) : randInt(rng, 2, 3);
+        const alley = alleyAt.get(`${bi},${bj}`);
+        const blockCuts = cutsOf(x0, z0, x1, z1);
+
+        let cols = down > 0.55 ? randInt(rng, 1, 2) : randInt(rng, 2, 3);
+        let rows = down > 0.55 ? randInt(rng, 1, 2) : randInt(rng, 2, 3);
         const ix0 = x0 + SIDEWALK_W, iz0 = z0 + SIDEWALK_W;
         const inner = B - SIDEWALK_W * 2;
         const gap = 0.9;
-        const lw = (inner - gap * (cols - 1)) / cols;
-        const ld = (inner - gap * (rows - 1)) / rows;
+        // round 18: an alley is a wide gap between two columns (axis z) or two rows (axis x) of lots
+        let gapX = gap, gapZ = gap;
+        if (alley?.axis === 'z') { cols = 2; gapX = alley.width; }
+        if (alley?.axis === 'x') { rows = 2; gapZ = alley.width; }
+        if (blockCuts.length) { cols = Math.max(cols, 2); rows = Math.max(rows, 2); }
+        const lw = (inner - gapX * (cols - 1)) / cols;
+        const ld = (inner - gapZ * (rows - 1)) / rows;
         for (let c = 0; c < cols; c++) {
           for (let r = 0; r < rows; r++) {
-            const lx0 = ix0 + c * (lw + gap);
-            const lz0 = iz0 + r * (ld + gap);
+            const lx0 = ix0 + c * (lw + gapX);
+            const lz0 = iz0 + r * (ld + gapZ);
             const edgeW = c === 0, edgeE = c === cols - 1, edgeN = r === 0, edgeS = r === rows - 1;
-            const res = addBuilding(gb, colliders, rng, lx0, lz0, lx0 + lw, lz0 + ld, down, { edgeW, edgeE, edgeN, edgeS }, awnings);
-            buildingCount++;
+            let cutLot = false;
+            // clear of the cut's corridor by `m` metres (true when this block has no cut)
+            const outside = (x: number, z: number, m: number) => blockCuts.every((c) => Math.abs(z - c.Pz - c.m * x) / Math.SQRT2 > c.hw + m);
+            const lotCuts = cutsOf(lx0, lz0, lx0 + lw, lz0 + ld, 0.2);
+            if (lotCuts.length) {
+              // round 18: a lot a boulevard clips becomes a stepped terrace along it (no rooftop pad; a doorstep only on
+              // a street face well clear of the cut)
+              {
+                cutTops.push(addCutBuilding(gb, colliders, rng, lx0, lz0, lx0 + lw, lz0 + ld, down, cutZRanges(lotCuts), alley?.covered ? 4 : 2));
+                buildingCount++;
+                cutLot = true;
+              }
+            }
+            const res = cutLot
+              ? { padRoof: null, tall: false, top: 0 }
+              : addBuilding(gb, colliders, rng, lx0, lz0, lx0 + lw, lz0 + ld, down, { edgeW, edgeE, edgeN, edgeS }, awnings, alley?.covered ? 4 : 1);
+            if (!cutLot) {
+              lotTops.push({ x0: lx0, z0: lz0, x1: lx0 + lw, z1: lz0 + ld, top: res.top });
+              buildingCount++;
+            }
             if (res.padRoof) {
               const name = res.tall ? TOWERS[towerNameIdx++ % TOWERS.length] : `${pick(rng, STREETS)} Lofts`;
               addSite(res.padRoof, 'rooftop', `${name} Rooftop`, 3);
@@ -231,10 +304,11 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
             // Doorstep delivery spots on street-facing facades.
             if (chance(rng, 0.42)) {
               const faces: Array<[number, number, number, number]> = [];
-              if (edgeN) faces.push([lx0 + lw / 2, lz0 - 1.5, 0, -1]);
-              if (edgeS) faces.push([lx0 + lw / 2, lz0 + ld + 1.5, 0, 1]);
-              if (edgeW) faces.push([lx0 - 1.5, lz0 + ld / 2, -1, 0]);
-              if (edgeE) faces.push([lx0 + lw + 1.5, lz0 + ld / 2, 1, 0]);
+              const ok = (x: number, z: number, bx: number, bz: number) => !cutLot || (outside(x, z, 3) && outside(bx, bz, 2.5));
+              if (edgeN && ok(lx0 + lw / 2, lz0 - 1.5, lx0 + lw / 2, lz0 + 1)) faces.push([lx0 + lw / 2, lz0 - 1.5, 0, -1]);
+              if (edgeS && ok(lx0 + lw / 2, lz0 + ld + 1.5, lx0 + lw / 2, lz0 + ld - 1)) faces.push([lx0 + lw / 2, lz0 + ld + 1.5, 0, 1]);
+              if (edgeW && ok(lx0 - 1.5, lz0 + ld / 2, lx0 + 1, lz0 + ld / 2)) faces.push([lx0 - 1.5, lz0 + ld / 2, -1, 0]);
+              if (edgeE && ok(lx0 + lw + 1.5, lz0 + ld / 2, lx0 + lw - 1, lz0 + ld / 2)) faces.push([lx0 + lw + 1.5, lz0 + ld / 2, 1, 0]);
               if (faces.length) {
                 const f = pick(rng, faces);
                 const p = new THREE.Vector3(f[0], SIDEWALK_H + 0.12, f[1]);
@@ -247,6 +321,57 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
               }
             }
           }
+        }
+      }
+
+      // Round 18: alley / tunnel dressing and the diagonal's paving.
+      const alley = alleyAt.get(`${bi},${bj}`);
+      if (alley && type === undefined) {
+        const W = alley.width;
+        const ax0 = alley.axis === 'z' ? cx - W / 2 : x0, ax1 = alley.axis === 'z' ? cx + W / 2 : x1;
+        const az0 = alley.axis === 'x' ? cz - W / 2 : z0, az1 = alley.axis === 'x' ? cz + W / 2 : z1;
+        gb.box(ax0, SIDEWALK_H, az0, ax1, SIDEWALK_H + 0.03, az1, color(alley.covered ? '#8a7f74' : '#a8664c', 0.2, rng), Style.paving);
+        clearRects.push(alley.axis === 'z' ? [ax0 - 1.6, z0 - 0.5, ax1 + 1.6, z1 + 0.5] : [x0 - 0.5, az0 - 1.6, x1 + 0.5, az1 + 1.6]);
+        // wall lanterns every 5 m on both sides (drawn only)
+        const lantern = color(alley.covered ? '#bfe3ff' : '#ffc46b');
+        const len = B - 2;
+        for (let t = 2.5; t < len; t += 5) {
+          for (const side of [-1, 1]) {
+            const off = side * (W / 2 - 0.2);
+            if (alley.axis === 'z') gb.box(cx + off - 0.15, SIDEWALK_H + 3.2, z0 + 1 + t - 0.2, cx + off + 0.15, SIDEWALK_H + 3.65, z0 + 1 + t + 0.2, lantern, Style.emissive);
+            else gb.box(x0 + 1 + t - 0.2, SIDEWALK_H + 3.2, cz + off - 0.15, x0 + 1 + t + 0.2, SIDEWALK_H + 3.65, cz + off + 0.15, lantern, Style.emissive);
+          }
+        }
+        if (alley.covered) {
+          // a building bridged over the middle of the alley: 7 m clear underneath, lit ceiling
+          const L = 8;
+          const y0 = SIDEWALK_H + TUNNEL_CLEAR;
+          const bx0 = alley.axis === 'z' ? cx - W / 2 - 0.6 : cx - L, bx1 = alley.axis === 'z' ? cx + W / 2 + 0.6 : cx + L;
+          const bz0 = alley.axis === 'x' ? cz - W / 2 - 0.6 : cz - L, bz1 = alley.axis === 'x' ? cz + W / 2 + 0.6 : cz + L;
+          const near = lotTops.filter((l) => l.x1 > bx0 - 1 && l.x0 < bx1 + 1 && l.z1 > bz0 - 1 && l.z0 < bz1 + 1).map((l) => l.top);
+          const top = Math.max(y0 + 2 * FLOOR_H, Math.min(...(near.length ? near : [y0 + 2 * FLOOR_H])) - FLOOR_H);
+          const wall = color(pick(rng, TOWER_WALLS), 0.4, rng);
+          gb.box(bx0, y0, bz0, bx1, top, bz1, wall, Style.punched, Math.floor(rng() * 256), { floorH: FLOOR_H, bottom: true });
+          gb.box(bx0 - 0.1, y0 - 0.35, bz0 - 0.1, bx1 + 0.1, y0, bz1 + 0.1, color('#3c4650'), Style.plain, 0, { bottom: true });
+          colliders.push({ minX: bx0, minY: y0 - 0.35, minZ: bz0, maxX: bx1, maxY: top, maxZ: bz1 });
+          for (let t = -L + 1.5; t < L - 1; t += 3) {
+            if (alley.axis === 'z') gb.box(cx - 1.6, y0 - 0.45, cz + t - 0.25, cx + 1.6, y0 - 0.35, cz + t + 0.25, lantern, Style.emissive);
+            else gb.box(cx + t - 0.25, y0 - 0.45, cz - 1.6, cx + t + 0.25, y0 - 0.35, cz + 1.6, lantern, Style.emissive);
+          }
+          // entrance sign bands over both mouths of the bridge
+          const sign = color('#e9c46a');
+          if (alley.axis === 'z') { gb.box(bx0, y0, bz0 - 0.15, bx1, y0 + 0.8, bz0, sign, Style.emissive); gb.box(bx0, y0, bz1, bx1, y0 + 0.8, bz1 + 0.15, sign, Style.emissive); }
+          else { gb.box(bx0 - 0.15, y0, bz0, bx0, y0 + 0.8, bz1, sign, Style.emissive); gb.box(bx1, y0, bz0, bx1 + 0.15, y0 + 0.8, bz1, sign, Style.emissive); }
+        }
+      }
+      // boulevard paving inside the block, stepped in 2 m strips like the facades (the part on the street is one long strip)
+      for (const c of cutsOf(x0, z0, x1, z1)) {
+        const zr = cutZRanges([c]);
+        for (let a = x0; a < x1 - 0.01; a += 2) {
+          const b = Math.min(x1, a + 2);
+          const [f0, f1] = zr(a, b)[0];
+          const p0 = Math.max(z0, f0 + 0.6), p1 = Math.min(z1, f1 - 0.6);
+          if (p1 - p0 > 0.2) gb.box(a, SIDEWALK_H, p0, b, SIDEWALK_H + 0.03, p1, color('#b0503a', 0.12, rng), Style.paving);
         }
       }
 
@@ -285,16 +410,48 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3): CityLayout {
   gb.box(-e - 2, -1.5, -e, -e, 0.5, e, color('#cbbfa9'), Style.paving);
   gb.box(e, -1.5, -e, e + 2, 0.5, e, color('#cbbfa9'), Style.paving);
 
+  // Round 18: keep alley mouths and the diagonal free of trees, lamp posts and other soft props.
+  const inDiag = (x: number, z: number) => boulevards.some((b) => Math.abs(z - b.s * x - b.c) / Math.SQRT2 < b.halfWidth + 1.6);
+  const blockedXZ = (x: number, z: number) => inDiag(x, z) || clearRects.some(([a, b, c, d]) => x > a && x < c && z > b && z < d);
+  const keepTrees = trees.filter((t) => !blockedXZ(t.x, t.z));
+  const keepLamps = lamps.filter((l) => !blockedXZ(l.x, l.z));
+  const keepColliders = colliders.filter((b) => !b.soft || !blockedXZ((b.minX + b.maxX) / 2, (b.minZ + b.maxZ) / 2));
+
+  const features: CityFeature[] = [];
+  for (const b of boulevards) {
+    const st = boulevardStops(b, roadCenters);
+    const L = Math.hypot(st[st.length - 1].x - st[0].x, st[st.length - 1].z - st[0].z);
+    features.push({ kind: 'diagonal', name: b.name, x: (st[0].x + st[st.length - 1].x) / 2, z: (st[0].z + st[st.length - 1].z) / 2, length: Math.round(L) });
+    // the street part of the paving: one long strip under the sidewalks, with a dashed amber centre line
+    const ry = Math.atan2(1, b.s);
+    const cx = (st[0].x + st[st.length - 1].x) / 2, cz = (st[0].z + st[st.length - 1].z) / 2;
+    gb.append(new THREE.BoxGeometry(b.halfWidth * 2 - 1.2, 0.04, L), mat(cx, 0.02, cz, 1, 1, 1, ry), color('#a5503d'), Style.paving);
+    for (let t = -L / 2 + 2; t < L / 2 - 1; t += 4.5) {
+      const x = cx + Math.sin(ry) * t, z = cz + Math.cos(ry) * t;
+      const onBlock = ((x + half) % (B + R)) > R && ((z + half) % (B + R)) > R;
+      gb.append(new THREE.BoxGeometry(0.3, 0.05, 2.2), mat(x, onBlock ? SIDEWALK_H + 0.04 : 0.05, z, 1, 1, 1, ry), color('#ffd27a'), Style.emissive);
+    }
+  }
+  for (const al of alleys) {
+    features.push({ kind: al.covered ? 'tunnel' : 'alley', name: al.name, x: roadCenters[al.bi] + R / 2 + B / 2, z: roadCenters[al.bj] + R / 2 + B / 2, length: B + R });
+  }
+
   return {
+    features,
+    alleys,
+    boulevards,
+    rushLanes,
+    graph: buildStreetGraph(roadCenters, B, R, alleys, boulevards, true),
+    gridGraph: buildStreetGraph(roadCenters, B, R, alleys, boulevards, false),
     blocks,
     blockSize: B,
     roadWidth: R,
     half,
     roadCenters,
-    colliders,
+    colliders: keepColliders,
     sites,
-    trees,
-    lamps,
+    trees: keepTrees,
+    lamps: keepLamps,
     awnings,
     geometry: gb.build(),
     buildingCount,
@@ -318,13 +475,13 @@ type Edges = { edgeW: boolean; edgeE: boolean; edgeN: boolean; edgeS: boolean };
 
 function addBuilding(
   gb: GeometryBuilder, colliders: Box[], rng: Rng,
-  x0: number, z0: number, x1: number, z1: number, down: number, edges: Edges, awnings: Box[] = [],
-): { padRoof: THREE.Vector3 | null; tall: boolean } {
+  x0: number, z0: number, x1: number, z1: number, down: number, edges: Edges, awnings: Box[] = [], minFloors = 1,
+): { padRoof: THREE.Vector3 | null; tall: boolean; top: number } {
   const w = x1 - x0;
   const d = z1 - z0;
   // height distribution: tall downtown, low at the edges
   const maxFloors = Math.round(3 + down * down * 21);
-  let floors = Math.max(1, Math.round(range(rng, 0.35, 1) * maxFloors));
+  let floors = Math.max(minFloors, Math.round(range(rng, 0.35, 1) * maxFloors));
   if (chance(rng, 0.08)) floors += randInt(rng, 2, 6);
   const tall = floors >= 11;
   const y0 = SIDEWALK_H;
@@ -342,6 +499,7 @@ function addBuilding(
 
   const gabled = floors <= 4 && chance(rng, 0.6);
   let top = y0 + floors * FLOOR_H;
+  const baseTop = top;
 
   // plinth / ground floor band in trim colour for character
   gb.box(bx0, y0, bz0, bx1, top, bz1, wall, style, seed, { floorH: FLOOR_H, colW: style === Style.curtain ? 3.2 : 2.7 });
@@ -398,7 +556,7 @@ function addBuilding(
       const chz = range(rng, bz0 + 1, bz1 - 1);
       gb.box(chx - 0.4, top, chz - 0.4, chx + 0.4, top + rise + 0.8, chz + 0.4, color('#8c5a48'), Style.plain);
     }
-    return { padRoof: null, tall };
+    return { padRoof: null, tall, top: baseTop };
   }
 
   cornice(gb, roofX0, roofZ0, roofX1, roofZ1, top, trim, colliders);
@@ -462,7 +620,47 @@ function addBuilding(
     gb.box(hx - 1.1, top, hz - 1.1, hx + 1.1, top + 2.4, hz + 1.1, color('#d8d2c6', 0.3, rng), Style.plain);
     colliders.push({ minX: hx - 1.1, minY: top, minZ: hz - 1.1, maxX: hx + 1.1, maxY: top + 2.4, maxZ: hz + 1.1 });
   }
-  return { padRoof, tall };
+  return { padRoof, tall, top: baseTop };
+}
+
+/**
+ * Round 18: a lot cut by the diagonal avenue. Built as 2 m strips across x; each strip keeps the parts of the lot
+ * outside the avenue's corridor, so the facade steps along the diagonal (walls on both sides of the avenue, marked
+ * `facade` so the slipstream counts these narrow strips as building faces).
+ */
+function addCutBuilding(
+  gb: GeometryBuilder, colliders: Box[], rng: Rng, x0: number, z0: number, x1: number, z1: number, down: number,
+  corridor: (a: number, b: number) => Array<[number, number]>, minFloors = 2,
+): number {
+  const maxFloors = Math.round(3 + down * down * 21);
+  const floors = Math.max(minFloors, Math.min(12, Math.round(range(rng, 0.4, 1) * maxFloors)));
+  const y0 = SIDEWALK_H;
+  const top = y0 + floors * FLOOR_H;
+  const seed = Math.floor(rng() * 256);
+  const wall = color(pick(rng, WALLS), 0.5, rng);
+  const trim = color(pick(rng, TRIM), 0.2, rng);
+  const style = pick(rng, [Style.punched, Style.tall, Style.ribbon]);
+  const step = 2;
+  for (let a = x0; a < x1 - 0.01; a += step) {
+    const b = Math.min(x1, a + step);
+    let parts: Array<[number, number]> = [[z0, z1]];
+    for (const [f0, f1] of corridor(a, b)) {
+      const next: Array<[number, number]> = [];
+      for (const [p0, p1] of parts) {
+        if (f1 <= p0 || f0 >= p1) { next.push([p0, p1]); continue; }
+        if (f0 > p0 + 1) next.push([p0, f0]);
+        if (f1 < p1 - 1) next.push([f1, p1]);
+      }
+      parts = next;
+    }
+    for (const [pz0, pz1] of parts) {
+      if (pz1 - pz0 < 1) continue;
+      gb.box(a, y0, pz0, b, top, pz1, wall, style, seed, { floorH: FLOOR_H, colW: 2 });
+      gb.box(a - 0.05, top, pz0 - 0.05, b + 0.05, top + 0.45, pz1 + 0.05, trim, Style.plain);
+      colliders.push({ minX: a, minY: 0, minZ: pz0, maxX: b, maxY: top + 0.45, maxZ: pz1, facade: true });
+    }
+  }
+  return top;
 }
 
 function cornice(gb: GeometryBuilder, x0: number, z0: number, x1: number, z1: number, top: number, trim: THREE.Color, colliders: Box[]): void {

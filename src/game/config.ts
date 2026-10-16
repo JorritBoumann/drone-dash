@@ -90,6 +90,9 @@ export const RUN = {
   // left plus overtime at `lastCallSpeed` m/s of street (at least `lastCallMin` m), at street level (no rooftop job).
   // A last-call drop adds no clock (it pays points as normal), so the end of a run is a run of short jobs on a bleeding
   // clock, not a cliff and not a loop of short legs that pay for themselves.
+  // Round 18: the time-up share needs this many deliveries (a one-delivery farm cannot cash its bank at time-up) and
+  // pays at most the street bonus paid per delivery so far (Game.timeUp).
+  partialMinDrops: 2,
   lastCallAt: 22,
   lastCallSpeed: 7,
   lastCallMin: 55,
@@ -241,12 +244,14 @@ export const RUSH = {
  * 0.06 per drop) and a softer ending (overtime, last call, time-up share of the bank). The deterministic street bot
  * scores 2,047 to 7,108 on 23 of 24 cities (1,291 on 62367). Silver 2500 -> 2000, Gold 6000 -> 4500, Ace 10000 -> 9000.
  * See progress/round-17/builder.md.
+ * Round 18: Ace 9000 -> 10000. Shortcuts (boulevards, alleys, tunnels) make a skilled line faster: the shortcut-taking
+ * street bot reached 9,155 on one of 12 fresh cities (plain street bot 7,359 there). See progress/round-18/builder.md.
  */
 export const GOALS = {
   tiers: [
     { name: 'Bronze', score: 1000 },
     { name: 'Silver', score: 2000 },
     { name: 'Gold', score: 4500 },
-    { name: 'Ace', score: 9000 },
+    { name: 'Ace', score: 10000 },
   ],
 };

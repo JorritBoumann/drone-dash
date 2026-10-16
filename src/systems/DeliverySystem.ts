@@ -28,6 +28,10 @@ export const JOBS = {
   roofGrow: 4,
   roofMaxCap: 40,
   doorstepShare: 0.7, // street-level drops: this share goes to a shop doorstep, the rest to a park or depot pad
+  // Round 18: route choice. With this chance a leg's pad is picked among those (inside the same spec, the distance band
+  // widened one step at most) that have a shortcut: an alley, tunnel or boulevard route at least 15% shorter than the
+  // plain grid route. Not on the first hop. If no pad qualifies, the leg is picked as before.
+  shortcutBias: 0.85,
 };
 export type LegSpec = { kinds: Site['kind'][]; minY: number; maxY: number; streetMin: number; streetMax: number };
 
@@ -75,6 +79,8 @@ export class DeliverySystem {
   legPar = 0;
   legDistance = 0;
   legRoute = 0;
+  /** Round 18: does this pad have a shortcut from `from` (feature route at least 15% under the grid route)? Set by Game. */
+  shortcut: ((from: THREE.Vector3, s: Site) => boolean) | null = null;
   /** Round 17: overtime is running (the clock hit 0 with a parcel aboard). Once a run. */
   overtime = false;
   /** Round 17: the overtime delivery is made; the run is over (no new job, the clock stops). */
@@ -103,7 +109,7 @@ export class DeliverySystem {
     this.isClear = isClear;
     this.phase = 'pickup';
     // Round 16: the first pickup is a short, low hop on every city (no tower roof), preferably in a clear straight line.
-    this.target = this.pickLeg(rng, from, JOBS.first, isClear ? (s) => isClear(from, s.pos) : undefined);
+    this.target = this.pickLeg(rng, from, JOBS.first, isClear ? (s) => isClear(from, s.pos) : undefined, false);
     this.pickupSite = this.target;
     this.legTime = 0;
   }
@@ -199,8 +205,9 @@ export class DeliverySystem {
    * distance, the route a street pilot flies). If none fits, the band widens step by step, then the height rule goes,
    * then any site will do. `ok` (clear approach) is a preference inside each step, as before.
    */
-  private pickLeg(rng: Rng, from: THREE.Vector3, spec: LegSpec, ok?: (s: Site) => boolean): Site {
+  private pickLeg(rng: Rng, from: THREE.Vector3, spec: LegSpec, ok?: (s: Site) => boolean, cuts = true): Site {
     const street = (s: Site) => Math.abs(s.pos.x - from.x) + Math.abs(s.pos.z - from.z);
+    const cutRoll = rng();
     const pickFrom = (list: Site[]): Site => {
       const preferred = ok ? list.filter(ok) : list;
       const pool = preferred.length ? preferred : list;
@@ -209,6 +216,18 @@ export class DeliverySystem {
       return s;
     };
     const others = this.sites.filter((s) => s.id !== this.lastSiteId);
+    // round 18: a shortcut job first, inside the spec (band widened one step at most), when the roll asks for one
+    if (cuts && this.shortcut && cutRoll < JOBS.shortcutBias) {
+      for (let widen = 0; widen <= 1; widen++) {
+        const lo = spec.streetMin * (1 - widen * 0.15), hi = spec.streetMax * (1 + widen * 0.15);
+        const list = others.filter((s) => {
+          if (!spec.kinds.includes(s.kind) || s.pos.y < spec.minY || s.pos.y > spec.maxY) return false;
+          const d = street(s);
+          return d >= lo && d <= hi && this.shortcut!(from, s);
+        });
+        if (list.length) return pickFrom(list);
+      }
+    }
     for (const strict of [true, false]) {
       for (let widen = 0; widen <= 4; widen++) {
         const lo = spec.streetMin * (1 - widen * 0.15), hi = spec.streetMax * (1 + widen * 0.15);

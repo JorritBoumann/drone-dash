@@ -33,6 +33,8 @@ interface ThreeGameDiagnostics {
   progress?: { best: number; stall: number; stale: boolean; staleLost: number; staleCount: number };
   narrow?: { kind: string; name: string; roof: boolean } | null;
   vanDraft?: boolean;
+  /** Round 22: street life counts (vehicles, people drawn, reactions to the drone, people on the live pad). */
+  street?: { cars: number; target: number; vans: number; held: number; braking: number; turning: number; people: number; peopleDrawn: number; reactions: number; reacting: number; onActivePad: number; droppedLoops: number; msTraffic: number; msPeople: number };
   centreLog?: Array<{ kind: string; text: string; t: number }>;
   /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
   /** Debug: this frame's contacts (wall impact speed, ledge hop impact, crash-relevant speed loss). */
@@ -42,7 +44,7 @@ interface ThreeGameDiagnostics {
   lastCrash?: { loss: number; wallTop: number; normalY: number; y: number } | null;
   objective: { phase: string; name: string; position: { x: number; y: number; z: number } | null } | null;
   fps: number;
-  camera: { x: number; y: number; z: number; fov: number; aspect: number };
+  camera: { x: number; y: number; z: number; fov: number; aspect: number; view?: { yaw: number; pitch: number; zoom: number; free: number; idle: number; distance: number }; behind?: { yaw: number; elev: number } };
   drawCalls: number;
   player: {
     position: { x: number; y: number; z: number };
@@ -50,6 +52,8 @@ interface ThreeGameDiagnostics {
     boost: number;
     headwind?: number;
     carrying: boolean;
+    yaw?: number;
+    boosting?: boolean;
   };
   renderer: {
     calls: number;
@@ -89,6 +93,11 @@ interface DroneDashApi {
   end(): void;
   /** Hold / release a key code (e.g. 'KeyW') for automated tests. */
   key(code: string, down: boolean): void;
+  /** Round 21: orbit / zoom the camera as a drag or wheel would (radians, log zoom); `held` keeps a virtual drag down. */
+  view(yaw: number, pitch?: number, zoom?: number, held?: boolean): void;
+  /** Round 21: is this point inside a solid collider grown by `pad` (camera probes)? */
+  insideSolid(x: number, y: number, z: number, pad?: number): boolean;
+  solidAt(x: number, y: number, z: number, pad?: number): Array<Record<string, number | boolean>>;
   /** Run the simulation for `seconds` of fixed 60 Hz steps, then render once. */
   advance(seconds: number, render?: boolean): ThreeGameDiagnostics | undefined;
   /** When true the rAF loop keeps simulating but stops rendering (tests render via advance). */
@@ -114,6 +123,10 @@ interface DroneDashApi {
   features?(): Array<{ kind: string; name: string; x: number; z: number; length: number }>;
   rushLanes?(): Array<{ axis: number; at: number }>;
   vans?(): Array<{ x: number; y: number; z: number; dx: number; dz: number }>;
+  rush?(on: boolean): void;
+  streetLife?(traffic: boolean, people: boolean): void;
+  traffic?(): Array<{ kind: 'car' | 'van'; type: number; x: number; y: number; z: number; fx: number; fz: number; len: number; wid: number; y0: number; y1: number; mode: string; lat: number; axis: number }>;
+  people?(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }>;
 }
 
 interface Window {

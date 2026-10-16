@@ -678,6 +678,42 @@ export class Hud {
     this.hintArmed = this.hintRuns <= 2;
   }
 
+  private readonly viewHint = $('view-hint');
+  private viewHintTimer = 0;
+  private viewHintOn = false;
+
+  /**
+   * Round 21: on the first two runs on this device, a one-line camera hint shows above the bottom bar from 1.5 s to
+   * 7.5 s into the run, and goes away as soon as the player looks around.
+   */
+  armViewHint(): void {
+    window.clearTimeout(this.viewHintTimer);
+    this.viewHint.classList.remove('show');
+    this.viewHintOn = false;
+    let runs = 1;
+    try {
+      runs = 1 + Number(localStorage.getItem('drone-dash-view-hint') || 0);
+      localStorage.setItem('drone-dash-view-hint', String(runs));
+    } catch {
+      /* storage blocked: show it */
+    }
+    if (runs > 2) return;
+    this.viewHintOn = true;
+    this.viewHintTimer = window.setTimeout(() => {
+      if (!this.viewHintOn) return;
+      this.viewHint.classList.add('show');
+      this.viewHintTimer = window.setTimeout(() => this.viewUsed(), 6000);
+    }, 1500);
+  }
+
+  /** The player orbited or zoomed: the camera hint has done its job. */
+  viewUsed(): void {
+    if (!this.viewHintOn) return;
+    this.viewHintOn = false;
+    window.clearTimeout(this.viewHintTimer);
+    this.viewHint.classList.remove('show');
+  }
+
   /** High-wind chip: shown while the drone flies in the headwind band above the roofline. */
   setWind(on: boolean): void {
     if (on === this.windOn) return;
@@ -759,6 +795,7 @@ export class Hud {
     this.cQueue = [];
     for (const el of [this.pop, this.eventPopEl, this.slipPopEl]) el.classList.remove('show');
     this.setRouteHint(null);
+    this.viewUsed();
     this.goalLast = { tier: -1, q: -1 };
     this.goal.classList.remove('flash');
     this.medalPopEl.classList.remove('show');

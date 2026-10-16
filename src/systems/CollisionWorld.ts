@@ -151,4 +151,32 @@ export class CollisionWorld {
     }
     return best;
   }
+
+  /**
+   * Round 21: move a point out of any solid box grown by `pad` (shallowest exit), so the camera never sits inside a
+   * wall or close enough for the near plane to cut into it. Soft props (trees, lamps) are skipped. Returns true if moved.
+   */
+  pushOutPoint(p: THREE.Vector3, pad: number): boolean {
+    let moved = false;
+    for (let iter = 0; iter < 3; iter++) {
+      let any = false;
+      const ids = this.gather(p.x - pad, p.z - pad, p.x + pad, p.z + pad);
+      for (const i of ids) {
+        const b = this.boxes[i];
+        if (b.soft) continue;
+        const x0 = b.minX - pad, x1 = b.maxX + pad, y0 = b.minY - pad, y1 = b.maxY + pad, z0 = b.minZ - pad, z1 = b.maxZ + pad;
+        if (p.x <= x0 || p.x >= x1 || p.y <= y0 || p.y >= y1 || p.z <= z0 || p.z >= z1) continue;
+        const ex = [p.x - x0, x1 - p.x, p.y - y0, y1 - p.y, p.z - z0, z1 - p.z];
+        // never push down through the street (boxes resting on the ground)
+        if (b.minY <= this.floorY + 0.01) ex[2] = Infinity;
+        let m = 0;
+        for (let k = 1; k < 6; k++) if (ex[k] < ex[m]) m = k;
+        const e = ex[m] + 0.01;
+        if (m === 0) p.x -= e; else if (m === 1) p.x += e; else if (m === 2) p.y -= e; else if (m === 3) p.y += e; else if (m === 4) p.z -= e; else p.z += e;
+        any = moved = true;
+      }
+      if (!any) break;
+    }
+    return moved;
+  }
 }

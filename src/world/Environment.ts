@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createSeededRandom, pick, range } from '../core/random';
+import { createSeededRandom } from '../core/random';
 import type { CityLayout } from './CityGenerator';
 import { asphaltTexture, waterNormalTexture } from './Textures';
+import { Traffic } from './Traffic';
+import { Pedestrians } from './Pedestrians';
 
 export const PALETTE = {
   skyTop: new THREE.Color('#3f6fb8'),
@@ -180,8 +182,6 @@ const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
 type TreeSpecLike = CityLayout['trees'][number];
 
-type Car = { axis: 0 | 1; line: number; dir: 1 | -1; pos: number; speed: number; lane: number };
-
 /**
  * Everything around the merged city: ground & water, road markings, instanced
  * trees / lamps / traffic, and a hazy skyline across the bay.
@@ -190,24 +190,23 @@ export class Environment {
   readonly group = new THREE.Group();
   private readonly water: THREE.Mesh;
   private readonly waterNormal: THREE.Texture;
-  private readonly cars: THREE.InstancedMesh;
-  private readonly carState: Car[] = [];
+  /** Round 22: street life (traffic with the rush-hour hover-vans, and people). */
+  readonly traffic: Traffic;
+  readonly people: Pedestrians;
+  private readonly focusCam = new THREE.Vector3(0, 80, 0);
+  private readonly focusDrone = new THREE.Vector3(0, 80, 0);
+  private focusVx = 0;
+  private focusVz = 0;
   private readonly treeMaterials: THREE.MeshStandardMaterial[] = [];
   private readonly dummy = new THREE.Object3D();
-  private readonly half: number;
   readonly props: PropRec[] = [];
   // round 18: rush lanes (two streets that light up at rush hour) and the hover-vans that stream along them
   private rushTarget = 0;
   rushLevel = 0;
   private laneMat: THREE.MeshStandardMaterial | null = null;
-  private vans: THREE.InstancedMesh | null = null;
-  private vanGlow: THREE.InstancedMesh | null = null;
-  private readonly vanState: Array<{ axis: 0 | 1; line: number; dir: 1 | -1; pos: number; speed: number; lane: number; bob: number; delay: number }> = [];
-  private rushClock = 0;
 
-  constructor(private readonly layout: CityLayout, seed: number) {
+  constructor(private readonly layout: CityLayout, seed: number, mood = 0, mobile = false) {
     const rng = createSeededRandom(seed * 31 + 7);
-    this.half = layout.half;
     const e = layout.half + 2;
 
     // Asphalt base
@@ -241,23 +240,33 @@ export class Environment {
     this.group.add(this.createMarkings());
     this.group.add(...this.createLamps());
     this.group.add(...this.createTrees());
-    this.cars = this.createCars(rng);
-    this.group.add(this.cars);
+    for (let k = 0; k < 44 * 5; k++) rng(); // round 22: the old cars' draws, so the skyline stays the same
     this.group.add(this.createSkyline(rng));
     this.group.add(this.createRailings());
-    if (layout.rushLanes.length) this.group.add(...this.createRushLanes());
+    if (layout.rushLanes.length) this.group.add(this.createRushLanes());
+    this.traffic = new Traffic(layout.roadCenters, layout.half, seed, mood, layout.rushLanes, mobile);
+    this.group.add(this.traffic.mesh);
+    this.people = new Pedestrians(layout, seed, mobile);
+    this.group.add(this.people.mesh);
+  }
+
+  /** Round 22: where the camera and the drone are (people are drawn near the camera and react to the drone). */
+  setFocus(cam: THREE.Vector3, drone: THREE.Vector3, vx: number, vz: number): void {
+    this.focusCam.copy(cam);
+    this.focusDrone.copy(drone);
+    this.focusVx = vx;
+    this.focusVz = vz;
   }
 
   /** Round 18: rush hour on (true) or reset (false). The lanes light up and hover-vans stream in from the city edge. */
   setRush(on: boolean): void {
     this.rushTarget = on ? 1 : 0;
-    this.rushClock = 0;
     if (!on) this.rushLevel = 0;
     if (this.laneMat && !on) this.laneMat.emissiveIntensity = 0;
-    this.updateVans(0);
+    this.traffic.setRush(on);
   }
 
-  private createRushLanes(): THREE.Object3D[] {
+  private createRushLanes(): THREE.Object3D {
     const { roadCenters, half } = this.layout;
     const parts: THREE.BufferGeometry[] = [];
     const len = half * 2;
@@ -290,91 +299,17 @@ export class Environment {
     lanes.name = 'rush-lanes';
     lanes.receiveShadow = true;
 
-    // hover-vans: boxy delivery vans on a glowing hover pad, 3 m up, hidden until rush hour
-    const body = mergeGeometries([
-      coloredBox(2.1, 1.7, 4.6, 0, 0, 0, '#f4efe6'),
-      coloredBox(2.12, 0.32, 4.62, 0, -0.35, 0, '#e8833a'),
-      coloredBox(1.9, 0.62, 0.1, 0, 0.35, 2.3, '#2b3440'),
-      coloredBox(0.5, 0.2, 0.06, -0.7, -0.45, 2.32, '#fff6d8'),
-      coloredBox(0.5, 0.2, 0.06, 0.7, -0.45, 2.32, '#fff6d8'),
-      coloredBox(0.5, 0.2, 0.06, -0.7, -0.45, -2.32, '#d23a2a'),
-      coloredBox(0.5, 0.2, 0.06, 0.7, -0.45, -2.32, '#d23a2a'),
-      coloredBox(1.6, 0.25, 3.6, 0, -1.0, 0, '#3a4654'),
-    ])!;
-    const n = 18;
-    this.vans = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.1 }), n);
-    this.vanGlow = new THREE.InstancedMesh(new THREE.BoxGeometry(1.4, 0.06, 3.2).translate(0, -1.16, 0), new THREE.MeshBasicMaterial({ color: '#8fe3ff' }), n);
-    const rng = createSeededRandom(this.layout.rushLanes[0].index * 977 + this.layout.rushLanes[1].index * 31 + 5);
-    for (let i = 0; i < n; i++) {
-      const lane = this.layout.rushLanes[i % this.layout.rushLanes.length];
-      const dir = (i >> 1) % 2 === 0 ? 1 : -1;
-      this.vanState.push({ axis: lane.axis, line: roadCenters[lane.index], dir, pos: -dir * (half + 4), speed: range(rng, 15, 20), lane: dir * 2.9, bob: rng() * 6.28, delay: Math.floor(i / 4) * 2.2 + rng() * 1.5 });
-    }
-    for (const m of [this.vans, this.vanGlow]) {
-      m.frustumCulled = false;
-      m.castShadow = m === this.vans;
-    }
-    this.vans.name = 'hover-vans';
-    this.updateVans(0);
-    return [lanes, this.vans, this.vanGlow];
+    return lanes;
   }
 
-  /**
-   * Round 19: rush-hour vans give a draft. True when the drone is 2 to 10 m behind a live van, in line with it (within
-   * 2.2 m sideways, 1.2 to 5.5 m up) and flying its way at 8 m/s or more. The vans still never collide.
-   */
+  /** Round 19 rule (now in Traffic): tailing a live rush-hour van is a full draft. The vans still never collide. */
   vanDraft(p: THREE.Vector3, vx: number, vz: number): boolean {
-    if (this.rushTarget <= 0) return false;
-    for (const v of this.vanState) {
-      if (this.rushClock <= v.delay) continue;
-      const along = v.axis === 0 ? (p.x - v.pos) * v.dir : (p.z - v.pos) * v.dir; // + ahead of the van
-      const side = v.axis === 0 ? p.z - (v.line + v.lane) : p.x - (v.line - v.lane);
-      const vel = (v.axis === 0 ? vx : vz) * v.dir;
-      if (along < -10 || along > -2 || Math.abs(side) > 2.2 || p.y < 1.2 || p.y > 5.5 || vel < 8) continue;
-      return true;
-    }
-    return false;
+    return this.traffic.vanDraft(p, vx, vz);
   }
 
   /** Round 19 test hook: live vans (x, z, direction of travel as a unit vector). */
   vanPositions(): Array<{ x: number; y: number; z: number; dx: number; dz: number }> {
-    if (this.rushTarget <= 0) return [];
-    return this.vanState.filter((v) => this.rushClock > v.delay).map((v) => v.axis === 0
-      ? { x: v.pos, y: 3.1, z: v.line + v.lane, dx: v.dir, dz: 0 }
-      : { x: v.line - v.lane, y: 3.1, z: v.pos, dx: 0, dz: v.dir });
-  }
-
-  private updateVans(dt: number): void {
-    if (!this.vans || !this.vanGlow) return;
-    const half = this.half;
-    this.rushClock += dt;
-    for (let i = 0; i < this.vanState.length; i++) {
-      const v = this.vanState[i];
-      const live = this.rushTarget > 0 && this.rushClock > v.delay;
-      if (!live) {
-        v.pos = -v.dir * (half + 4);
-        this.dummy.scale.setScalar(0);
-      } else {
-        v.pos += v.dir * v.speed * dt;
-        if (v.pos > half + 6) v.pos -= half * 2 + 12;
-        if (v.pos < -half - 6) v.pos += half * 2 + 12;
-        this.dummy.scale.setScalar(1);
-      }
-      v.bob += dt * 2.2;
-      const y = 3.1 + Math.sin(v.bob) * 0.15;
-      if (v.axis === 0) {
-        this.dummy.position.set(v.pos, y, v.line + v.lane);
-        this.dummy.rotation.set(0, v.dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0);
-      } else {
-        this.dummy.position.set(v.line - v.lane, y, v.pos);
-        this.dummy.rotation.set(0, v.dir > 0 ? 0 : Math.PI, 0);
-      }
-      this.dummy.updateMatrix();
-      this.vans.setMatrixAt(i, this.dummy.matrix);
-      this.vanGlow.setMatrixAt(i, this.dummy.matrix);
-    }
-    this.vans.instanceMatrix.needsUpdate = true;
-    this.vanGlow.instanceMatrix.needsUpdate = true;
+    return this.traffic.vanPositions();
   }
 
   private createMarkings(): THREE.InstancedMesh {
@@ -399,10 +334,11 @@ export class Environment {
           }
         }
         // stop lines
-        add(s + 2.6, c + R / 4, 0.3, R / 2 - 0.6);
-        add(s + B - 2.6, c - R / 4, 0.3, R / 2 - 0.6);
-        add(c - R / 4, s + 2.6, R / 2 - 0.6, 0.3);
-        add(c + R / 4, s + B - 2.6, R / 2 - 0.6, 0.3);
+        // round 22: on the right-hand lanes the traffic uses (heading +x at z = c + 2.9, heading +z at x = c - 2.9)
+        add(s + 2.6, c - R / 4, 0.3, R / 2 - 0.6);
+        add(s + B - 2.6, c + R / 4, 0.3, R / 2 - 0.6);
+        add(c + R / 4, s + 2.6, R / 2 - 0.6, 0.3);
+        add(c - R / 4, s + B - 2.6, R / 2 - 0.6, 0.3);
       }
     }
     const mesh = new THREE.InstancedMesh(
@@ -555,64 +491,6 @@ export class Environment {
     this.treeMaterials.push(material);
   }
 
-  private createCars(rng: () => number): THREE.InstancedMesh {
-    const body = mergeGeometries([
-      coloredBox(1.9, 0.62, 4.2, 0, 0.62, 0, '#ffffff'),
-      coloredBox(1.7, 0.6, 2.2, 0, 1.2, -0.2, '#ffffff'),
-      coloredBox(1.72, 0.44, 2.0, 0, 1.2, -0.2, '#2b3440'),
-      coloredBox(1.74, 0.42, 0.12, 0, 1.18, 0.9, '#3a4654'),
-      coloredBox(0.4, 0.16, 0.06, -0.62, 0.72, 2.11, '#fff6d8'),
-      coloredBox(0.4, 0.16, 0.06, 0.62, 0.72, 2.11, '#fff6d8'),
-      coloredBox(0.4, 0.14, 0.06, -0.62, 0.74, -2.11, '#d23a2a'),
-      coloredBox(0.4, 0.14, 0.06, 0.62, 0.74, -2.11, '#d23a2a'),
-      colored(new THREE.CylinderGeometry(0.36, 0.36, 2.0, 10).rotateZ(Math.PI / 2).translate(0, 0.36, 1.35), '#1d1f22'),
-      colored(new THREE.CylinderGeometry(0.36, 0.36, 2.0, 10).rotateZ(Math.PI / 2).translate(0, 0.36, -1.35), '#1d1f22'),
-    ])!;
-    const count = 44;
-    const mesh = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.1 }), count);
-    const colors = ['#e63946', '#f1faee', '#a8dadc', '#457b9d', '#f4a261', '#2a9d8f', '#e9c46a', '#ffffff', '#264653', '#ff8fab'];
-    const lines = this.layout.roadCenters;
-    for (let i = 0; i < count; i++) {
-      const axis = (i % 2) as 0 | 1;
-      const dir = rng() > 0.5 ? 1 : -1;
-      this.carState.push({
-        axis,
-        line: lines[Math.floor(rng() * lines.length)],
-        dir,
-        pos: range(rng, -this.half, this.half),
-        speed: range(rng, 6, 11),
-        lane: dir * 2.9,
-      });
-      mesh.setColorAt(i, new THREE.Color(pick(rng, colors)));
-    }
-    mesh.castShadow = true;
-    mesh.name = 'traffic';
-    mesh.frustumCulled = false;
-    this.updateCars(0, mesh);
-    return mesh;
-  }
-
-  private updateCars(dt: number, mesh: THREE.InstancedMesh = this.cars): void {
-    const half = this.half;
-    for (let i = 0; i < this.carState.length; i++) {
-      const c = this.carState[i];
-      c.pos += c.dir * c.speed * dt;
-      if (c.pos > half) c.pos -= half * 2;
-      if (c.pos < -half) c.pos += half * 2;
-      if (c.axis === 0) {
-        this.dummy.position.set(c.pos, 0, c.line + c.lane);
-        this.dummy.rotation.set(0, c.dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0);
-      } else {
-        this.dummy.position.set(c.line - c.lane, 0, c.pos);
-        this.dummy.rotation.set(0, c.dir > 0 ? 0 : Math.PI, 0);
-      }
-      this.dummy.scale.setScalar(1);
-      this.dummy.updateMatrix();
-      mesh.setMatrixAt(i, this.dummy.matrix);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-  }
-
   private createSkyline(rng: () => number): THREE.InstancedMesh {
     const count = 140;
     const mesh = new THREE.InstancedMesh(
@@ -718,14 +596,30 @@ export class Environment {
     this.hiddenProps = this.props.reduce((n, p) => n + (p.hidden ? 1 : 0), 0);
   }
 
+  /** Round 22: CPU ms per frame of the traffic and people updates (smoothed), and switches for perf comparisons. */
+  readonly streetMs = { traffic: 0, people: 0 };
+  streetOn = { traffic: true, people: true };
+
+  setStreetLife(traffic: boolean, people: boolean): void {
+    this.streetOn = { traffic, people };
+    this.traffic.mesh.visible = traffic;
+    this.people.mesh.visible = people;
+  }
+
   update(dt: number, time: number): void {
-    this.updateCars(dt);
+    let t0 = performance.now();
+    if (this.streetOn.traffic) this.traffic.update(dt, this.focusCam);
+    let t1 = performance.now();
+    this.streetMs.traffic += (t1 - t0 - this.streetMs.traffic) * 0.05;
+    t0 = t1;
+    if (this.streetOn.people) this.people.update(dt, this.focusCam, this.focusDrone, this.focusVx, this.focusVz);
+    t1 = performance.now();
+    this.streetMs.people += (t1 - t0 - this.streetMs.people) * 0.05;
     if (this.laneMat) {
       this.rushLevel += (this.rushTarget - this.rushLevel) * Math.min(1, dt * 1.5);
       // lit lanes pulse gently once rush hour is on
       this.laneMat.emissiveIntensity = this.rushLevel * (0.85 + 0.25 * Math.sin(time * 3.2));
     }
-    if (this.rushTarget > 0 || this.rushClock === 0) this.updateVans(dt);
     this.waterNormal.offset.set(time * 0.004, time * 0.0025);
     for (const m of this.treeMaterials) {
       const shader = m.userData.shader as { uniforms: Record<string, THREE.IUniform> } | undefined;

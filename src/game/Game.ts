@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { InputController, type FlightIntent } from '../core/InputController';
+import { InputController, type FlightIntent, type ViewIntent } from '../core/InputController';
 import { Loop } from '../core/Loop';
 import { createRenderer, RenderPipeline } from '../core/Renderer';
 import { createSeededRandom, type Rng } from '../core/random';
@@ -120,6 +120,7 @@ export class Game {
   private rng: Rng;
   private readonly fxRng: Rng;
   private readonly intent: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
+  private readonly viewIntent: ViewIntent = { yaw: 0, pitch: 0, zoom: 0, held: false };
   private readonly idle: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
   private readonly events: FlightEvents = { bump: 0, ledge: 0, landed: false, wallLoss: 0, wallTop: -1e9, wallNormalY: 0 };
   private readonly startPos = new THREE.Vector3();
@@ -201,7 +202,7 @@ export class Game {
     this.bakeEnvironment();
 
     this.lighting = new LightingRig(this.scene, touch ? 1024 : QUALITY.shadowMapSize, QUALITY.shadowExtent, MOODS[this.look.mood]);
-    this.env = new Environment(this.layout, this.seed);
+    this.env = new Environment(this.layout, this.seed, this.look.mood, touch); // round 22: street life follows the mood
     this.scene.add(this.env.group);
 
     this.scene.add(this.drone.group);
@@ -246,6 +247,7 @@ export class Game {
     const el = (id: string) => document.getElementById(id) as HTMLElement;
     this.input = new InputController(canvas, el('touch-stick'), el('touch-knob'), el('up-button'), el('down-button'), el('boost-button'));
     this.input.onGesture = () => this.audio.unlock();
+    this.input.onView = () => this.hud.viewUsed();
     // any press anywhere (title card included) starts the sound; the title loop plays from the first one
     for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(type, this.onAnyGesture, true);
     this.hud.musicButton.addEventListener('click', this.onMusicButton);
@@ -374,6 +376,8 @@ export class Game {
     this.wasBoosting = false;
     this.hud.resetCache();
     this.hud.armSlipHint();
+    this.hud.armViewHint();
+    this.cameraRig.resetView();
     this.setMarkerFromDelivery();
     this.hud.setDeliveries(0);
     this.hud.setScore(0);
@@ -591,6 +595,11 @@ export class Game {
     const time = this.time;
 
     if (this.state !== 'paused') {
+      // round 22: people near the camera are drawn and react to the drone; nobody stays on the live pickup / drop pad
+      const tgt = this.state === 'playing' ? this.delivery.target : null;
+      if (tgt && tgt.pos.y < 2) this.env.people.setActivePad(tgt.pos.x, tgt.pos.z, tgt.radius);
+      else this.env.people.setActivePad(0, 0, 0);
+      this.env.setFocus(this.camera.position, this.drone.group.position, this.drone.velocity.x, this.drone.velocity.z);
       this.env.update(animDt, time);
       const sh = this.cityMaterial.userData.shader;
       if (sh) sh.uniforms.uTime.value = time;
@@ -633,6 +642,7 @@ export class Game {
     this.legClock += dt;
     this.hitStop = Math.max(0, this.hitStop - realDt);
     this.input.read(this.intent);
+    this.input.readView(this.viewIntent);
     const d = this.drone;
     d.update(dt, this.intent, this.world, this.layout.half + 30, this.events);
     this.checkCrash(realDt);
@@ -641,7 +651,7 @@ export class Game {
     const dp = d.group.position;
     const groundBelow = this.world.surfaceBelow(dp.x, dp.y, dp.z);
     const altAboveGround = Math.max(0, dp.y - groundBelow - 0.85);
-    this.cameraRig.update(realDt, d, this.world, altAboveGround, this.marker.position);
+    this.cameraRig.update(realDt, d, this.world, altAboveGround, this.marker.position, this.viewIntent);
     this.env.updateOcclusion(this.camera.position, dp);
 
     // feedback: bumps
@@ -1471,6 +1481,7 @@ export class Game {
       routeMark: this.mark ? { kind: this.mark.kind, name: this.mark.name, names: this.mark.names.slice(), stage: this.mark.stage, gate: { x: this.mark.gate.x, y: this.mark.gate.y, z: this.mark.gate.z }, inward: { ...this.mark.inward }, exit: { x: this.mark.exit.x, y: this.mark.exit.y, z: this.mark.exit.z }, outward: { ...this.mark.outward }, width: this.mark.width, legAt: this.mark.legAt, shownAt: this.mark.shownAt, seenAt: this.mark.seenAt, seenDist: this.mark.seenDist, tagAt: this.mark.tagAt, tagOn: this.mark.tagOn, gateIn: this.mark.gateIn, board: this.gate.text, n: this.marksThisLeg } : null,
       progress: { best: Math.round(this.legBestLeft), stall: this.stallT, stale: this.stale, staleLost: this.staleLost, staleCount: this.staleCount },
       vanDraft: this.vanDraft,
+      street: { ...this.env.traffic.stats(), people: this.env.people.total, peopleDrawn: this.env.people.drawn, reactions: this.env.people.reactions, reacting: this.env.people.reacting, onActivePad: this.env.people.onPad, droppedLoops: this.env.people.droppedLoops, msTraffic: +this.env.streetMs.traffic.toFixed(3), msPeople: +this.env.streetMs.people.toFixed(3) },
       centreLog: this.hud.centreLog.slice(-30),
       city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier, mood: MOODS[this.look.mood].name, parks: this.look.parks, features: this.featureCounts, rushLanes: this.env.rushLevel },
       escalation: { kind: 'rush', on: this.rushOn, startedAt: this.rushAt, stage: !this.rushOn ? 0 : this.runTime >= RUSH.everyAt ? 2 : 1, orders: this.rushOrders, made: this.rushMade, missed: this.rushMissed, points: this.rushPoints, active: this.rushActive, left: Math.max(0, this.rushLeft), window: this.rushWindow },
@@ -1481,7 +1492,7 @@ export class Game {
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
       fps: Math.round(this.fps * 10) / 10,
-      camera: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, fov: this.camera.fov, aspect: this.camera.aspect },
+      camera: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, fov: this.camera.fov, aspect: this.camera.aspect, view: this.cameraRig.view, behind: this.cameraBehind() },
       drawCalls: this.drawCalls,
       player: {
         position: { x: p.x, y: p.y, z: p.z },
@@ -1489,6 +1500,8 @@ export class Game {
         boost: this.drone.boost,
         headwind: this.drone.headwind,
         carrying: this.drone.carrying,
+        yaw: this.drone.yaw,
+        boosting: this.drone.boosting,
       },
       renderer: {
         calls: this.drawCalls,
@@ -1514,6 +1527,18 @@ export class Game {
     };
   }
 
+  /**
+   * Round 21: the camera's heading around the drone relative to straight behind it (radians, + = swung to the drone's
+   * right side) and its elevation, for probes.
+   */
+  private cameraBehind(): { yaw: number; elev: number } {
+    const c = this.camera.position, p = this.drone.group.position;
+    const dx = c.x - p.x, dz = c.z - p.z;
+    // straight behind is the drone's -forward: forward = (-sin yaw, -cos yaw)
+    const a = Math.atan2(dx, dz) - this.drone.yaw;
+    return { yaw: Math.atan2(Math.sin(a), Math.cos(a)), elev: Math.atan2(c.y - p.y, Math.hypot(dx, dz)) };
+  }
+
   /** Round 18: how many of each route-choice feature this city has (diagnostics). */
   private get featureCounts(): Record<string, number> {
     const c: Record<string, number> = { diagonal: 0, alley: 0, tunnel: 0 };
@@ -1531,6 +1556,12 @@ export class Game {
         if (this.state === 'playing' || this.state === 'paused') this.endRun();
       },
       key: (code: string, down: boolean) => this.input.setKey(code, down),
+      // round 21 test hook: orbit / zoom the camera as a drag or wheel would (radians, log zoom); held keeps a drag down
+      view: (yaw: number, pitch = 0, zoom = 0, held?: boolean) => this.input.injectView(yaw, pitch, zoom, held),
+      insideSolid: (x: number, y: number, z: number, pad = 0) =>
+        this.layout.colliders.some((b) => !b.soft && x > b.minX - pad && x < b.maxX + pad && y > b.minY - pad && y < b.maxY + pad && z > b.minZ - pad && z < b.maxZ + pad),
+      solidAt: (x: number, y: number, z: number, pad = 0) =>
+        this.layout.colliders.filter((b) => !b.soft && x > b.minX - pad && x < b.maxX + pad && y > b.minY - pad && y < b.maxY + pad && z > b.minZ - pad && z < b.maxZ + pad).map((b) => ({ ...b })),
       manualRender: (on: boolean) => {
         this.manualRender = on;
       },
@@ -1576,6 +1607,12 @@ export class Game {
       features: () => this.layout.features.map((f) => ({ ...f })),
       // round 18: the two rush lanes (axis 0 runs along x at z = at; axis 1 runs along z at x = at)
       vans: () => this.env.vanPositions(),
+      // round 22 test hooks: street life. rush(on) forces rush hour on or off (lanes, vans, busier traffic) without the
+      // run's rush orders; traffic() lists every live vehicle as a box; people() every person (x, z, reaction).
+      rush: (on: boolean) => this.env.setRush(on),
+      streetLife: (traffic: boolean, people: boolean) => this.env.setStreetLife(traffic, people),
+      traffic: () => this.env.traffic.snapshot(),
+      people: () => this.env.people.snapshot(),
       rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),
     };
     window.__THREE_GAME_TEST_HOOKS__ = {

@@ -474,6 +474,30 @@ body { background: #f0b98a; }
   transition: opacity 0.3s ease;
 }
 .slip.hint .slip-hint { opacity: 0.95; }
+/* round 21: first-run camera hint, above the right end of the bottom bar (the slipstream hint sits at the left end) */
+.view-hint {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(29, 34, 48, 0.5);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--cream);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.view-hint.show { opacity: 0.95; transform: none; }
+/* while the slipstream meter (and its own first-run hint) is up, sit above it instead of on it */
+.hud-bottom:has(.slip.on) .view-hint { bottom: calc(100% + 68px); }
+.view-hint { transition: opacity 0.35s ease, transform 0.35s ease, bottom 0.25s ease; }
+.view-hint .vh-touch { display: none; }
+#app.touch .view-hint .vh-desk { display: none; }
+#app.touch .view-hint .vh-touch { display: inline; }
 .slip.hint .slip-cue { opacity: 0; }
 /* payout pop: near the drone, between the delivery pop and the drone, bigger and brighter as the chain climbs */
 .slip-pop {

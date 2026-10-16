@@ -1,0 +1,1 @@
+{"seed":"22","line":"high","simT":133,"deliveries":7,"score":3507,"crashes":3,"perMin":1.4,"meanAlt"

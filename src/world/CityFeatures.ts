@@ -23,7 +23,7 @@ const ALLEY_FIRST = ['Lantern', 'Tinker', 'Cobble', 'Paper', 'Ginger', 'Kite', '
 const ALLEY_SECOND = ['Alley', 'Lane', 'Row', 'Passage', 'Walk'];
 const TUNNEL_NAMES = ['Arcade Tunnel', 'Clock Tunnel', 'Gallery Tunnel', 'Market Tunnel', 'Echo Tunnel', 'Station Tunnel', 'Vault Tunnel', 'Bridge Tunnel', 'Organ Tunnel', 'Lamplight Tunnel'];
 
-export const ALLEY_WIDTH = 6;
+export const ALLEY_WIDTH = 7; // round 20: 6 -> 7 (turning in at speed clipped the mouth corner: the shortcut bot crashed 0.62 a minute)
 export const TUNNEL_CLEAR = 7; // m above the sidewalk
 export const DIAG_HALF = 5; // corridor half width (10 m wall to wall)
 export const DIAG_ALLEY_HALF = 3.6; // corner-to-corner alley half width (7.2 m wall to wall)

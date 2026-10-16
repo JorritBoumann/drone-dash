@@ -5,11 +5,12 @@ import { createRenderer, RenderPipeline } from '../core/Renderer';
 import { createSeededRandom, type Rng } from '../core/random';
 import { Drone, type FlightEvents } from '../entities/Drone';
 import { MARKER_COLORS, ObjectiveMarker } from '../entities/ObjectiveMarker';
+import { RouteGate } from '../entities/RouteGate';
 import { AudioSystem } from '../systems/AudioSystem';
 import { CameraRig } from '../systems/CameraRig';
 import { CollisionWorld } from '../systems/CollisionWorld';
 import { DebugTools } from '../systems/DebugTools';
-import { DeliverySystem } from '../systems/DeliverySystem';
+import { DeliverySystem, JOBS } from '../systems/DeliverySystem';
 import { Slipstream } from '../systems/Slipstream';
 import { VfxSystem } from '../systems/VfxSystem';
 import { Hud, fmtX } from '../ui/Hud';
@@ -20,7 +21,13 @@ import { radialTexture } from '../world/Textures';
 import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
 import { cityLook, cityUrl, dateLabel, readDaily, resolveCity, writeDaily, type CityLook, type CityPick } from './cities';
 import { auditPads } from '../world/padAudit';
-import { routeOnGraph } from '../world/CityFeatures';
+import { buildStreetGraph, routeOnGraph } from '../world/CityFeatures';
+
+/** Round 20: the alley mouth faces stand this far in from the block edge (sidewalk 3 m + the 1.5 m mouth setback). */
+const GATE_FACE = 4.5;
+/** Round 20: an alley or tunnel run is marked (and named) only when it saves this many metres and this share of the best route without one. */
+const GATE_SAVE_M = 10;
+const GATE_SAVE_SHARE = 0.08;
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
@@ -55,6 +62,7 @@ export class Game {
   private readonly cameraRig = new CameraRig(this.camera);
   private readonly drone = new Drone();
   private readonly marker = new ObjectiveMarker();
+  private readonly gate = new RouteGate(); // round 20: the suggested route's entrance arch and exit arch
   private readonly slip = new Slipstream();
   private slipClockK = 0; // 0..1 draft pace this frame for the slow clock (see SLIPSTREAM.clockRate)
   private slipClockGain = 0; // clock seconds gained per second this frame (the clock runs at 1 - this speed)
@@ -177,6 +185,7 @@ export class Game {
     applyMood(MOODS[this.look.mood]);
     this.layout = generateCity(createSeededRandom(this.seed), 7, this.look.parks, this.seed);
     this.buildNarrowRects();
+    this.openGraph = buildStreetGraph(this.layout.roadCenters, this.layout.blockSize, this.layout.roadWidth, [], this.layout.boulevards, true);
     this.world = new CollisionWorld(this.layout.colliders, 0);
     this.cityMaterial = createCityMaterial();
     const city = new THREE.Mesh(this.layout.geometry, this.cityMaterial);
@@ -197,6 +206,7 @@ export class Game {
 
     this.scene.add(this.drone.group);
     this.scene.add(this.marker.group);
+    this.scene.add(this.gate.group);
     this.scene.add(this.vfx.group);
 
     this.blob = new THREE.Mesh(
@@ -333,6 +343,11 @@ export class Game {
     this.bankPaid = 0;
     this.bankLost = 0;
     this.bankShownPay = false;
+    this.staleCarry = 0;
+    this.staleLost = 0;
+    this.staleCount = 0;
+    this.stale = false;
+    this.stallT = 0;
     this.finishHold = 0;
     this.partialShare = 0;
     this.otShare = 1;
@@ -502,6 +517,7 @@ export class Game {
     });
     this.hud.showScreen('over');
     this.marker.hide();
+    this.clearMark();
     this.drone.hasGuide = false;
     this.cameraRig.setOrbitAngle(this.drone.yaw + Math.PI / 2);
   }
@@ -554,6 +570,7 @@ export class Game {
       const h = this.routeHint;
       this.hud.setRouteHint(h.kind ? { kind: h.kind, names: h.names, save: h.save } : null);
       if (h.kind) h.shownAt = this.rt();
+      if (this.mark && this.mark.shownAt < 0) this.mark.shownAt = this.rt();
     }
   }
 
@@ -599,6 +616,7 @@ export class Game {
 
     if (this.state !== 'paused') {
       this.marker.update(animDt, time, this.camera.position);
+      this.gate.update(animDt);
       this.vfx.update(animDt);
     }
     this.lighting.follow(this.drone.group.position);
@@ -618,6 +636,7 @@ export class Game {
     const d = this.drone;
     d.update(dt, this.intent, this.world, this.layout.half + 30, this.events);
     this.checkCrash(realDt);
+    this.updateMark(dt);
     this.updateSlipstream(dt);
     const dp = d.group.position;
     const groundBelow = this.world.surfaceBelow(dp.x, dp.y, dp.z);
@@ -715,6 +734,7 @@ export class Game {
         this.hud.setOvertime(false, true);
         this.audio.setOvertime(false);
         this.marker.hide();
+        this.clearMark();
         d.hasGuide = false;
       } else {
         this.hud.flashTimeBonus(ev.timeBonus);
@@ -754,6 +774,7 @@ export class Game {
     this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, windy, this.slip.hug > 0.4, dt, this.slipRateTier(), this.slipCue());
     this.hud.setWind(windy);
     this.updateNav();
+    this.updateGateTag();
 
     // round 17: the clock hitting 0 with a parcel aboard starts overtime (once); otherwise the run is over
     if (this.finishHold > 0) {
@@ -902,8 +923,23 @@ export class Game {
     const save = Math.max(0, g - r.length);
     // names in route order, alleys and tunnels first, at most two
     const kindOf = (n: string) => this.layout.features.find((f) => f.name === n)?.kind ?? 'road';
-    const names = [...r.names.filter((n) => kindOf(n) !== 'diagonal'), ...r.names.filter((n) => kindOf(n) === 'diagonal')].slice(0, 2);
-    this.routeHint = narrow ? { kind: narrow, names, save: Math.round(save), grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 } : { kind: '', names: [], save: 0, grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 };
+    let names = [...r.names.filter((n) => kindOf(n) !== 'diagonal'), ...r.names.filter((n) => kindOf(n) === 'diagonal')].slice(0, 2);
+    // round 20: the alley or tunnel the route enters first gets an arch with its name; the hint names exactly that
+    this.legBestLeft = r.length + Math.max(0, t.y - from.y);
+    this.legBestGrid = g + Math.max(0, t.y - from.y);
+    this.payFrom = this.legBestLeft;
+    this.payFromGrid = this.legBestGrid;
+    this.payFlown = 0;
+    this.stallT = 0;
+    this.progClock = 0;
+    this.marksThisLeg = 0;
+    this.setMark(this.planMark(r, from.x, from.z, t.x, t.z, 1));
+    // the hint names the marked alley or tunnel only (exactly the board's text); with no mark, the boulevard if the route
+    // takes one; an alley that saves next to nothing is neither marked nor named
+    if (this.mark) names = [this.mark.name];
+    else names = r.names.filter((n) => kindOf(n) === 'diagonal').slice(0, 2);
+    const narrowKind = this.mark ? this.mark.kind : narrow === 'diagonal' || r.kinds.includes('diagonal') ? 'diagonal' : '';
+    this.routeHint = narrowKind ? { kind: narrowKind, names, save: Math.round(save), grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 } : { kind: '', names: [], save: 0, grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 };
     this.hintPending = true;
   }
   /** Round 19: this leg's route hint (diagnostics and HUD). */
@@ -930,6 +966,206 @@ export class Game {
         kind: a.covered ? 'tunnel' as const : 'alley' as const, name: a.name,
       };
     });
+  }
+
+  // ---------------- round 20: the suggested route, marked in the world ----------------
+  /** The marked narrow run of the current leg: entrance arch (named) and exit arch. Null when the route has none. */
+  private mark: {
+    kind: 'alley' | 'tunnel'; name: string; names: string[]; stage: 'entrance' | 'through';
+    gate: THREE.Vector3; inward: { x: number; z: number }; exit: THREE.Vector3; outward: { x: number; z: number }; width: number;
+    legAt: number; shownAt: number; seenAt: number; seenDist: number; tagAt: number; tagOn: boolean; gateIn: boolean;
+  } | null = null;
+  private marksThisLeg = 0;
+  /** Round 20: the street graph without alleys and tunnels (roads and boulevards): the best route that keeps out of them. */
+  private openGraph!: ReturnType<typeof buildStreetGraph>;
+  // progress on the leg: best street route left so far and seconds since it last improved (a parcel off its route goes stale)
+  private legBestLeft = 0;
+  private payFrom = 0; // legBestLeft at the last payout (or the leg start)
+  // the same on the plain grid: a pilot who flies the streets corner to corner (not the shortcut) makes progress on this one
+  private legBestGrid = 0;
+  private payFromGrid = 0;
+  private payFlown = 0; // m flown since the last payout
+  private stallT = 0;
+  private progClock = 0;
+  private stale = false;
+
+  /** The two mouths of an alley block (on the mouth face line, centred), each with its unit direction into the alley. */
+  private mouths(name: string): Array<{ x: number; z: number; ix: number; iz: number; w: number }> {
+    const L = this.layout, B = L.blockSize, R = L.roadWidth;
+    const a = L.alleys.find((q) => q.name === name);
+    if (!a || (a.axis !== 'x' && a.axis !== 'z')) return [];
+    const cx = L.roadCenters[a.bi] + R / 2 + B / 2, cz = L.roadCenters[a.bj] + R / 2 + B / 2;
+    const off = B / 2 - GATE_FACE;
+    return a.axis === 'z'
+      ? [{ x: cx, z: cz - off, ix: 0, iz: 1, w: a.width }, { x: cx, z: cz + off, ix: 0, iz: -1, w: a.width }]
+      : [{ x: cx - off, z: cz, ix: 1, iz: 0, w: a.width }, { x: cx + off, z: cz, ix: -1, iz: 0, w: a.width }];
+  }
+
+  /** The first run of alley or tunnel edges on a route: the mouth it enters and the mouth it leaves by. */
+  private planMark(r: ReturnType<typeof routeOnGraph>, fx: number, fz: number, tx: number, tz: number, need: number): Game['mark'] {
+    const pts = r.points;
+    if (!r.kinds.includes('alley') && !r.kinds.includes('tunnel')) return null;
+    // only a run that really saves: against the best route that keeps out of alleys and tunnels (boulevards allowed)
+    const avoid = routeOnGraph(this.openGraph, fx, fz, tx, tz).length;
+    if (avoid - r.length < GATE_SAVE_M * need || avoid - r.length < GATE_SAVE_SHARE * need * avoid) return null;
+    const isN = (k: string) => k === 'alley' || k === 'tunnel';
+    let k = pts.findIndex((q) => isN(q.kind));
+    if (k < 0) return null;
+    let m = k;
+    while (m + 1 < pts.length && isN(pts[m + 1].kind)) m++;
+    const names: string[] = [];
+    for (let i = k; i <= m; i++) if (!names.includes(pts[i].name)) names.push(pts[i].name);
+    const before = k > 0 ? pts[k - 1] : { x: fx, z: fz };
+    const first = this.mouths(pts[k].name), last = this.mouths(pts[m].name);
+    if (!first.length || !last.length) return null;
+    const near = (ms: typeof first, x: number, z: number) => ms.reduce((a, b) => (Math.hypot(a.x - x, a.z - z) <= Math.hypot(b.x - x, b.z - z) ? a : b));
+    const en = near(first, before.x, before.z);
+    // the exit: of the last alley's mouths, the one the run ends at (not the entrance itself on a one-block run)
+    const ex = last.length > 1 && pts[k].name === pts[m].name ? last.find((q) => q !== near(last, before.x, before.z))! : near(last, pts[m].x, pts[m].z);
+    const kind = this.layout.alleys.find((q) => q.name === pts[k].name)?.covered ? 'tunnel' : 'alley';
+    return {
+      kind, name: pts[k].name, names, stage: 'entrance',
+      gate: new THREE.Vector3(en.x, 0.25, en.z), inward: { x: en.ix, z: en.iz }, exit: new THREE.Vector3(ex.x, 0.25, ex.z), outward: { x: -ex.ix, z: -ex.iz }, width: en.w,
+      legAt: this.rt(), shownAt: -1, seenAt: -1, seenDist: -1, tagAt: -1, tagOn: false, gateIn: false,
+    };
+  }
+
+  private setMark(m: Game['mark']): void {
+    this.mark = m;
+    if (!m) {
+      this.gate.hide();
+      return;
+    }
+    this.marksThisLeg++;
+    const color = this.delivery.phase === 'pickup' ? MARKER_COLORS.pickup : MARKER_COLORS.drop;
+    this.gate.show(color, m.name, m.gate, m.inward, m.exit, m.outward, m.width);
+    // the drone may already be inside the run (a leg that starts at a mouth)
+    const n = this.narrowAt(this.drone.group.position);
+    if (n && m.names.includes(n.name)) this.markStage('through');
+  }
+
+  private clearMark(): void {
+    this.mark = null;
+    this.gate.hide();
+    this.hud.setGate(0, 0, false, 0, '', '', false);
+  }
+
+  private markStage(stage: 'entrance' | 'through'): void {
+    if (!this.mark) return;
+    this.mark.stage = stage;
+    this.gate.setStage(stage);
+  }
+
+  /**
+   * Every frame while playing: advance the mark (through the entrance, out of the exit), and four times a second
+   * re-plan from where the drone is. If the best route no longer starts with the marked run (the pilot went another
+   * way), the mark moves to the new route's alley or tunnel, or goes away. The same re-plan measures progress.
+   */
+  private updateMark(dt: number): void {
+    const p = this.drone.group.position, t = this.delivery.target.pos;
+    const m = this.mark;
+    if (m) {
+      if (m.stage === 'entrance') {
+        const along = (p.x - m.gate.x) * m.inward.x + (p.z - m.gate.z) * m.inward.z;
+        const across = Math.abs((p.x - m.gate.x) * m.inward.z - (p.z - m.gate.z) * m.inward.x);
+        if (along > 0.3 && across < m.width / 2 + 1.5 && p.y < 10) this.markStage('through');
+      } else {
+        const out = (p.x - m.exit.x) * m.outward.x + (p.z - m.exit.z) * m.outward.z;
+        const across = Math.abs((p.x - m.exit.x) * m.outward.z - (p.z - m.exit.z) * m.outward.x);
+        if (out > 0.5 && across < m.width / 2 + 3) {
+          // out of the run: the pad marker leads from here (or the next alley if the route takes another)
+          this.mark = null;
+          this.gate.hide();
+          this.hud.setRouteHint(null); // the hint named this run; it is done
+          this.progClock = 1;
+        }
+      }
+    }
+    this.progClock += dt;
+    if (this.progClock < 0.25) return;
+    this.progClock = 0;
+    const r = routeOnGraph(this.layout.graph, p.x, p.z, t.x, t.z);
+    const left = r.length + Math.max(0, t.y - (p.y - FLIGHT.radius));
+    const leftG = routeOnGraph(this.layout.gridGraph, p.x, p.z, t.x, t.z).length + Math.max(0, t.y - (p.y - FLIGHT.radius));
+    let improved = false;
+    if (left < this.legBestLeft - SLIPSTREAM.staleStep) {
+      this.legBestLeft = left;
+      improved = true;
+    }
+    if (leftG < this.legBestGrid - SLIPSTREAM.staleStep) {
+      this.legBestGrid = leftG;
+      improved = true;
+    }
+    // the final approach (inside staleNear m of the pad: slowing down, lining up, climbing to a roof) never goes stale
+    const nearPad = Math.hypot(t.x - p.x, t.z - p.z) < SLIPSTREAM.staleNear;
+    if (improved || nearPad) this.stallT = 0;
+    else this.stallT += 0.25;
+    const wasStale = this.stale;
+    this.stale = this.stallT > SLIPSTREAM.staleAfter;
+    if (this.stale && !wasStale) {
+      this.staleCount++;
+      this.scoreLog.push({ t: this.rt(), k: 'stale', v: this.bank });
+    }
+    // a mark already up stays while its run still saves half the bar (no flicker at the threshold)
+    const next = this.planMark(r, p.x, p.z, t.x, t.z, this.mark ? 0.5 : 1);
+    const cur = this.mark;
+    if (cur && next && cur.names.includes(next.name)) return; // still on the marked run
+    if (!cur && !next) return;
+    if (cur && !next && cur.stage === 'through') {
+      // inside the run (or at its way out) the route from here may be plain street: keep the exit arch
+      const inRun = this.narrow && cur.names.includes(this.narrow.name);
+      if (inRun || Math.hypot(p.x - cur.exit.x, p.z - cur.exit.z) < 10) return;
+    }
+    if (next) {
+      next.legAt = this.routeHint?.at ?? this.rt();
+      next.shownAt = this.rt();
+    }
+    this.setMark(next);
+    if (next) this.hud.renameRouteHint(next.kind, next.name);
+    else this.hud.setRouteHint(null);
+  }
+
+  /** HUD tag over the marked arch (clamped to the screen edge with an arrow when it is off screen), like the pad marker. */
+  private updateGateTag(): void {
+    const m = this.mark;
+    if (!m || this.state !== 'playing') {
+      this.hud.setGate(0, 0, false, 0, '', '', false);
+      return;
+    }
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    const g = m.stage === 'entrance' ? m.gate : m.exit;
+    const v = this.tmp2.set(g.x, g.y + (m.stage === 'entrance' ? 10.5 : 8), g.z).project(this.camera);
+    const behind = v.z > 1;
+    let x = (v.x * 0.5 + 0.5) * w, y = (-v.y * 0.5 + 0.5) * h;
+    // is the arch itself in the view (in front of the camera and inside the frame)?
+    const a = this.tmp.set(g.x, g.y + 5, g.z).project(this.camera);
+    const archIn = a.z < 1 && Math.abs(a.x) < 1 && Math.abs(a.y) < 1;
+    if (behind) { x = w - x; y = h - y; }
+    const mx = 40, top = h < 460 ? 140 : 150, bottom = h - 90; // below the objective pill and the route hint
+    let off = behind || x < mx || x > w - mx || y < top || y > bottom;
+    let angle = 0;
+    if (off) {
+      const cx = w / 2, cy = h / 2;
+      let dx = x - cx, dy = y - cy;
+      if (behind && Math.abs(dy) < 1) dy = 1;
+      const sx = dx !== 0 ? (dx > 0 ? (w - mx - cx) / dx : (mx - cx) / dx) : Infinity;
+      const sy = dy !== 0 ? (dy > 0 ? (bottom - cy) / dy : (top + 42 - cy) / dy) : Infinity;
+      const s = Math.min(sx, sy);
+      dx *= s; dy *= s;
+      x = cx + dx; y = cy + dy;
+      angle = Math.atan2(dy, dx) + Math.PI / 2;
+    }
+    const ok = Number.isFinite(x) && Number.isFinite(y);
+    if (!ok) off = false;
+    const dist = Math.hypot(g.x - this.drone.group.position.x, g.z - this.drone.group.position.z);
+    this.hud.setGate(x, y, off, angle, m.stage === 'entrance' ? m.name : 'Way out', m.kind, ok, Math.round(dist));
+    if (m.tagAt < 0 && ok) m.tagAt = this.rt();
+    m.tagOn = ok && !off;
+    m.gateIn = archIn;
+    if (archIn && m.seenAt < 0 && m.stage === 'entrance') {
+      m.seenAt = this.rt();
+      m.seenDist = Math.round(dist);
+    }
   }
 
   /**
@@ -988,9 +1224,13 @@ export class Game {
 
   /** HUD cue naming the one thing that would fill the meter faster, or praising a wall hug. */
   private narrow: { kind: 'alley' | 'tunnel'; name: string; roof: boolean } | null = null;
+  private staleCarry = 0;
+  private staleLost = 0; // round 20: bank points faded off-route this run (a part of bankLost)
+  private staleCount = 0;
   private vanDraft = false;
   private slipCue(): string {
     const s = this.slip, d = this.drone;
+    if (this.stale && (s.drafting || this.bank > 0)) return 'stale';
     if (this.narrow && s.drafting) return this.narrow.roof ? 'tunnel' : 'alley';
     if (this.vanDraft && s.drafting) return 'van';
     const t = this.delivery.target;
@@ -1026,6 +1266,7 @@ export class Game {
   /** Low street line reward: draft meter, payouts, wind streaks and the rising whistle. */
   private updateSlipstream(dt: number): void {
     const d = this.drone;
+    this.payFlown += Math.hypot(d.velocity.x, d.velocity.z) * dt;
     // round 19: in an alley the walls give the full draft; under a tunnel roof the slow clock runs at full strength
     this.narrow = this.narrowAt(d.group.position);
     this.vanDraft = this.env.vanDraft(d.group.position, d.velocity.x, d.velocity.z);
@@ -1034,6 +1275,8 @@ export class Game {
     // slow clock: good drafting earns clock time smoothly, every frame, instead of in lumps per payout
     // (round 13: only on the way to the objective, and at most `clockBudget` seconds per leg, so it pays delivering)
     this.slipClockK = this.narrow?.roof && d.speed > SLIPSTREAM.minSpeed ? 1 : this.slipClockPace();
+    // round 20: no slow clock while the parcel is off its route (circling, shuttling in a tunnel, tailing a van away)
+    if (this.stale) this.slipClockK = 0;
     this.slipToward = this.slipClockK > 0 ? this.slipTowardTarget() : 1;
     // round 17: no slow clock in overtime (overtime is a fixed window)
     const want = this.delivery.overtime ? 0 : SLIPSTREAM.clockRate * this.slipClockK * this.slipToward * this.delivery.clockDecay * dt;
@@ -1052,8 +1295,18 @@ export class Game {
       let want = Math.round(ev.points * pace * (d.carrying ? S.bankCarry : S.bankPickup));
       // round 15: the run's first payout banks at least bankFirstMin, so the first draft visibly counts
       if (!this.bankShownPay) want = Math.max(want, S.bankFirstMin);
+      // round 20: a payout banks by the progress the leg made while it filled: route metres gained over distance flown,
+      // full from S.bankProgress (a street line toward the objective, corners and detours included, is well above it;
+      // shuttling in a tunnel, circling a block or tailing a van the wrong way is near 0)
+      const prog = Math.max(0, this.payFrom - this.legBestLeft, this.payFromGrid - this.legBestGrid);
+      const fac = this.payFlown > 2 ? Math.min(1, prog / (S.bankProgress * this.payFlown)) : 1;
+      want = Math.round(want * fac);
+      this.payFrom = this.legBestLeft;
+      this.payFromGrid = this.legBestGrid;
+      this.payFlown = 0;
       this.bankShownPay = true;
-      const pts = Math.max(0, Math.min(want, this.legCap - this.legBanked));
+      // round 20: a payout made while the leg makes no progress banks nothing (the street bonus is for delivering)
+      const pts = this.stale ? 0 : Math.max(0, Math.min(want, this.legCap - this.legBanked));
       this.bank += pts;
       this.legBanked += pts;
       this.bankTotal += pts;
@@ -1063,10 +1316,23 @@ export class Game {
       d.boost = Math.min(1, d.boost + SLIPSTREAM.boost);
       this.audio.slipPayout(ev.chain);
       if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus');
+      else if (this.stale) this.hud.slipPop('Off route', ev.chain, 'No bonus · head for the marker');
       else this.hud.slipPop('Bonus full', ev.chain, d.carrying ? 'Deliver to cash in' : 'Grab the parcel');
       this.cameraRig.addShake(0.06 + 0.03 * ev.chain);
       this.vfx.burst(d.group.position, this.slipColor, 12 + ev.chain * 6, 6 + ev.chain, 0.12, this.fxRng);
       if (ev.chain >= 3) this.vfx.burst(d.group.position, this.slipHot, 6 + ev.chain * 3, 9 + ev.chain, 0.1, this.fxRng);
+    }
+    // round 20: a parcel off its route goes stale: the banked street bonus fades while the leg makes no progress
+    if (this.stale && this.bank > 0 && !this.delivery.overtime) {
+      const cut = Math.min(this.bank, this.bank * SLIPSTREAM.staleDrain * dt + this.staleCarry);
+      const whole = Math.floor(cut);
+      this.staleCarry = cut - whole;
+      if (whole > 0) {
+        this.bank -= whole;
+        this.bankLost += whole;
+        this.staleLost += whole;
+        this.hud.setBank(this.bank, d.carrying);
+      }
     }
     // wind streaks peeling off the drone while it drafts
     if (this.slip.intensity > 0.15 && this.fxRng() < this.slip.intensity) {
@@ -1145,7 +1411,7 @@ export class Game {
       y = h - y;
     }
     const mx = 40;
-    const top = 120;
+    const top = h < 460 ? 140 : 150; // round 20: below the objective pill and the route hint (was 120: it covered the hint on a phone)
     const bottom = h - 80;
     let off = behind || x < mx || x > w - mx || y < top || y > bottom;
     let angle = 0;
@@ -1156,7 +1422,8 @@ export class Game {
       let dy = y - cy;
       if (behind && Math.abs(dy) < 1) dy = 1;
       const sx = dx !== 0 ? (dx > 0 ? (w - mx - cx) / dx : (mx - cx) / dx) : Infinity;
-      const sy = dy !== 0 ? (dy > 0 ? (bottom - cy) / dy : (top - cy) / dy) : Infinity;
+      // the edge arrow sticks out 46 px above the diamond: keep it below the hint pill too
+      const sy = dy !== 0 ? (dy > 0 ? (bottom - cy) / dy : (top + 46 - cy) / dy) : Infinity;
       const s = Math.min(sx, sy);
       dx *= s;
       dy *= s;
@@ -1201,6 +1468,8 @@ export class Game {
       scoreLog: this.scoreLog,
       routeHint: this.routeHint ? { ...this.routeHint } : null,
       narrow: this.narrow ? { ...this.narrow } : null,
+      routeMark: this.mark ? { kind: this.mark.kind, name: this.mark.name, names: this.mark.names.slice(), stage: this.mark.stage, gate: { x: this.mark.gate.x, y: this.mark.gate.y, z: this.mark.gate.z }, inward: { ...this.mark.inward }, exit: { x: this.mark.exit.x, y: this.mark.exit.y, z: this.mark.exit.z }, outward: { ...this.mark.outward }, width: this.mark.width, legAt: this.mark.legAt, shownAt: this.mark.shownAt, seenAt: this.mark.seenAt, seenDist: this.mark.seenDist, tagAt: this.mark.tagAt, tagOn: this.mark.tagOn, gateIn: this.mark.gateIn, board: this.gate.text, n: this.marksThisLeg } : null,
+      progress: { best: Math.round(this.legBestLeft), stall: this.stallT, stale: this.stale, staleLost: this.staleLost, staleCount: this.staleCount },
       vanDraft: this.vanDraft,
       centreLog: this.hud.centreLog.slice(-30),
       city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier, mood: MOODS[this.look.mood].name, parks: this.look.parks, features: this.featureCounts, rushLanes: this.env.rushLevel },
@@ -1267,7 +1536,7 @@ export class Game {
       },
       // test hook: patch tunables, e.g. tune({ SLIPSTREAM: { points: 40 } }) (builder balance sims)
       tune: (patch: Record<string, Record<string, unknown>>) => {
-        const all: Record<string, object> = { CRASH, FLIGHT, GOALS, RUN, RUSH, SLIPSTREAM };
+        const all: Record<string, object> = { CRASH, FLIGHT, GOALS, RUN, RUSH, SLIPSTREAM, JOBS };
         for (const [k, v] of Object.entries(patch)) if (all[k]) Object.assign(all[k], v);
       },
       externalClock: (on: boolean) => {

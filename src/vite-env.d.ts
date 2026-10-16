@@ -25,6 +25,12 @@ interface ThreeGameDiagnostics {
   scoreLog?: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[];
   /** Round 19: this leg's route hint, the alley or tunnel the drone is in, and the centre messages shown. */
   routeHint?: { kind: string; names: string[]; save: number; grid: number; route: number; kinds: string[]; at: number; shownAt: number } | null;
+  routeMark?: {
+    kind: string; name: string; names: string[]; stage: string; gate: { x: number; y: number; z: number }; inward: { x: number; z: number };
+    exit: { x: number; y: number; z: number }; outward: { x: number; z: number }; width: number; legAt: number; shownAt: number;
+    seenAt: number; seenDist: number; tagAt: number; tagOn: boolean; gateIn: boolean; board: string; n: number;
+  } | null;
+  progress?: { best: number; stall: number; stale: boolean; staleLost: number; staleCount: number };
   narrow?: { kind: string; name: string; roof: boolean } | null;
   vanDraft?: boolean;
   centreLog?: Array<{ kind: string; text: string; t: number }>;

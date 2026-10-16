@@ -45,7 +45,9 @@ const AWNING_DEPTH = 0.5;
 const SIDEWALK_H = 0.25;
 const SIDEWALK_W = 3;
 /** Round 19: alley blocks set their mouth faces back this far (a wider apron to turn into the alley from the street). */
-const MOUTH_SET = 1.5;
+const MOUTH_SET = 1.5; // round 20: 2.5 was tried; the set-back street faces weakened the street draft (grid bot Bronze on 3 of 12 cities)
+/** Round 20: a doorstep beside an alley mouth sits this far from its lot's outer corner (the far end from the alley). */
+const MOUTH_PAD = 2.4;
 
 const WALLS = ['#f2d7b6', '#e8b48a', '#d98f6c', '#c9705c', '#f4e6cf', '#a9c2a8', '#86adae', '#c9bdd9', '#ecc871', '#d6a676', '#adc0cf', '#f1eee4', '#e0a39a'];
 const TOWER_WALLS = ['#dfe3e6', '#bccad4', '#a4b6c6', '#e6dac8', '#8fa5b5', '#cdbba7', '#f0e5d3'];
@@ -312,9 +314,11 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
             if (chance(rng, mouthLot ? 0.8 : 0.42)) {
               let faces: Array<[number, number, number, number]> = [];
               const ok = (x: number, z: number, bx: number, bz: number) => !cutLot || (outside(x, z, 3) && outside(bx, bz, 2.5));
-              // x (or z) of the doorstep on a mouth face: 2.2 m from the alley wall, else the middle of the face
-              const fx = alley?.axis === 'z' ? (lx0 + lw / 2 < cx ? lx0 + lw - 2.2 : lx0 + 2.2) : lx0 + lw / 2;
-              const fz = alley?.axis === 'x' ? (lz0 + ld / 2 < cz ? lz0 + ld - 2.2 : lz0 + 2.2) : lz0 + ld / 2;
+              // x (or z) of the doorstep on a mouth face. Round 20: at the far end of the face from the alley (MOUTH_PAD m from
+              // the lot corner, about 7 m from the alley wall; was 2.2 m from the wall), so a pilot leaving the alley fast has
+              // room to turn onto it instead of swinging back into the mouth corner. Else the middle of the face.
+              const fx = alley?.axis === 'z' ? (lx0 + lw / 2 < cx ? lx0 + MOUTH_PAD : lx0 + lw - MOUTH_PAD) : lx0 + lw / 2;
+              const fz = alley?.axis === 'x' ? (lz0 + ld / 2 < cz ? lz0 + MOUTH_PAD : lz0 + ld - MOUTH_PAD) : lz0 + ld / 2;
               const mouthFaces: typeof faces = [];
               if (edgeN && ok(fx, lz0 - 1.5, fx, lz0 + 1)) (alley?.axis === 'z' ? mouthFaces : faces).push([fx, lz0 - 1.5, 0, -1]);
               if (edgeS && ok(fx, lz0 + ld + 1.5, fx, lz0 + ld - 1)) (alley?.axis === 'z' ? mouthFaces : faces).push([fx, lz0 + ld + 1.5, 0, 1]);

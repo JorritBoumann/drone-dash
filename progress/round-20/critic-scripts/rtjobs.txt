@@ -1,0 +1,15 @@
+node hand-fly20.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly20.mjs > hf-mobile.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+MOBILE=1 OVSHOT=1 SEED=58 LOWT=170 HIGHT=0 PFX=long- node hand-fly20.mjs > hf-mobile-long.log 2>&1
+LINE=low SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node route-play-rt-x-m-esc17.mjs > acc-low.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node balance-probe-m-esc17.mjs > acc-lazy.log 2>&1
+MODE=grid SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node route-sign20.mjs > acc-grid-hint.log 2>&1
+MODE=sign SEEDS=30397,67861,71635,73297,18304,20024,41556,38060,21060,15384,20323,55608 SIMT=600 node route-sign20.mjs > acc-sign-hint.log 2>&1
+SAVECHK=1 MODE=grid SEEDS=22,58,130 SIMT=600 node route-sign20.mjs > save-chk.log 2>&1
+LINE=low SEEDS=20323 SIMT=600 node route-play-rt-x-m-esc17.mjs > rep-low.log 2>&1
+END

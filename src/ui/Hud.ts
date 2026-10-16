@@ -144,6 +144,12 @@ export class Hud {
   private readonly routeHintSave = $('route-hint-save');
   private readonly routeHintLabel = $('route-hint-label');
   private routeHintTimer = 0;
+  // round 20: tag over the suggested route's entrance arch (or its way out), placed like the pad marker
+  private readonly gateTag = $('gate-tag');
+  private readonly gateTagName = $('gate-tag-name');
+  private readonly gateTagArrow = document.querySelector('.gate-tag-arrow') as HTMLElement;
+  private readonly gateTagDist = $('gate-tag-dist');
+  private gateLast = { name: '', kind: '', dist: -1, on: false };
   // round 19: centre messages (delivery / pickup / crash pop, medal banner, event banner, payout pop) show one at a time
   private cActive: { kind: CentreKind; el: HTMLElement; shownAt: number; minMs: number; durMs: number } | null = null;
   private cQueue: Array<{ kind: CentreKind; el: HTMLElement; prio: number; minMs: number; durMs: number; at: number; staleMs: number; apply: () => void }> = [];
@@ -304,6 +310,39 @@ export class Hud {
    * Round 19: route hint under the objective pill at the start of each leg: the named alley, tunnel or boulevard on the
    * shortest street route, and how many metres it saves over the plain grid. Shown for 10 s. null hides it.
    */
+  /** Round 20: the route changed mid-leg (the pilot went another way): the hint names the new marked entrance. */
+  renameRouteHint(kind: string, name: string): void {
+    if (!this.routeHint.classList.contains('show')) return;
+    this.routeHint.dataset.kind = kind;
+    this.routeHintLabel.textContent = kind === 'tunnel' ? 'Tunnel' : 'Shortcut';
+    this.routeHintName.textContent = name;
+  }
+
+  /** Round 20: the gate tag. `name` empty or `visible` false hides it. */
+  setGate(x: number, y: number, offscreen: boolean, angle: number, name: string, kind: string, visible: boolean, dist = 0): void {
+    const on = visible && !!name;
+    if (on !== this.gateLast.on) {
+      this.gateLast.on = on;
+      this.gateTag.classList.toggle('show', on);
+    }
+    if (!on) return;
+    this.gateTag.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    this.gateTag.classList.toggle('offscreen', offscreen);
+    if (offscreen) this.gateTagArrow.style.transform = `rotate(${angle.toFixed(3)}rad)`;
+    if (name !== this.gateLast.name) {
+      this.gateLast.name = name;
+      this.gateTagName.textContent = name;
+    }
+    if (kind !== this.gateLast.kind) {
+      this.gateLast.kind = kind;
+      this.gateTag.dataset.kind = kind;
+    }
+    if (dist !== this.gateLast.dist) {
+      this.gateLast.dist = dist;
+      this.gateTagDist.textContent = `${dist} m`;
+    }
+  }
+
   setRouteHint(h: { kind: string; names: string[]; save: number } | null): void {
     window.clearTimeout(this.routeHintTimer);
     if (!h) { this.routeHint.classList.remove('show'); return; }
@@ -514,6 +553,7 @@ export class Hud {
   setObjective(kind: MarkerKind, name: string): void {
     this.objective.dataset.kind = kind;
     this.nav.dataset.kind = kind;
+    this.gateTag.dataset.phase = kind;
     this.objectiveVerb.textContent = kind === 'pickup' ? 'Pick up' : 'Deliver';
     this.objectiveName.textContent = name;
     this.objective.classList.remove('flash');
@@ -595,7 +635,7 @@ export class Hud {
     }
     if (cue !== this.slipLast.cue) {
       this.slipLast.cue = cue;
-      this.slipCue.textContent = cue === 'faster' ? 'Faster!' : cue === 'closer' ? 'Closer to wall' : cue === 'hug' ? 'Wall hug!' : cue === 'alley' ? 'Alley draft!' : cue === 'tunnel' ? 'Tunnel · clock slowed' : cue === 'van' ? 'Van draft!' : '';
+      this.slipCue.textContent = cue === 'faster' ? 'Faster!' : cue === 'closer' ? 'Closer to wall' : cue === 'hug' ? 'Wall hug!' : cue === 'alley' ? 'Alley draft!' : cue === 'tunnel' ? 'Tunnel · clock slowed' : cue === 'van' ? 'Van draft!' : cue === 'stale' ? 'Off route · bonus fading' : '';
       this.slipCue.dataset.cue = cue;
     }
     if (on !== this.slipLast.on) {

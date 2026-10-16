@@ -192,19 +192,33 @@ export const SLIPSTREAM = {
   // chevron measure) maps linearly from `bankPaceMin` at `bankPaceLow` to 1 at `bankPaceFull` and on up to `bankPaceMax`.
   // A slow, centred crawl (2 to 4 m/s of draft) banks a fifth to a half; a fast street line along the facades (8 to
   // 14) banks 1.5 to 2.5 times. Balance bots: the lazy flier's payouts average 3, the routed street pilot's 4 to 14.
-  bankCarry: 1,
-  bankPickup: 0.75,
+  // Round 20: 1 -> 1.15 and 0.75 -> 0.86. The street line's own edge over the roof line (low over high had slipped to
+  // 0.78 in real time). Safe now that a parcel off its route banks nothing and fades (stale* below), so farms gain nothing.
+  bankCarry: 1.15,
+  bankPickup: 0.86,
   bankPaceLow: 2.5,
   bankPaceFull: 6,
   bankPaceMin: 0.2,
   bankPaceMax: 1.8, // round 17: 2.5 -> 1.8 (a fast run's street bonus no longer runs away from a steady one)
-  bankPerMetre: 7, // round 17: unchanged (3.5 was tried: the carry farm then filled its share fast and delivered like an honest run). Honest street legs banked up to 6 points per metre of street route on the balance bots
+  bankPerMetre: 5, // round 20: 7 -> 5 (honest legs bank 2 to 4 points per metre of route; a farm phase filled the rest) // round 17: unchanged (3.5 was tried: the carry farm then filled its share fast and delivered like an honest run). Honest street legs banked up to 6 points per metre of street route on the balance bots
   bankLegMin: 150, // points: every leg can bank at least this much (very short legs)
   bankCrashKeep: 0.5,
   bankCrashTier: 1, // CRASH.tiers index from which a crash cuts the bank (1 = Hard crash)
   // Round 15: the run's first payout banks at least this many points (it used to bank about 7 after a slow intro draft,
   // which read as "drafting does nothing"). Still banked, so it is paid only on delivery: a no-delivery farm stays at 0.
   bankFirstMin: 25,
+  // Round 20: a parcel off its route goes stale. Four times a second the game measures the street route left to the
+  // objective (alleys and tunnels included, plus any climb). When it has not improved by `staleStep` m for `staleAfter` s
+  // (circling a wall, shuttling in a tunnel, tailing a van the wrong way), payouts bank nothing, the slow clock stops,
+  // and the bank fades by `staleDrain` of itself a second until the leg makes progress again. Honest legs never stall
+  // that long (a grid detour or a turn back to the right street is under 4 s).
+  staleStep: 2,
+  staleAfter: 5,
+  staleDrain: 0.2,
+  staleNear: 25, // m: no stale this close to the objective (a payout there still banks only by progress)
+  // Round 20: each payout banks by the leg's progress while it filled: route metres gained / metres flown, full at or
+  // above this (an honest street line is 0.7 to 1, a grid line on a shortcut leg 0.6 or more).
+  bankProgress: 0.4,
 };
 
 /**

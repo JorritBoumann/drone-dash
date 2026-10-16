@@ -1,0 +1,14 @@
+cities grid 12 sign 12 feat 12
+grid: mark legs 29; arch in view within 3 s or at <=80 m: 28; HUD tag at 0 s: 28; hint == board: 29
+   not seen in time: [('48251', 'deliverFlorist · Harbor & 2nd ', 19, 12.5)]
+sign: mark legs 30; arch in view within 3 s or at <=80 m: 28; HUD tag at 0 s: 27; hint == board: 30
+   not seen in time: [('38954', 'deliverBookshop · Copper & 6th', 21, 15.65), ('50160', 'deliverStudio · Bay & 5th Ave', 21, 17.45)]
+   arch seen delay s: median 1.4 max 3.5  through the marked entrance on 25 legs
+matched mark legs 23: grid 334.9 s, sign 347.3 s, sign faster by -0.037
+shortcut bot (street graph) on the same mark legs 25: grid 357.6 s, shortcut 338.5 s, faster by 0.053
+grid: crashes 1 in 1428 s = 0.04/min; kinds ['road']
+sign: crashes 6 in 1334 s = 0.27/min; kinds ['alley', 'tunnel', 'tunnel', 'tunnel', 'alley', 'alley']
+feat: crashes 4 in 1489 s = 0.16/min; kinds ['tunnel', 'alley', 'alley', 'alley']
+grid scores [(1456, 'Bronze'), (2642, 'Silver'), (2716, 'Silver'), (2800, 'Silver'), (2935, 'Silver'), (3495, 'Silver'), (3536, 'Silver'), (3630, 'Silver'), (3807, 'Silver'), (3884, 'Silver'), (4871, 'Gold'), (5241, 'Gold')]
+sign scores [(2194, 'Silver'), (2402, 'Silver'), (2783, 'Silver'), (2990, 'Silver'), (3027, 'Silver'), (3055, 'Silver'), (3141, 'Silver'), (3662, 'Silver'), (4001, 'Silver'), (4230, 'Silver'), (4594, 'Gold'), (5126, 'Gold')]
+feat scores [(2524, 'Silver'), (3172, 'Silver'), (3560, 'Silver'), (3632, 'Silver'), (3957, 'Silver'), (4056, 'Silver'), (4275, 'Silver'), (4754, 'Gold'), (4996, 'Gold'), (5590, 'Gold'), (6734, 'Gold'), (6823, 'Gold')]

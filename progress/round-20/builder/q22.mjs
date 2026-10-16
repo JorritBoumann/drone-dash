@@ -1,0 +1,14 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch({ channel: 'chromium' });
+const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+await page.goto('http://127.0.0.1:5188/?seed=22', { waitUntil: 'networkidle' }); await page.waitForTimeout(500);
+await page.evaluate(() => { window.__GAME__.externalClock(true); window.__GAME__.start(); window.__GAME__.manualRender(true); });
+let d = await page.evaluate(() => JSON.parse(JSON.stringify(window.__GAME__.advance(0.2, false))));
+const o = d.objective.position; await page.evaluate((o) => window.__GAME__.place(o.x, o.y + 1.2, o.z, 0, 0), o);
+d = await page.evaluate(() => JSON.parse(JSON.stringify(window.__GAME__.advance(0.5, false))));
+const t = d.objective.position;
+const near = await page.evaluate((t) => { const f = window.__GAME__.features(); return { f: f.filter((q) => q.kind !== 'diagonal').map((q) => q.name), sites: window.__GAME__.sites().filter((s) => Math.hypot(s.x - t.x, s.z - t.z) < 1) }; }, t);
+console.log(JSON.stringify({ obj: d.objective, near: near.sites, mark: d.routeMark && d.routeMark.name }));
+await page.evaluate((t) => window.__GAME__.place(t.x + 8, 30, t.z + 8, Math.atan2(8, 8), 0), t); await page.waitForTimeout(200);
+await page.evaluate(() => window.__GAME__.advance(0.6, true)); await page.screenshot({ path: '/Users/jorritboumann/projects/browser-game-lab/games/drone-dash/progress/round-20/builder-shots/X-seed22-drop1.jpg', type: 'jpeg', quality: 80 });
+await browser.close();

@@ -1293,13 +1293,14 @@ kbd {
 .event-pop, .pop, .medal-pop { top: 39%; }
 @media (max-height: 460px) {
   /* below the objective pill and the route hint (a phone held sideways is about 390 px tall) */
-  .event-pop { top: 58%; }
-  .pop { top: 62%; }
+  /* round 20: higher, clear of the slipstream and boost meters and their cue line (the pop grows and rises as it plays) */
+  .event-pop { top: 47%; }
+  .pop { top: 50%; }
   .pop strong { font-size: 2.1rem; -webkit-text-stroke-width: 6px; }
   .pop span { margin-top: 4px; padding: 4px 12px; font-size: 0.8rem; }
   .pop-icon { width: 32px; height: 32px; }
-  .medal-pop { top: 58%; }
-  .slip-pop { top: 57%; }
+  .medal-pop { top: 47%; }
+  .slip-pop { top: 47%; }
   .pop.show:not(.crash) { animation-name: pop-in-short; }
 }
 /* round 19: on a short screen the pop rises less as it fades, so it stays clear of the route hint */
@@ -1309,4 +1310,57 @@ kbd {
   25% { transform: translate(-50%, -50%) scale(1); }
   75% { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, -58%) scale(0.96); }
+}
+
+/* round 20: tag over the suggested route's entrance arch (secondary marker, same colour as the objective) */
+.gate-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  --c: var(--amber);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.gate-tag[data-phase='drop'] { --c: var(--teal); }
+.gate-tag.show { opacity: 1; }
+.gate-tag-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border: 2px solid var(--c);
+  border-radius: 8px;
+  background: rgba(29, 34, 48, 0.78);
+  box-shadow: 0 0 12px var(--c);
+  color: var(--cream);
+  font-size: 0.74rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.gate-tag-pill small { color: var(--c); font-weight: 900; font-variant-numeric: tabular-nums; }
+.gate-tag-icon { width: 12px; height: 10px; border: 2.5px solid var(--c); border-bottom: none; border-radius: 6px 6px 0 0; }
+.gate-tag-arrow {
+  position: absolute;
+  left: -12px;
+  top: -42px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 16px solid var(--c);
+  filter: drop-shadow(0 0 5px var(--c));
+  transform-origin: 12px 42px;
+  opacity: 0;
+}
+.gate-tag.offscreen .gate-tag-arrow { opacity: 1; }
+.gate-tag.offscreen .gate-tag-pill { opacity: 0.85; }
+@media (max-width: 640px), (max-height: 460px) {
+  .gate-tag-pill { font-size: 0.64rem; padding: 2px 8px 2px 6px; }
 }

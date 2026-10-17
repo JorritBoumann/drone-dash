@@ -1,0 +1,3 @@
+ %CPU COMM
+100.7 /Applications/NordVPN.app/Contents/MacOS/NordVPN
+ 99.1 /usr/sbin/BTLEServer

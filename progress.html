@@ -16,7 +16,367 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-17 17:57 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-17 20:32 UTC.</p>
+<section><h2>round 30</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 30 critic report
+
+**Verdict:** The climb snap is fixed. The new camera does not mislead players in turns. But in one alley (Quill Row, seed 22) it now hides the drone behind a wall for up to 0.6 s. Round 29 did not do this.
+
+Build tested: the uncommitted round 30 work (CameraRig.ts, a `camSmooth` probe hook) on top of commit c0b5238. My dev server ran on port 5191. A copy of commit c0b5238 (round 29) ran on port 5192 for A/B checks. Both are stopped. The owner's server on 5188 was left alone. Every browser ran alone, one job at a time, from `critic-scripts/queue30.sh` and `jobs30.txt`. I did not read the round 30 builder notes. The round 29 scripts were copied to `progress/round-30/critic-scripts/`. Their output folders are relative, so they now write to round 30.
+
+New scripts this round:
+
+- `climb30.mjs`: climb29 with a 1.0 m jump line, a camera-in-solid check and the closest distance per frame.
+- `heading30.mjs`: a fixed-step flight (boost, sharp turns, hover turn, zig-zag). Per frame, it compares the camera's view direction with the drone's heading and travel direction. It also logs trail distance, sideways offset and the nav marker position against the true bearing.
+- `marker30.mjs`: a "human model" that steers only by the screen. It turns until the projected nav marker sits over the drone (or over screen centre). It runs with a yaw-truth bot as the baseline.
+- `padview30.mjs`: glides onto 24 real pads, mostly beside walls (4 approach headings). After the pickup or drop, it logs where the camera looks.
+- `route-play-hd30.mjs`: the street medal bot, unchanged except for a port setting and a log of its heading error.
+- `cam-clip30.mjs`: cam-clip24 with a port setting. It also takes a screenshot of each moment that a wall hides the drone.
+
+## Machine load (read first)
+
+BTLEServer used 58 to 100% of one core all session. At the start, NordVPN also used 100% of a core (`cpu-ff.txt`). Unlike round 29, the headless browser was not capped at 30 fps this time. First-flight and perf runs held 120 fps (median 8.3 ms). The 80 s HUD runs swung between 8.4 and 16.5 ms median. All wall-clock times are still marked contaminated. The camera verdicts come from fixed-step probes.
+
+## Camera results
+
+### Fixed-step climb test (32 climbs, 31 beside walls, seeds 22 and 130): pass
+
+| Build | Frames with a jump over 1.0 m | Max jump | Frames in solid | Closest camera | Frames at 40% or more | Max height share |
+|---|---|---|---|---|---|---|
+| Round 30 desktop | **0** of 4,800 | 0.90 m | 0 | 5.42 m | 0 | 0.394 |
+| Round 30 iPhone 13 | **0** of 4,800 | 0.91 m | 0 | 5.42 m | 0 | 0.394 |
+| Round 29 desktop (control) | 50 (in 11 climbs) | 3.70 m | 0 | 4.32 m | 10 | 0.516 |
+
+The snap is gone in all four climb modes (up, up+back, up+turn, up+forward).
+
+### Wall-side framing (real time, 3 s after each pickup or drop): pass
+
+| Run | Wall samples | 40% or more | Max |
+|---|---|---|---|
+| Desktop 22 / 58 / 130 | 62 / 62 / 63 | 0 / 0 / 0 | 0.32 / 0.34 / 0.27 |
+| iPhone 22 / 58 / 130 | 60 / 0 / 58 | 0 / 0 / 0 | 0.33 / 0.32 / 0.27 |
+
+That is 0 of 365 wall samples at 40% or more (round 29: 3 of 454). iPhone seed 58 had no wall-side event in its 80 s, so it adds nothing. Per-frame open-street minimum: 2.53 m. Camera in solid: 0. Drone hidden in open streets: 0.
+
+### Tunnels and alleys: fail (new regression)
+
+| Run (10 passes each) | In solid | Closest | Jumps over 1 m | Drone hidden |
+|---|---|---|---|---|
+| Desktop seed 22, random orbit | 0 | 3.74 m | 1 | **39 frames** (Quill Row) |
+| Desktop seed 58, random orbit | 0 | 4.17 m | 0 | **16 frames** (Thimble Lane, 0.32 s) |
+| iPhone seed 22, no orbit | 0 | 2.72 m | 0 | **20 frames** (Quill Row) |
+| A/B desktop seed 22, no orbit, round 30 | 0 | | 1 (2.46 m) | **115 frames: 0.57 s and 0.38 s** |
+| A/B desktop seed 22, no orbit, round 29 | 0 | | 1 | 4 frames (0.03 s) |
+
+Round 29's own runs had 0 hidden frames. On Quill Row the round 30 camera stays outside the alley mouth, so the screen shows a brick wall and the drone is gone. The player gets no input from the screen for half a second, in a narrow passage. See `cam-clip30-22-r30-noorbit-6-alley.jpg` (only wall) against `cam-clip30-22-r29-noorbit-6-alley.jpg` (the same moment on round 29: drone centred in the alley). `cam-clip30-22-r30-6-hidden.jpg` shows the corner hiding the drone. The code comment says the view of the drone comes back "a frame or two later". The real figure is 23 to 34 frames.
+
+### Laggy or floaty?
+
+Measured with fixed-step inputs, same drone path on both builds (`heading30.mjs`). The yaw bot shows that the physics are identical.
+
+- **Full boost (peak 24 m/s):** the camera trails less. Distance is 14.5 m against 15.8 m at 25 m altitude, and 13.1 against 14.2 m at street level. Distance changes now lag about 0.3 to 0.5 s in both directions.
+- **Sharp turns:** the view now lags *less*. Mid-turn, the view direction is 35° off the heading (round 29: 42°) and 9° off the travel direction (round 29: 16°).
+- **After a turn: slower re-centre.** Round 29 is back behind the drone 0.5 s after the turn ends. Round 30 stays 0.5 to 0.8 m to the side and 2 to 4° off for 2 s. Its time constant is about 0.9 s (round 29: 0.2 s). After a hover turn, it is still 4 to 6° off 1.5 s later (round 29: 0.6°). On screen, the heading point drifts 30 to 80 px over those 2 s. It is a slow sideways settle, not a lag in the turn itself. Does it feel floaty? **Needs a human player.**
+- Does the view still show where you are going? Yes. Turn shots match round 29 almost exactly (`heading30-r30-*` against `heading30-r29-*`).
+
+## Seed 58: only the bot is fooled, and the Bronze did not reproduce
+
+1. **The marker is true on both builds.** The nav marker, arch tags and pad marker are projections of the real target through the real camera. My probe compared the marker's screen offset with the true bearing every frame, and the relation is the same on both builds.
+2. **A screen-steering player does better on round 30.** The human model turns until the marker sits over the drone. It finished 6 seed 58 legs in 67 s on round 30 against 106 s on round 29. Steering by screen centre took 66 s against 90 s. The yaw-truth bot took 60.1 s on both. Seed 22: 117 s against 125 s. Seed 130: 143 s against 173 s. When this player thinks it is "aimed", the true heading error is 20 to 23° on round 30 and 42 to 44° on round 29. So the new camera misleads a screen-steering player less, not more.
+3. **The bot reads the camera wrong on both builds.** Under 4 m/s, the bot takes its heading as the line from the camera to the drone. That happens after every pad and hover turn. That is wrong by a median 30° on round 30 and 46° on round 29. Round 30 has a fatter tail (90th percentile 93 to 95° against 57°), from the slow re-centre after hover turns.
+4. **No Bronze here.** Street bot on seed 58, round 30: 3,575, 4,311 and 3,482, all Silver. Round 29: 4,042 and 3,667, both Silver. The 1,443 and 1,702 runs look like bot variance plus the old 30 fps cap. To fix the bot, make it use drone yaw when slow.
+5. After a wall-side pad, the camera ends 30° or more off the heading in 10% of frames (round 29: 7.9%). It is never over 60° on either build.
+
+## Regressions
+
+- **Crash-classify, 8 seeds, 0 pad lips: pass.** 12 m: 50 crashes in 547 s (5.5 a minute), 10 near the target, closest 4.4 m below a top. 20 m: 30 in 641 s (2.8 a minute), 11 near the target, closest 1.6 m below.
+- **People probe: pass.** 0 people on active pads (48 legs, 1,536 samples).
+- **Traffic per-frame overlap: pass.** 0 in all 6 fixed 120 Hz runs (seeds 4, 4, 4, 22, 130, 58).
+- **Phone HUD probe: pass.** iPhone 22, 58, 130: marker on controls 0, drone under pills 0, pops on drone 0 / 0 / 0.39%, pops on "Fly" 0.
+- **Flat-frame probe: pass.** 1,011 frames, 0 flat, 0 errors.
+- **Chimes with pops: pass.** 63 of 63 chimes had `#slip-pop` shown within 0.3 s.
+- **Medal gate, breakdown exact (bdOk) on all 10 runs: pass.**
+  - Street: 4,003 / 3,575 / 5,652, all Silver, total 13,230 (round 29: 13,546). Strict delivery share 62.6%.
+  - Lazy (cruise 10, no boost): 1,250 Bronze / 884 none / 1,035 Bronze, total 3,169.
+- **Exploits: pass.**
+  - No-delivery farm: 0 on 22, 58 and 130.
+  - Carry farm: 0.23, 0 and 0.24 of honest points a minute. Honest runs: 4,559, 4,892 and 6,859 (Gold).
+  - One delivery: best 1,149 Bronze (seed 130), so no better than Bronze.
+- **Triangles and draw calls: pass.** Desktop 130: 542k, 135 calls. Desktop 22: 528k, 134 calls. iPhone 130: 489k, 117 calls. 0 spots over 600k.
+- **First flight: pass.** 0 long tasks and 0 shader compiles after Play in 3 runs (2 desktop, 1 iPhone). Max frame 16.6 ms.
+- **First load: pass.** Production build without maps: 2.7 MB. JS 921 KB, CSS 40 KB. Type check clean.
+
+## Performance (contaminated, BTLEServer at 98%)
+
+| Run (12 s) | Frame median / p95 | Max | Calls max | Triangles max |
+|---|---|---|---|---|
+| Street desktop, normal / rush | 8.3 / 9.3 ms | 9.5 ms | 132 / 137 | 461k / 473k |
+| Street iPhone 13, normal / rush | 8.3 / 9.3 ms | 9.5 ms | 116 / 117 | 419k / 416k |
+
+p95 is under 12 ms at the 120 Hz vsync, even with one core busy. The 80 s HUD runs had two short bursts of three frames at 90 to 110 ms. They came at 52 s on desktop 130 and at 55 s on iPhone 58. The probe takes screenshots during play, so these are probably probe stalls. The roughly 80.8 s frame in every run is the probe ending. Recheck on a quiet machine.
+
+## Biggest remaining gap
+
+**In an alley, a wall can hide the drone for up to 0.6 s.** The round 30 glide keeps the camera outside the alley mouth on Quill Row (seed 22). It also does this for a moment on Thimble Lane (seed 58). This happens with and without orbit input, on desktop and phone. Round 29 showed the drone in the same passes.
+
+**Acceptance test:**
+
+- Run `cam-clip30.mjs` (NOORBIT=1 SEED=22, desktop).
+- Run `cam-clip24.mjs` on seeds 22 and 58 (random orbit) and on iPhone seed 22 (no orbit).
+- Pass marks: no hidden spell longer than 0.1 s, and at most 10 hidden frames per run. Round 29 had 4 frames, 0.03 s. Camera in solid 0. Per-frame jumps over 1 m: at most 1 per run.
+- `climb30.mjs` must still show 0 jumps over 1.0 m.
+
+## Other gaps, ranked
+
+1. **Slow re-centre after turns.** After each turn, the camera stays 0.5 to 0.8 m to the side and 2 to 4° off for about 2 s. Round 29 took 0.5 s. It likely comes from the new glide stacking on top of the old follow lerp. Test: in `heading30.mjs`, the sideways offset is under 0.2 m within 0.6 s after a turn ends, while keeping today's lower mid-turn lag. Is it floaty? **Needs a human player.**
+2. **Desktop pops cover the drone** in 32 to 48% of pop samples (round 29: 28 to 44%). The phone keeps them clear. Test: under 2% on desktop seeds 22, 58 and 130.
+3. **The street and roof bots steer by the camera when slow.** Their heading input is 30 to 46° wrong on both builds. So their scores change with each camera change. Switch them to drone yaw under 4 m/s before you use them as a medal gate again.
+4. **Real-time perf on a quiet machine.** Recheck the 90 to 110 ms bursts and the p95 with BTLEServer idle.
+5. **Shop signs and faces** (from round 28). Sign plates are white blobs, and people have no faces. **Needs a human eye.**
+
+## Screenshots (progress/round-30/critic/), 53 files
+
+- **Alley regression:** `cam-clip30-22-r30-noorbit-6-alley.jpg` against `cam-clip30-22-r29-noorbit-6-alley.jpg`, plus `cam-clip30-22-r30-6-hidden.jpg`, `cam-clip30-22-r30-7-hidden.jpg`, `cam-clip30-22-r29-7-hidden.jpg`, `cam-clip30-22-{r29,r30}-noorbit-{5-tunnel,10-alley}.jpg`, `cam-clip-22-*`, `cam-clip-58-*`, `cam-clip-22-m-noorbit-*`.
+- **Turns, same frame on both builds:** `heading30-{r29,r30}-d-58-a25-{boostTurnL,cruiseTurnR,hoverTurnL,zigR}.jpg`.
+- **Round 29 climb snaps (control):** `climb30-r29-d-22-4-spike.jpg`, `climb30-r29-d-22-9-spike.jpg`, `climb30-r29-d-130-6-spike.jpg`. Round 30 had no frame worth a shot.
+- **Desktop pops on the drone:** `raw/fr30-d-{22,58,130}-h04-low-payout-pop.jpg`, `raw/fr30-d-{22,58,130}-h05-low-payout-chain.jpg`. Phone for contrast: `raw/fr30-m-22-h04-low-payout-pop.jpg`.
+- **Medal runs:** `M-low-seed{22,58,130}-pass*.jpg`, `M-low-c10-seed{22,130}-pass1.jpg`.
+- **Other:** `tris29-{d-22,d-130,m-130}-worst.jpg` (written by the reused trisweep29 script) and 4 crash-classify near-target shots (`N-alt*`).
+</pre></details><details><summary>builder.md</summary><pre># Drone Dash: round 30 builder notes
+
+Main concern from the round 29 critic: the camera snaps 2 to 3.7 m in one frame in fast climbs out of wall-side pads.
+Small leftovers: (A) the carry farm on seed 130 at 0.52 of honest points a minute, (B) the roof bot stall on seed 22.
+
+## How I worked and tested
+
+- My own dev server on 127.0.0.1:5190 (stopped at the end). The owner's server on 5188 was not touched.
+- A round 29 snapshot (`git archive c0b5238`, no repo state changed) ran on 5193 for the A/B jobs and was stopped.
+- The round 29 critic scripts are copied to `progress/round-30/builder-scripts/`. Only the output paths changed (scratch
+  folder for raw output, port 5190). One browser at a time from one queue (`queue30.sh`, `jobs30.txt`, log `queue30.log`).
+- Machine load: BTLEServer at 99 to 100% of one core in every check (`cpu-start.txt`, `cpu-hud.txt`, `cpu-ff.txt`,
+  `cpu-medal.txt`). Real-time runs were held at 30 fps again. Every camera number below comes from fixed-step (60 Hz)
+  probes, except the hud-probe and cam-clip runs, which are real time.
+- New scripts:
+  - `climb30.mjs`: the critic's `climb29.mjs` plus per-frame camera-inside-solid (pad 0 and 0.1), a thin-line occlusion
+    test (the `cam-sampler.js` one) and the count of frames with a jump over 1.0 m. Same events, same keys, same 60 Hz.
+  - `climbdbg.mjs`: the same with the camera rig's glide state per frame (debug only).
+  - `climbshots.mjs`: a filmstrip of the critic's worst climb (seed 22, event 4, the one in `climb29-d-22-4-spike.jpg`).
+  - `capfarm-yaw.mjs`: `capfarm.mjs` steering by the drone's yaw instead of the camera (camera-independent bot).
+  - `route-play-trace.mjs`: the deterministic `route-play.mjs` with a trace every 0.5 s, `HEAD=yaw` and `FIX=1`.
+  - `route-play-rt-x-m-esc17-fix30.mjs`: the real-time medal bot with one bot fix (see B) and an optional trace.
+  - `route-play-rt-x-m-esc17-port.mjs`: the medal bot taking `PORT` (round 29 A/B).
+  - `geo22.mjs`, `geo22b.mjs`: solid geometry (and every collider) around the seed 22 stall spot.
+  - `ab58.sh`, `ab58b.sh`: the deterministic street bot on seed 58, round 30 against round 29, steering by camera or yaw.
+- New debug hook: `camSmooth()` (the camera glide's last check). Bot hooks and the bloom clamps in
+  `ObjectiveMarker.ts` are unchanged.
+
+## 1. Camera snaps in fast climbs out of wall-side pads
+
+**Cause.** Three round 29 parts fought each other every frame. The follow pulled the camera toward the chase ideal (about
+4 to 5 m behind). Then the room floor (`keepRoom`) wanted 8.8 m for 3.2 s after a pickup or drop. Beside a wall the
+straight push-out was blocked, so it took the "rise" branch toward a point almost straight over the drone, at most 2.4 m
+a frame. That move is a chord through the sphere, so the camera came closer while moving 2.4 m, on top of the 1.7 m the
+per-frame cap had already allowed. The hard gap (`hardGap`, 2.35 m) could add its own 2.0 m step after that. Next
+frame the follow pulled in again. So the camera swung between about 6 and 8.8 m, up to 3.7 m in one frame. A trace
+(`climbdbg.mjs`) also showed a second case. The test turns the drone as it lands it on the pad, so the chase heading
+is still swinging round when the climb starts, and that swing sweeps the view into the wall beside the pad. The clip
+pull-in then cut the camera in by 2 to 3 m in one frame.
+
+**Fix (`src/systems/CameraRig.ts`).**
+- The floor, rise and hard-gap code now produce only a target. They place it in one step (the round 29 per-frame
+  caps `RISE_STEP`, `PUSH_STEP`, `SOFT_GAP` are gone, which ends the 6 to 8.8 m swing).
+- A new last stage, `smoothRel`, moves the camera. It works on the camera's offset from the drone, in a frame that
+  turns with the chase heading and the player's orbit. So turning with the drone passes straight through, and the
+  orbit control and ease-back are unchanged. Changes of distance, height and side follow a critically damped spring
+  (0.09 s). It runs at up to 20 m/s, or 45 m/s when it backs away from the drone, and never moves more than 0.92 m
+  relative to the drone in one frame.
+- The glide is checked every frame. If it would put the camera in a wall (0.3 m pad), under 2.15 m from the drone, or
+  out of sight of the drone, it tries the same glide with this frame's turn held back. Then it tries small steps toward
+  the target, with a clear view first, then a thin-line view. Then it tries a step round the wall (over, under or
+  aside, whichever ends nearest the target). Only if none of these works within 0.92 m does it take a bigger step, so
+  the hard gap is now a soft limit that bites only where geometry forces it.
+- The rise beside a wall now tries tilted-up spots on the camera's own side first (0.72 back and 0.7 up of the floor
+  distance, then 0.45 and 0.9), and only then the near-vertical ones. The target stays near the camera, and the
+  view keeps its heading.
+- A teleport (the drone moved more than 3 m in a frame: a respawn or a probe placing it) restarts the glide, as before.
+- The shake is now an offset on top of the smoothed camera. It is taken off at the start of the next frame, so it
+  cannot build up in the glide.
+- Unchanged: tunnel and alley framing, arrival framing, orbit limits, the swing, the per-frame cap of round 23, the
+  push-out from walls, `keepInFrame`.
+
+**Numbers (fixed 60 Hz steps, the critic's 32 climbs: seeds 22 and 130, Space, Space+S, Space+A, Space+W).**
+
+| Climb test, 32 climbs, 4,800 frames | Jumps over 1.0 m | Over 1.7 m | Max jump | Inside solid (pad 0 / 0.1) | Drone hidden | Closest camera | Frames at 40% or more | Max height share |
+|---|---|---|---|---|---|---|---|---|
+| Round 29 code, desktop (`climb30-base-d.log`) | 48 | 30 | 3.71 m | 0 / 0 | n/a | 4.34 m | 8 | 0.514 |
+| Round 30, desktop (`climb30-d.log`, `climb30-final-d.log`) | **0** | 0 | 0.88 m | **0 / 0** | 0 | **5.43 m** | 0 | 0.395 |
+| Round 30, iPhone 13 (`climb30-m.log`, `climb30-final-m.log`) | **0** | 0 | 0.91 m | **0 / 0** | 0 | **5.42 m** | 0 | 0.395 |
+| Critic's own `climb29.mjs`, round 30, desktop / iPhone | 0 / 0 (it counts over 1.7 m) | | 0.91 / 0.90 m | | | 5.42 / 5.42 m | 0 / 0 | 0.394 |
+
+The filmstrip of the critic's worst climb (seed 22, event 4, a pickup then Space) is
+`builder-shots/climb30-{d,m}-22-4-up-f00..f70.jpg`. The camera stays 7.4 to 10 m away and the drone stays at 17 to 33% of the
+screen height. Round 29 snapped 3.6 m there in one frame and reached 51%.
+
+**Wall-side framing (hud-probe28, first run, street bot 80 s, real time at 30 fps, every 100 ms for 3 s after each
+pickup or drop; "beside a wall" = a solid within 4 m; `fb27.py`).**
+
+| Run | Samples after events | Beside a wall | Drone box 40% or more | Max share | Closest camera (whole run) | Inside solid / hidden |
+|---|---|---|---|---|---|---|
+| Desktop seed 22 | 150 | 61 | 0 | 0.356 | 3.92 m | 0 / 0 |
+| Desktop seed 58 | 122 | 61 | 0 | 0.348 | 4.69 m | 0 / 0 |
+| Desktop seed 130 | 116 | 55 | 0 | 0.241 | 7.78 m | 0 / 0 |
+| iPhone seed 22 | 121 | 62 | 0 | 0.347 | 2.75 m | 0 / 0 |
+| iPhone seed 58 | 90 | 30 | 0 | 0.333 | 5.67 m | 0 / 0 |
+| iPhone seed 130 | 104 | 61 | 0 | 0.228 | 8.03 m | 0 / 0 |
+| Android seed 317 | 89 | 60 | 0 | 0.344 | 3.10 m | 0 / 0 |
+
+So 0 of 390 wall-side samples reached 40%; round 29 had 3 of 454. No open-street frame came under 2.5 m.
+
+**Tunnel and orbit test (`cam-clip24.mjs`, real time at 30 fps, 62 s each).**
+
+| Run | Frames | Inside solid (pad 0 / 0.1) | Drone hidden | Under street | Camera jumps over 1 m | Closest |
+|---|---|---|---|---|---|---|
+| Desktop seed 22, random orbit | 1,060 | 0 / 0 | 0 | 0 | 0 (round 29: 44) | 3.81 m |
+| Desktop seed 58, random orbit | 1,060 | 0 / 0 | 0 | 0 | 0 (round 29: 28) | 6.47 m or more |
+| iPhone seed 22, no orbit | 1,057 | 0 / 0 | 0 | 0 | 0 (round 29: 0) | |
+
+All ten passes per run (tunnels and alleys) are PASS. Orbit share 0.88, as in round 29.
+
+## 2. Leftover A: carry farm on seed 130
+
+**Answer: it is the bot. I did not change the street bonus cap.** `capfarm.mjs` picks its heading from the camera
+whenever it is slow or turning, and the farm phase is all slow U-turns. So a camera change changes the farm path.
+
+| capfarm, SIMT 600 (round 30 build) | Honest pts/min | Carry pts/min | Carry / honest | Carry farm time |
+|---|---|---|---|---|
+| Seed 130, camera heading (critic's script) | 2,893 | 691 | **0.24** | 54.6 s |
+| Seed 130, yaw heading (`capfarm-yaw.mjs`, no camera at all) | 2,478 | 689 | **0.28** | 61.3 s |
+| Seed 22, camera heading | 2,592 | 603 | 0.23 | 38.1 s |
+| Seed 58, camera heading | 2,627 | 0 (no drop) | 0 | 47.7 s |
+| Round 29 seed 130 (critic) | 2,972 | 1,537 | 0.52 | 33.4 s |
+
+In round 29 the carry bot only farmed for 33 s and then made two plain deliveries, so it scored like a slow honest run.
+With a camera-independent bot the farm earns 0.28 of honest. "Both" farms scored 0 on all three seeds. The no-delivery
+farm (`farm-probe.mjs`) scored 0 on 22, 58 and 130. The per-leg cap (`bankPerMetre` 4.25) holds, and tightening it would
+only cost honest street runs.
+
+## 3. Leftover B: the roof bot on seed 22
+
+**Answer: it is the bot, not the camera and not the game.**
+- Deterministic runs (`route-play-trace.mjs`, 50 ms control steps): the roof bot steering by the camera made 8 drops
+  on seed 22 (7,968). The same bot steering by the drone's yaw (no camera) made 1 drop and stalled on the same leg.
+- The stall spot is the same in every stalled run on seed 22, my real-time ones too: (-98.5, 14.5, -54.3), 2.7 m from the
+  Florist pad (-98.6, 0.4, -57). `geo22.mjs` and `geo22b.mjs` show why. The pad sits beside a 13.05 m building with a
+  roof lip (12.85 to 13.75 m) along its edge. The roof bot starts its descent to pad height as soon as it is within 25 m.
+  So it lands on that roof, holds "down", and pushes into the 0.7 m lip, 2.7 m short of the pad. Its unstick rule only
+  fires more than 3 m from the pad, so it never lifts off. A plain descent from above the pad delivers at once (critic,
+  `leg22-29.mjs`).
+- The same pattern stalls it on seed 58 in some runs (on a roof at about 25 m, 6 m from a street pad).
+- Real-time medal runs with the critic's bot this round: seed 22 856 (1 drop), seed 58 851 (1 drop), seed 130 8,598
+  Gold (8 drops). Breakdown exact on all three. Round 29: 982 / 4,521 / 4,759. The 30 fps cap makes these runs noisy.
+  Which leg ends on a roof depends on the bot's path.
+- Bot fix tried (in `builder-scripts` only): `route-play-rt-x-m-esc17-fix30.mjs` and `route-play-trace.mjs FIX=1`. The
+  unstick also fires when the bot is stuck high near a pad, and then it climbs to 16 m over the pad and comes straight
+  down. Deterministic, yaw steering, seed 22: 1 drop became 3. Real time at 30 fps: seed 58 went from 851 (1 drop) to
+  3,835 (4 drops), but seed 22 still dithers on that leg (982, 1 drop). The roof bot's arrival rule needs a proper rewrite (stay high until over the pad). I did not finish that.
+
+## 4. Regression checks
+
+| Check | Result | Round 29 (critic) |
+|---|---|---|
+| Crash-classify 12 m, 8 seeds (`ccv12.log`) | **0 pad lips**. 55 crashes in 558 s (5.9 a minute), 19 near the target, closest 1.5 m below a wall top | 0 pad lips, 5.3 a minute |
+| Crash-classify 20 m, 8 seeds (`ccv20.log`) | **0 pad lips**. 28 crashes in 620 s (2.7 a minute), closest 2.7 m below | 0 pad lips, 2.0 a minute |
+| People probe (`pad-people23.mjs`, 48 legs) | 0 people on active pads | 0 |
+| Traffic per-step overlap (`traffic-det29.mjs`, 6 runs, 120 Hz) | 0 in all 6 | 0 |
+| Phone HUD probe (iPhone 22, 58, 130; Android 317) | route mark on controls 0, drone under pills 0, pops on Fly 0, pops on the drone 1.05% / 0% / 0.36% / 0% | at most 0.40% |
+| Flat-frame probe (`acceptance-probe.mjs`) | 271 frames, 0 flat, 0 errors | 0 |
+| Chimes with pops (7 hud-probe runs) | 72 of 72 chimes with a pop on screen | 88 of 88 |
+| Street medal gate, real time (`m-low-a.log`) | 4,766 Silver / **1,443 Bronze** / 5,317 Silver, breakdown exact on all 3 | 5,863 / 2,437 / 5,246, all Silver |
+| Roof medal run, real time (`m-high-a.log`) | 856 / 851 / 8,598 Gold, breakdown exact | 982 / 4,521 / 4,759 |
+| No-delivery farm (`farm-probe.mjs`) | 0 on 22, 58, 130 | 0 |
+| Triangles / draw calls (`trisweep29.mjs`, desktop 130, iPhone 22) | max 547k / 471k, 0 over 600k; calls max 135 / 116 | 549k, 136 |
+| First flight (`ff29.mjs`, desktop, 3 runs) | 0 long tasks after Play, 0 shaders compiled after Play | 0 |
+| `npm run build` | passes, type check clean; JS 973 KB (first load about 1 MB, the CC0 assets still lazy-load) | 2.7 MB total, 918 KB JS |
+
+**Street gate on seed 58 is a real worry.** The street bot fell from Silver to Bronze there twice (1,443 and 1,702, 2
+drops each). The round 29 code on the same machine, minutes later, made 4,052 Silver with 3 drops (`m-low-58-r29.log`).
+The street bot steers by the camera whenever it is slower than 4 m/s, at every pad and corner. So the new camera changes
+its path. Evidence that the game itself plays the same: the deterministic street bot steering by the drone's yaw (no
+camera) scored 5,369 with 4 drops on round 30 and 5,290 with 4 drops on round 29 (`rp-low-58-yaw-5190.log`,
+`rp-low-58-yaw-5193.log`). Steering by the camera it scored 2,434 on round 30 and 3,984 on round 29, both with 3 drops
+(`rp-low-58-cam-*.log`). In a 100 s trace of slow moments (under 4 m/s), the median angle between the camera direction
+and the drone's heading is 0.53 rad on round 30 against 0.75 on round 29. But the worst 10% reach 1.44 rad against 0.95
+(`rp-low-58-cam-trace-*.log`). So at some slow moments beside walls the new camera stays further off the heading, and
+that steers the bot wrong. A human sees the drone turn, so this may not hurt play. But it is worth a human check
+(hover beside a wall on seed 58 and turn), and the gate should be rerun with a yaw-steered street bot.
+
+## 5. Known limits and what I did not finish
+
+- The roof bot's arrival rule (descend once within 25 m) still lands it on roofs beside street pads. My bot fix helps
+  in deterministic runs and on seed 58 in real time, not yet on seed 22. This is bot work, not game work.
+- In the climb test the view can sit behind a building corner for a few frames, so the drone is half hidden by the
+  facade mesh while the colliders say the line of sight is clear. The round 29 code shows the same view at the same
+  moment (`builder-shots/r29code-climb-d-22-4-up-f16.jpg` against `climb30-d-22-4-up-f16.jpg`). The facade meshes stand
+  a little proud of their colliders. Not fixed.
+- Real-time frame time is still not measurable on this machine (30 fps cap). The glide adds a handful of segment and
+  point tests per frame. I did not time it separately. First flight showed no long tasks.
+- Desktop pops over the drone (critic's ranked gap 1) were not in scope this round.
+
+## Files changed
+
+- `src/systems/CameraRig.ts`: `smoothRel` (the glide in the drone's turning frame, with the wall, gap and sight checks
+  and the step round a wall), shake as an offset, floor / rise / hard gap place their target in one step, tilted
+  rise spots first, `SMOOTH` and `NUDGE` constants. `RISE_STEP`, `PUSH_STEP`, `SOFT_GAP` removed.
+- `src/game/Game.ts`: debug hook `camSmooth()`.
+- `src/vite-env.d.ts`: its type.
+- `progress/round-30/`: this file, `builder-scripts/` (copied critic scripts and the new ones above, all logs),
+  `builder-shots/` (30 JPEGs: the climb filmstrips for round 30 and the round 29 code, the round 29 snap frame,
+  tunnel and alley views, desktop and phone pop shots, the worst triangle spots).
+</pre></details><div class="grid"><figure><a href="progress/round-30/critic/M-low-c10-seed130-pass1.webp"><img loading="lazy" src="progress/round-30/critic/M-low-c10-seed130-pass1.webp" alt="M-low-c10-seed130-pass1.webp"></a><figcaption>M-low-c10-seed130-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/M-low-c10-seed22-pass1.webp"><img loading="lazy" src="progress/round-30/critic/M-low-c10-seed22-pass1.webp" alt="M-low-c10-seed22-pass1.webp"></a><figcaption>M-low-c10-seed22-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/M-low-seed130-pass1.webp"><img loading="lazy" src="progress/round-30/critic/M-low-seed130-pass1.webp" alt="M-low-seed130-pass1.webp"></a><figcaption>M-low-seed130-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/M-low-seed130-pass2.webp"><img loading="lazy" src="progress/round-30/critic/M-low-seed130-pass2.webp" alt="M-low-seed130-pass2.webp"></a><figcaption>M-low-seed130-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/M-low-seed22-pass1.webp"><img loading="lazy" src="progress/round-30/critic/M-low-seed22-pass1.webp" alt="M-low-seed22-pass1.webp"></a><figcaption>M-low-seed22-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/M-low-seed58-pass1.webp"><img loading="lazy" src="progress/round-30/critic/M-low-seed58-pass1.webp" alt="M-low-seed58-pass1.webp"></a><figcaption>M-low-seed58-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/M-low-seed58-pass2.webp"><img loading="lazy" src="progress/round-30/critic/M-low-seed58-pass2.webp" alt="M-low-seed58-pass2.webp"></a><figcaption>M-low-seed58-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/N-alt12-seed11-t11.8-near.webp"><img loading="lazy" src="progress/round-30/critic/N-alt12-seed11-t11.8-near.webp" alt="N-alt12-seed11-t11.8-near.webp"></a><figcaption>N-alt12-seed11-t11.8-near.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/N-alt12-seed91-t12.1-near.webp"><img loading="lazy" src="progress/round-30/critic/N-alt12-seed91-t12.1-near.webp" alt="N-alt12-seed91-t12.1-near.webp"></a><figcaption>N-alt12-seed91-t12.1-near.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/N-alt20-seed130-t45.5-near.webp"><img loading="lazy" src="progress/round-30/critic/N-alt20-seed130-t45.5-near.webp" alt="N-alt20-seed130-t45.5-near.webp"></a><figcaption>N-alt20-seed130-t45.5-near.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/N-alt20-seed33-t42.1-near.webp"><img loading="lazy" src="progress/round-30/critic/N-alt20-seed33-t42.1-near.webp" alt="N-alt20-seed33-t42.1-near.webp"></a><figcaption>N-alt20-seed33-t42.1-near.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-22-10-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-22-10-alley.webp" alt="cam-clip-22-10-alley.webp"></a><figcaption>cam-clip-22-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-22-5-tunnel.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-22-5-tunnel.webp" alt="cam-clip-22-5-tunnel.webp"></a><figcaption>cam-clip-22-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-22-6-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-22-6-alley.webp" alt="cam-clip-22-6-alley.webp"></a><figcaption>cam-clip-22-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-22-m-noorbit-10-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-22-m-noorbit-10-alley.webp" alt="cam-clip-22-m-noorbit-10-alley.webp"></a><figcaption>cam-clip-22-m-noorbit-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-22-m-noorbit-5-tunnel.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-22-m-noorbit-5-tunnel.webp" alt="cam-clip-22-m-noorbit-5-tunnel.webp"></a><figcaption>cam-clip-22-m-noorbit-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-22-m-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-22-m-noorbit-6-alley.webp" alt="cam-clip-22-m-noorbit-6-alley.webp"></a><figcaption>cam-clip-22-m-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-58-10-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-58-10-alley.webp" alt="cam-clip-58-10-alley.webp"></a><figcaption>cam-clip-58-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-58-2-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-58-2-alley.webp" alt="cam-clip-58-2-alley.webp"></a><figcaption>cam-clip-58-2-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-58-3-tunnel.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-58-3-tunnel.webp" alt="cam-clip-58-3-tunnel.webp"></a><figcaption>cam-clip-58-3-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-58-5-tunnel.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-58-5-tunnel.webp" alt="cam-clip-58-5-tunnel.webp"></a><figcaption>cam-clip-58-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-58-6-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-58-6-alley.webp" alt="cam-clip-58-6-alley.webp"></a><figcaption>cam-clip-58-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip-58-9-tunnel.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip-58-9-tunnel.webp" alt="cam-clip-58-9-tunnel.webp"></a><figcaption>cam-clip-58-9-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r29-7-hidden.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r29-7-hidden.webp" alt="cam-clip30-22-r29-7-hidden.webp"></a><figcaption>cam-clip30-22-r29-7-hidden.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r29-noorbit-10-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r29-noorbit-10-alley.webp" alt="cam-clip30-22-r29-noorbit-10-alley.webp"></a><figcaption>cam-clip30-22-r29-noorbit-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r29-noorbit-5-tunnel.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r29-noorbit-5-tunnel.webp" alt="cam-clip30-22-r29-noorbit-5-tunnel.webp"></a><figcaption>cam-clip30-22-r29-noorbit-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r29-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r29-noorbit-6-alley.webp" alt="cam-clip30-22-r29-noorbit-6-alley.webp"></a><figcaption>cam-clip30-22-r29-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r30-6-hidden.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r30-6-hidden.webp" alt="cam-clip30-22-r30-6-hidden.webp"></a><figcaption>cam-clip30-22-r30-6-hidden.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r30-7-hidden.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r30-7-hidden.webp" alt="cam-clip30-22-r30-7-hidden.webp"></a><figcaption>cam-clip30-22-r30-7-hidden.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r30-noorbit-10-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r30-noorbit-10-alley.webp" alt="cam-clip30-22-r30-noorbit-10-alley.webp"></a><figcaption>cam-clip30-22-r30-noorbit-10-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r30-noorbit-5-tunnel.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r30-noorbit-5-tunnel.webp" alt="cam-clip30-22-r30-noorbit-5-tunnel.webp"></a><figcaption>cam-clip30-22-r30-noorbit-5-tunnel.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/cam-clip30-22-r30-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-30/critic/cam-clip30-22-r30-noorbit-6-alley.webp" alt="cam-clip30-22-r30-noorbit-6-alley.webp"></a><figcaption>cam-clip30-22-r30-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/climb30-r29-d-130-6-spike.webp"><img loading="lazy" src="progress/round-30/critic/climb30-r29-d-130-6-spike.webp" alt="climb30-r29-d-130-6-spike.webp"></a><figcaption>climb30-r29-d-130-6-spike.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/climb30-r29-d-22-4-spike.webp"><img loading="lazy" src="progress/round-30/critic/climb30-r29-d-22-4-spike.webp" alt="climb30-r29-d-22-4-spike.webp"></a><figcaption>climb30-r29-d-22-4-spike.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/climb30-r29-d-22-9-spike.webp"><img loading="lazy" src="progress/round-30/critic/climb30-r29-d-22-9-spike.webp" alt="climb30-r29-d-22-9-spike.webp"></a><figcaption>climb30-r29-d-22-9-spike.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r29-d-58-a25-boostTurnL.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r29-d-58-a25-boostTurnL.webp" alt="heading30-r29-d-58-a25-boostTurnL.webp"></a><figcaption>heading30-r29-d-58-a25-boostTurnL.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r29-d-58-a25-cruiseTurnR.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r29-d-58-a25-cruiseTurnR.webp" alt="heading30-r29-d-58-a25-cruiseTurnR.webp"></a><figcaption>heading30-r29-d-58-a25-cruiseTurnR.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r29-d-58-a25-hoverTurnL.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r29-d-58-a25-hoverTurnL.webp" alt="heading30-r29-d-58-a25-hoverTurnL.webp"></a><figcaption>heading30-r29-d-58-a25-hoverTurnL.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r29-d-58-a25-zigR.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r29-d-58-a25-zigR.webp" alt="heading30-r29-d-58-a25-zigR.webp"></a><figcaption>heading30-r29-d-58-a25-zigR.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r30-d-58-a25-boostTurnL.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r30-d-58-a25-boostTurnL.webp" alt="heading30-r30-d-58-a25-boostTurnL.webp"></a><figcaption>heading30-r30-d-58-a25-boostTurnL.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r30-d-58-a25-cruiseTurnR.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r30-d-58-a25-cruiseTurnR.webp" alt="heading30-r30-d-58-a25-cruiseTurnR.webp"></a><figcaption>heading30-r30-d-58-a25-cruiseTurnR.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r30-d-58-a25-hoverTurnL.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r30-d-58-a25-hoverTurnL.webp" alt="heading30-r30-d-58-a25-hoverTurnL.webp"></a><figcaption>heading30-r30-d-58-a25-hoverTurnL.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/heading30-r30-d-58-a25-zigR.webp"><img loading="lazy" src="progress/round-30/critic/heading30-r30-d-58-a25-zigR.webp" alt="heading30-r30-d-58-a25-zigR.webp"></a><figcaption>heading30-r30-d-58-a25-zigR.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/tris29-d-130-worst.webp"><img loading="lazy" src="progress/round-30/critic/tris29-d-130-worst.webp" alt="tris29-d-130-worst.webp"></a><figcaption>tris29-d-130-worst.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/tris29-d-22-worst.webp"><img loading="lazy" src="progress/round-30/critic/tris29-d-22-worst.webp" alt="tris29-d-22-worst.webp"></a><figcaption>tris29-d-22-worst.webp</figcaption></figure>
+<figure><a href="progress/round-30/critic/tris29-m-130-worst.webp"><img loading="lazy" src="progress/round-30/critic/tris29-m-130-worst.webp" alt="tris29-m-130-worst.webp"></a><figcaption>tris29-m-130-worst.webp</figcaption></figure></div></section>
 <section><h2>round 29</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 29 critic report
 
 **Verdict:** Round 29 fixes four of the five round 28 gaps. Cars now have wheels, rush-hour cars no longer overlap, triangles stay under 600k, and the first flight has no hitch. The wall-side camera passes by a hair. It crowds the screen far less now. But after a wall-side pickup, a fast climb makes it snap back and forth for up to a second.

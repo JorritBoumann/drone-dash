@@ -2110,6 +2110,7 @@ export class Game {
       people: () => this.env.people.snapshot(),
       rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),
       // round 24 test hook: the drone's screen box (CSS px) through the real render camera
+      camSmooth: () => this.cameraRig.dbgSmooth, // round 30: last camera glide check (probes)
       droneBox: () => {
         // round 24: every visible vertex projected (a world-space box of the turned drone was far too big)
         const w = this.canvas.clientWidth, h = this.canvas.clientHeight;

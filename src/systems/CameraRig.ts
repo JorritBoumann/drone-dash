@@ -57,12 +57,17 @@ const SWING = { need: 3.2, keep: 2.6, rate: 3.2, hold: 0.9, back: 1.4, minDist: 
 const MAX_REL_STEP = 1.7;
 /** Round 29: the camera is never closer than this to the drone's look point (0.4 m over its centre), in any mode (m). */
 const HARD_GAP = 2.35;
-/** Round 29: how fast the room floor backs the camera off when it grows (m/s), and the most a rise moves it a frame (m). */
+/** Round 29: how fast the room floor backs the camera off when it grows (m/s). Round 30: the per-frame step caps of the
+ * floor and the hard gap (RISE_STEP, PUSH_STEP) are gone; CameraRig.smoothRel glides the camera to their target. */
 const FLOOR_RATE = 9;
-const RISE_STEP = 2.4;
-/** Round 29: the most the room floor and the hard gap move the camera out in one frame (m); under SOFT_GAP (m) no limit. */
-const PUSH_STEP = 2.0;
-const SOFT_GAP = 2.1;
+/**
+ * Round 30: the camera's offset from the drone glides toward the target offset (critically damped, `time` s) at most
+ * `maxSpeed` m/s (`outSpeed` when it backs away from the drone), and never more than `jump` m in one frame unless a
+ * wall leaves no other way; `gap` (m) is the closest the glide may bring it before it jumps toward the target instead.
+ */
+/** Round 30: steps (m) tried round a wall when the camera's glide runs into one. */
+const NUDGE: Array<[number, number, number]> = [[0, 0, 0], [0, 0.4, 0], [0, 0.8, 0], [0, -0.4, 0], [0.45, 0, 0], [-0.45, 0, 0], [0, 0, 0.45], [0, 0, -0.45], [0.4, 0.4, 0], [-0.4, 0.4, 0], [0, 0.4, 0.4], [0, 0.4, -0.4]];
+const SMOOTH = { time: 0.09, maxSpeed: 20, outSpeed: 45, gap: 2.15, jump: 0.92 };
 /** Round 26: the drone's centre is kept inside these normalised screen bounds (y up; -1 is the bottom edge). */
 const FRAME = { bottom: -0.45, top: 0.6, side: 0.8 };
 
@@ -206,6 +211,7 @@ export class CameraRig {
     this.lookSmoothed.copy(this.look);
     this.camera.lookAt(this.lookSmoothed);
     this.relValid = false;
+    this.baseValid = this.localValid = false;
   }
 
   addShake(amount: number): void {
@@ -419,7 +425,9 @@ export class CameraRig {
       if (world.segmentFraction(dp, this.cand, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(this.cand), 0.3)) {
         // round 29: straight out, at most PUSH_STEP m a frame (a camera pulled in behind a corner used to jump 6 m out;
         // much slower and a drop beside a wall filled 60% of the screen for a moment again)
-        cam.copy(dp).addScaledVector(rel, Math.min(want, L + PUSH_STEP * Math.max(1, dt * 60)) / L);
+        // round 30: all the way (the glide in smoothRel spreads the move over frames; round 29 capped it here at
+        // PUSH_STEP a frame, and the cap fought the follow so the camera swung between about 6 and 8.8 m)
+        cam.copy(dp).addScaledVector(rel, want / L);
         return;
       }
     }
@@ -427,14 +435,16 @@ export class CameraRig {
     let hx = rel.x, hz = rel.z;
     const hl = Math.hypot(hx, hz);
     if (hl < 0.05) { hx = Math.sin(drone.yaw); hz = Math.cos(drone.yaw); } else { hx /= hl; hz /= hl; }
-    for (const [back, up] of [[0.9, want * 0.95], [0.4, want * 1.1], [0, want * 1.2]]) {
+    // round 30: tilted-up positions on the camera's own side first, so the target is near the camera (the glide then
+    // stays in sight of the drone); straight up only if those are blocked
+    for (const [back, up] of [[want * 0.72, want * 0.7], [want * 0.45, want * 0.9], [0.9, want * 0.95], [0.4, want * 1.1], [0, want * 1.2]]) {
       this.cand.set(dp.x + hx * back, dp.y + up, dp.z + hz * back);
       if (world.segmentFraction(dp, this.cand, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(this.cand), 0.3)) {
         // blend toward it so a rise is a quick glide, not a cut (the floor below still holds next frame).
         // Round 29: at most RISE_STEP m a frame (it used to finish the rise in one frame when still short of it).
         // well inside the floor (a wall cut the view in) it goes the full step; near the floor it halves the gap
-        const d = cam.distanceTo(this.cand), step = RISE_STEP * Math.max(1, dt * 60);
-        cam.lerp(this.cand, Math.min(L < want * 0.9 ? 1 : 0.5, step / Math.max(d, 1e-4)));
+        // round 30: all the way too (smoothRel glides there)
+        cam.copy(this.cand);
         return;
       }
     }
@@ -454,8 +464,8 @@ export class CameraRig {
     if (L >= HARD_GAP) return false;
     const ok = (q: THREE.Vector3) => q.y >= 0.8 && world.segmentFraction(dp, q, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(q), 0.3);
     const W = HARD_GAP + 0.15;
-    // the move is a glide of at most PUSH_STEP m a frame unless the camera is under SOFT_GAP (then it goes all the way)
-    const go = (q: THREE.Vector3) => { const d = cam.distanceTo(q); cam.lerp(q, L < SOFT_GAP ? 1 : Math.min(1, PUSH_STEP / Math.max(d, 1e-4))); };
+    // round 30: the target goes all the way; smoothRel glides there unless the glide itself would come under SMOOTH.gap
+    const go = (q: THREE.Vector3) => cam.copy(q);
     // candidates: straight out from the drone, out along last frame's direction, back along the corridor (keeping the
     // side the camera is on) or behind the heading at a few heights, then over the drone. The valid one nearest the
     // camera wins, so the fix is the smallest move (a wall hit used to swing the camera 4.7 m round the drone).
@@ -520,8 +530,137 @@ export class CameraRig {
     return near * low;
   }
 
+  /** Round 30: the camera without this frame's shake (the next frame starts from here). */
+  private readonly base = new THREE.Vector3();
+  private baseValid = false;
+  /** Round 30: last frame's camera offset from the drone in the camera's heading frame, and its rate of change (m/s). */
+  private readonly lastLocal = new THREE.Vector3();
+  private readonly relVel = new THREE.Vector3();
+  private localValid = false;
+  /** Round 30: last glide check, for probes (use: -1 target taken, 0 the glide itself, 0..1 moved toward the target, 5 a step round a wall). */
+  readonly dbgSmooth = { use: 0, rawIn: false, rawSight: true, rawL: 0 };
+  private readonly sRaw = new THREE.Vector3();
+  private readonly sOut = new THREE.Vector3();
+  private readonly sQ = new THREE.Vector3();
+  private readonly sAnchor = new THREE.Vector3();
+  private readonly sOut2 = new THREE.Vector3();
+  private readonly sOut3 = new THREE.Vector3();
+  private readonly sRawW = new THREE.Vector3();
+  private readonly sPrevW = new THREE.Vector3();
+  private readonly sNudge = new THREE.Vector3();
+  private lastFy = 0;
+  private readonly lastDp = new THREE.Vector3();
+
+  /**
+   * Round 30: the camera's offset from the drone, taken in the frame that turns with the chase heading (and the
+   * player's orbit), glides toward the target offset with a critically damped spring capped at SMOOTH.maxSpeed. Turning
+   * with the drone passes straight through; changes of distance, height and side (the room floor, the hard gap, a wall
+   * pull-in, a climb) are smoothed. The glide is checked: if it would put the camera in a wall, cut the line of sight or
+   * bring it under SMOOTH.gap of the drone, it moves just far enough toward the target to be clear.
+   */
+  private smoothRel(world: CollisionWorld, drone: Drone, dt: number): void {
+    const cam = this.camera.position, dp = drone.group.position;
+    const fy = this.yaw + this.yawHeld;
+    const c = Math.cos(fy), s = Math.sin(fy);
+    const raw = this.sRaw.copy(cam).sub(dp);
+    // world -> heading frame (rotate by -fy about Y)
+    const rx = raw.x * c - raw.z * s, rzl = raw.x * s + raw.z * c;
+    raw.x = rx; raw.z = rzl;
+    const prev = this.lastLocal;
+    // a teleport (respawn, a probe placing the drone) is not a camera move: start the glide afresh from the target
+    const tele = this.lastDp.distanceTo(dp) > Math.max(3, 70 * dt);
+    this.lastDp.copy(dp);
+    if (tele || !this.localValid || !this.relValid || dt <= 0 || prev.distanceTo(raw) > 14 || raw.length() > 18) {
+      prev.copy(raw);
+      this.relVel.set(0, 0, 0);
+      this.localValid = true;
+      this.lastFy = fy;
+      return;
+    }
+    // critically damped spring (SmoothDamp) from last frame's offset toward the target offset
+    const omega = 2 / SMOOTH.time, x = omega * dt, ex = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    const ch = this.sQ.copy(prev).sub(raw);
+    // backing off from the drone (the room floor after a pickup or drop) may glide faster than closing in
+    const vmax = raw.length() > prev.length() + 0.3 ? SMOOTH.outSpeed : SMOOTH.maxSpeed;
+    const maxCh = vmax * SMOOTH.time;
+    if (ch.length() > maxCh) ch.setLength(maxCh);
+    const tgt = this.sOut.copy(prev).sub(ch); // target, clamped
+    const tx = (this.relVel.x + omega * ch.x) * dt, ty = (this.relVel.y + omega * ch.y) * dt, tz = (this.relVel.z + omega * ch.z) * dt;
+    this.relVel.set((this.relVel.x - omega * tx) * ex, (this.relVel.y - omega * ty) * ex, (this.relVel.z - omega * tz) * ex);
+    const out = tgt.set(tgt.x + (ch.x + tx) * ex, tgt.y + (ch.y + ty) * ex, tgt.z + (ch.z + tz) * ex);
+    // hard per-frame cap (frame-rate independent speed)
+    const stepMax = Math.min(vmax * dt, SMOOTH.jump * 0.8);
+    const st = this.sQ.copy(out).sub(prev);
+    const capped = st.length() > stepMax;
+    if (capped) out.copy(prev).addScaledVector(st, stepMax / st.length());
+    // validity of a heading-frame offset as a world position
+    const A = this.sAnchor.copy(dp);
+    A.y += 0.4;
+    const toWorldA = (l: THREE.Vector3, ang: number, q: THREE.Vector3) => {
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      return q.set(dp.x + l.x * ca + l.z * sa, dp.y + l.y, dp.z - l.x * sa + l.z * ca);
+    };
+    const rawW = this.sRawW.copy(cam); // the target in world space
+    const rawGap = Math.min(rawW.distanceTo(A), rawW.distanceTo(dp));
+    const rawIn = world.pushOutPoint(this.best.copy(rawW), 0.3);
+    const rawSight = world.segmentFraction(A, rawW, 0.1, false) >= 1;
+    const gapNeed = Math.min(SMOOTH.gap, rawGap - 0.02);
+    const hard = (q: THREE.Vector3) => q.y >= 0.8 && Math.min(q.distanceTo(A), q.distanceTo(dp)) >= gapNeed && (rawIn || !world.pushOutPoint(this.best.copy(q), 0.3));
+    const sight = (q: THREE.Vector3, pad: number) => !rawSight || world.segmentFraction(A, q, pad, false) >= 1;
+    // candidates: the glide in the turning frame (g1); the same glide with this frame's turn held back (g0: the heading
+    // swings the view round the drone into a wall); each moved toward the target by t. Tiers, best first: a clear view
+    // within one smooth step; a thin-line view within one step; out of walls within one step (the view of the drone
+    // comes back a frame or two later); a clear view further out; the target itself.
+    const fy0 = this.lastFy;
+    const g1 = toWorldA(out, fy, this.sOut2), g0 = toWorldA(out, fy0, this.sOut3);
+    const q = this.sQ;
+    // last frame's camera, for the per-frame move limit (relative to the drone, in world axes)
+    const prevW = this.sPrevW.copy(this.lastRel).add(dp);
+    const TS = [0, 0.04, 0.08, 0.12, 0.16, 0.22, 0.3, 0.4, 0.5, 0.65, 0.8, 1];
+    let use = -1;
+    const tier = (test: (q: THREE.Vector3) => boolean, within: boolean): boolean => {
+      for (const t of TS) {
+        for (const g of [g1, g0]) {
+          q.copy(g).lerp(rawW, t);
+          if (within !== q.distanceTo(prevW) <= SMOOTH.jump) continue;
+          if (test(q)) { use = t; return true; }
+        }
+      }
+      if (within) {
+        // the glide runs into a wall (a roof edge between the camera and its target): step round it (over, under or
+        // aside, whichever valid step ends nearest the target), or hold still
+        let bestD = Infinity;
+        for (const g of [g1, g0, prevW]) for (const [ox, oy, oz] of NUDGE) {
+          q.set(g.x + ox, g.y + oy, g.z + oz);
+          if (q.distanceTo(prevW) > SMOOTH.jump || !test(q)) continue;
+          const d = q.distanceTo(rawW);
+          if (d < bestD) { bestD = d; this.sNudge.copy(q); }
+        }
+        if (bestD < Infinity) { q.copy(this.sNudge); use = 5; return true; }
+      }
+      return false;
+    };
+    if (!tier((v) => hard(v) && sight(v, 0.1), true) && !tier((v) => hard(v) && sight(v, 0), true) && !tier(hard, true) && !tier((v) => hard(v) && sight(v, 0.1), false)) q.copy(rawW);
+    const D = this.dbgSmooth;
+    D.use = use; D.rawIn = rawIn; D.rawSight = rawSight; D.rawL = rawW.distanceTo(dp);
+    const moved = use !== 0 || q.distanceToSquared(g1) > 1e-8;
+    cam.copy(q);
+    // back to the turning frame for next time
+    const lx = (q.x - dp.x) * c - (q.z - dp.z) * s, lz = (q.x - dp.x) * s + (q.z - dp.z) * c;
+    const final = this.sOut.set(lx, q.y - dp.y, lz);
+    // the velocity follows what the camera actually did (a constraint step does not wind up the spring)
+    if (moved || capped) {
+      this.relVel.copy(final).sub(prev).divideScalar(dt);
+      if (this.relVel.length() > vmax) this.relVel.setLength(vmax);
+    }
+    prev.copy(final);
+    this.lastFy = fy;
+  }
+
   update(dt: number, drone: Drone, world: CollisionWorld, alt = 0, target: THREE.Vector3 | null = null, view: ViewIntent | null = null): void {
     this.time += dt;
+    // round 30: start from the unshaken camera of the last frame
+    if (this.baseValid) this.camera.position.copy(this.base);
     this.roomHold = Math.max(0, this.roomHold - dt);
     this.applyView(view, dt);
     // yaw follows the drone heading with lag; shortest-arc
@@ -612,28 +751,35 @@ export class CameraRig {
     else this.floorEff = Math.min(this.floorEff, this.camera.position.distanceTo(drone.group.position));
 
     this.lookSmoothed.lerp(this.look, 1 - Math.exp(-12 * dt));
-    cam.lookAt(this.lookSmoothed);
-    this.keepInFrame(drone.group.position);
 
-    // impact shake
+    // round 21: never inside a wall, or so close that the near plane cuts into it (an orbit can swing the camera
+    // toward the wall the drone is hugging)
+    world.pushOutPoint(cam.position, 0.3);
+    cam.position.y = Math.max(cam.position.y, 0.8);
+    // round 29: a hard floor in every mode (alleys and tunnels too): never closer than HARD_GAP to the drone
+    this.hardGap(world, drone);
+    // round 30: everything above is the target; the camera itself glides there in the drone's frame (critically damped,
+    // speed-capped), and only takes a bigger step when the glide would put it in a wall, out of sight or too close
+    this.smoothRel(world, drone, dt);
+    this.base.copy(cam.position);
+    this.baseValid = true;
+    this.lastRel.copy(cam.position).sub(drone.group.position);
+    this.relValid = true;
+
+    // impact shake: an offset on top of the smoothed camera (removed again at the start of the next frame)
+    let rz = 0;
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt * 2.4);
       const s = this.shake * this.shake * 0.35;
       cam.position.x += Math.sin(this.time * 61) * s;
       cam.position.y += Math.sin(this.time * 47 + 1) * s;
-      cam.rotation.z += Math.sin(this.time * 53) * s * 0.08;
+      rz = Math.sin(this.time * 53) * s * 0.08;
+      world.pushOutPoint(cam.position, 0.3);
+      cam.position.y = Math.max(cam.position.y, 0.8);
     }
-    // round 21: never inside a wall, or so close that the near plane cuts into it (an orbit can swing the camera
-    // toward the wall the drone is hugging); the shake is applied first so it cannot push the camera in either
-    if (world.pushOutPoint(cam.position, 0.3)) {
-      cam.lookAt(this.lookSmoothed);
-      this.keepInFrame(drone.group.position);
-    }
-    cam.position.y = Math.max(cam.position.y, 0.8);
-    // round 29: a hard floor in every mode (alleys and tunnels too): never closer than HARD_GAP to the drone
-    if (this.hardGap(world, drone)) { cam.lookAt(this.lookSmoothed); this.keepInFrame(drone.group.position); }
-    this.lastRel.copy(cam.position).sub(drone.group.position);
-    this.relValid = true;
+    cam.lookAt(this.lookSmoothed);
+    this.keepInFrame(drone.group.position);
+    if (rz !== 0) cam.rotation.z += rz;
 
     const targetFov = Math.min(CAMERA.maxFov, (drone.boosting ? CAMERA.boostFov : CAMERA.fov) + speedFactor * CAMERA.speedFov);
     this.fov += (targetFov - this.fov) * (1 - Math.exp(-(drone.boosting ? 6 : 3) * dt));
@@ -647,6 +793,7 @@ export class CameraRig {
   orbitAround(dt: number, target: THREE.Vector3, radius: number, height: number, speed: number): void {
     this.orbit += dt * speed;
     this.relValid = false;
+    this.baseValid = this.localValid = false;
     const cam = this.camera;
     const desired = this.tmp.set(target.x + Math.cos(this.orbit) * radius, target.y + height, target.z + Math.sin(this.orbit) * radius);
     cam.position.lerp(desired, 1 - Math.exp(-2.5 * dt));

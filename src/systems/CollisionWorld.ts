@@ -3,6 +3,13 @@ import type { Box } from '../world/CityGenerator';
 
 export type Contact = { normal: THREE.Vector3; depth: number };
 
+/**
+ * Round 32: a box that turns about y and can move every frame (boat hulls, masts, the marina docks). Centre (x, z),
+ * yaw as sin / cos (local z is the bow), half sizes along the beam (hx) and the length (hz), and its height range.
+ * The sphere never leaves one of these downwards, so a boat can only push the drone sideways or up, never into the sea.
+ */
+export type DynBox = { x: number; z: number; s: number; c: number; hx: number; hz: number; y0: number; y1: number; soft: boolean; on: boolean; vx: number; vz: number };
+
 /** Uniform-grid broadphase over static AABBs with sphere resolution and segment casts. */
 export class CollisionWorld {
   private readonly cell = 12;
@@ -12,6 +19,17 @@ export class CollisionWorld {
   private readonly candidates: number[] = [];
   /** True when the deepest contact of the last resolveSphere call was a soft prop (tree, lamp post). */
   deepestSoft = false;
+  /** Round 32: turning / moving boxes (boats), checked every query (there are only a few dozen). */
+  readonly dynamic: DynBox[] = [];
+  /** True when the deepest contact of the last resolveSphere call was a moving box (a boat). */
+  deepestDynamic = false;
+  /** That box (valid while deepestDynamic is true): its velocity and heading. */
+  deepestBox: DynBox | null = null;
+  /** The moving box face that pushes hardest into the sphere in the last resolveSphere call (face speed > 0), its
+   * outward normal and that face speed; null when no boat face is closing in. */
+  pushBox: DynBox | null = null;
+  readonly pushNormal = new THREE.Vector3();
+  pushSpeed = 0;
 
   constructor(readonly boxes: Box[], readonly floorY = 0) {
     this.stamp = new Int32Array(boxes.length);
@@ -62,6 +80,9 @@ export class CollisionWorld {
     let deepest = 0;
     outNormal.set(0, 0, 0);
     this.deepestSoft = false;
+    this.deepestDynamic = false;
+    this.pushBox = null;
+    this.pushSpeed = 0;
     // a few iterations so corners between boxes settle
     for (let iter = 0; iter < 3; iter++) {
       let any = false;
@@ -96,12 +117,70 @@ export class CollisionWorld {
           deepest = depth;
           outNormal.set(dx, dy, dz);
           this.deepestSoft = !!b.soft;
+          this.deepestDynamic = false;
+        }
+        any = true;
+      }
+      for (const b of this.dynamic) {
+        if (!b.on) continue;
+        const ox = p.x - b.x, oz = p.z - b.z, reach = b.hx + b.hz + r;
+        if (ox > reach || ox < -reach || oz > reach || oz < -reach || p.y > b.y1 + r || p.y < b.y0 - r) continue;
+        // into the box frame: lx along the beam, lz along the bow
+        const lx = ox * b.c - oz * b.s, lz = ox * b.s + oz * b.c;
+        const cx = Math.max(-b.hx, Math.min(lx, b.hx)), cy = Math.max(b.y0, Math.min(p.y, b.y1)), cz = Math.max(-b.hz, Math.min(lz, b.hz));
+        let nx = lx - cx, ny = p.y - cy, nz = lz - cz;
+        const d2 = nx * nx + ny * ny + nz * nz;
+        if (d2 >= r * r) continue;
+        let depth: number;
+        if (d2 > 1e-8) {
+          const d = Math.sqrt(d2);
+          depth = r - d;
+          nx /= d; ny /= d; nz /= d;
+        } else {
+          // centre inside: leave by the nearest side or the top, never downwards
+          const ex = [lx + b.hx, b.hx - lx, b.y1 - p.y, lz + b.hz, b.hz - lz];
+          let m = 0;
+          for (let k = 1; k < 5; k++) if (ex[k] < ex[m]) m = k;
+          nx = m === 0 ? -1 : m === 1 ? 1 : 0;
+          ny = m === 2 ? 1 : 0;
+          nz = m === 3 ? -1 : m === 4 ? 1 : 0;
+          depth = ex[m] + r;
+        }
+        if (ny < 0) { // under a hull's bottom (below the sea): slide out sideways instead
+          const hl = Math.hypot(nx, nz) || 1;
+          nx /= hl; nz /= hl; ny = 0;
+        }
+        // back to world: local x is the beam (c, -s), local z the bow (s, c)
+        const wx = nx * b.c + nz * b.s, wz = -nx * b.s + nz * b.c;
+        p.x += wx * depth;
+        p.y += ny * depth;
+        p.z += wz * depth;
+        const fv = b.vx * wx + b.vz * wz;
+        if (fv > this.pushSpeed) { this.pushSpeed = fv; this.pushBox = b; this.pushNormal.set(wx, ny, wz); }
+        if (depth > deepest) {
+          deepest = depth;
+          outNormal.set(wx, ny, wz);
+          this.deepestSoft = b.soft;
+          this.deepestDynamic = true;
+          this.deepestBox = b;
         }
         any = true;
       }
       if (!any) break;
     }
     return deepest;
+  }
+
+  /** Round 32: the moving box (boat part) whose footprint holds (x, z) and whose top is the highest at or below y. */
+  private dynamicTop(x: number, y: number, z: number, best: number): number {
+    for (const b of this.dynamic) {
+      if (!b.on || b.y1 > y + 0.01 || b.y1 <= best) continue;
+      const ox = x - b.x, oz = z - b.z;
+      const lx = ox * b.c - oz * b.s, lz = ox * b.s + oz * b.c;
+      if (lx < -b.hx || lx > b.hx || lz < -b.hz || lz > b.hz) continue;
+      best = b.y1;
+    }
+    return best;
   }
 
   /** Highest surface directly below a point (for contact shadow + landing reads). */
@@ -113,7 +192,7 @@ export class CollisionWorld {
       if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
       if (b.maxY <= y + 0.01 && b.maxY > best) best = b.maxY;
     }
-    return best;
+    return this.dynamic.length ? this.dynamicTop(x, y, z, best) : best;
   }
 
   /**

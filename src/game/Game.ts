@@ -18,7 +18,7 @@ import { createCityMaterial, setCityDetailTextures, type CityMaterial } from '..
 import { propAudit, propPlacementAudit } from '../world/StreetProps';
 import { BuildingDetail } from '../world/BuildingDetail';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
-import { waveHeight as waveHeightAt } from '../world/Water';
+import { surfaceHeight, waveHeight as waveHeightAt } from '../world/Water';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
 import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
@@ -409,6 +409,8 @@ export class Game {
       setCityDetailTextures(this.cityMaterial, a.tex);
       this.scene.add(this.assetGroup);
       this.env.commitAssets();
+      // round 32: boat hulls, masts and the docks join the collision world (turning boxes, moved every frame)
+      if (this.env.boats) this.world.dynamic.push(...this.env.boats.colliders);
       this.assetMs = performance.now() - t0;
       this.warmPrograms();
     } catch (err) {
@@ -2115,8 +2117,13 @@ export class Game {
       boats: () => this.env.boats?.snapshot() ?? [],
       boatFootprints: () => this.env.boats?.footprints() ?? null,
       waterAt: (x: number, z: number) => waveHeightAt(x, z, this.time),
+      // round 32: the swell height as drawn for the current view (far vertices drop the waves the grid cannot carry; the
+      // boats ride this one). waterAt above stays the raw sum before any fade.
+      waterShown: (x: number, z: number) => { const c = this.env.focusCam; return surfaceHeight(x, z, this.time, Math.hypot(x - c.x, z - c.z), this.env.water.lite); },
       waterOn: (on: boolean) => { this.env.water.mesh.visible = on; }, // round 31 perf switches
-      boatsOn: (on: boolean) => { if (this.env.boats) this.env.boats.group.visible = on; },
+      boatsOn: (on: boolean) => { if (this.env.boats) { this.env.boats.group.visible = on; for (const c of this.env.boats.colliders) c.on = on; } },
+      // round 32: the boat collider boxes as the collision world sees them, and the crash counter for the boat probe
+      boatColliders: () => this.world.dynamic.map((c) => ({ ...c })),
       people: () => this.env.people.snapshot(),
       rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),
       // round 24 test hook: the drone's screen box (CSS px) through the real render camera

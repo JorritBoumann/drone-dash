@@ -1,0 +1,11 @@
+# Blind picks, written before opening .key.json. A = left, B = right, tie = no clear winner.
+pair-01 B  right is calmer with broad soft shapes; left is a dense fine grain
+pair-02 B  right has broad swell shapes and reads as sea; left is crumpled orange foil (right shows a boat, not fully blind)
+pair-03 A  left is crisper; right smears the near water into soft streaks (hazy close up)
+pair-04 tie  nearly the same; right maybe a touch softer (right shows a far boat)
+pair-05 A  left has a crisp sparkle field and glint path; right is soft and the near water looks hazy
+pair-06 B  left has a blown-out white patch and busy grain; right is calmer
+pair-07 A  left has broad dark and light shapes plus a wake; right is crumpled foil (left shows a boat, not fully blind)
+pair-08 tie  close; left foreground a little blurred, right a little crisper (left shows a boat hull)
+pair-09 A  left has broad shapes and a soft sky patch; right is an even sparkle field
+pair-10 B  right has crisp ripples; left looks out of focus and hazy near the camera

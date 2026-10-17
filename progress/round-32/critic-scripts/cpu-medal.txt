@@ -1,0 +1,3 @@
+ %CPU COMM
+100.0 /usr/sbin/BTLEServer
+  2.9 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer

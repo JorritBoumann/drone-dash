@@ -1,0 +1,3 @@
+ %CPU COMM
+ 96.9 /usr/sbin/BTLEServer
+ 12.4 /usr/sbin/coreaudiod

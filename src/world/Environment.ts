@@ -205,7 +205,7 @@ export class Environment {
   /** Round 22: street life (traffic with the rush-hour hover-vans, and people). */
   readonly traffic: Traffic;
   readonly people: Pedestrians;
-  private readonly focusCam = new THREE.Vector3(0, 80, 0);
+  readonly focusCam = new THREE.Vector3(0, 80, 0);
   private readonly focusDrone = new THREE.Vector3(0, 80, 0);
   /** Round 29: the camera whose view volume culls the far people (Game sets it). */
   viewCam: THREE.Camera | null = null;

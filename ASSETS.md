@@ -54,6 +54,8 @@ Pipeline: the round 28 `flatten()` from `progress/round-28/builder-scripts/blend
 `boats.glb`: 240 KB, 3,116 tris for all five models (sail 1,020, lifeboat 626, ferry 858, rowing boat 224, dock 388). Loaded after the first frame with the street assets.
 Imported but not used: "Small Ship" (https://poly.pizza/m/W2vMzztgIi, CC0, a wooden period ship that does not fit the modern city) and "Boat" (https://poly.pizza/m/OknDJkGeJ8, CC0, a second rowing boat).
 
+Round 32: no new files. The game now draws the Cruise Ship model at 0.72 scale (14.4 m). It is a harbour bus that stops at two piers. A third pier on the north wall uses the same Dock model (2 more instances). No Blender run, no generation, no .blend saved.
+
 Water: procedural, no file. The detail normal map (and its foam noise channel) is made in code at start (`src/world/Water.ts`, 18 tileable sine waves, 256 px, 128 px on phones). No third-party texture.
 
 ## Totals

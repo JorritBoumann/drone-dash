@@ -442,7 +442,12 @@ export class Drone {
         const soft = world.deepestSoft;
         // the obstacle top is below the drone's middle (belly clipping an edge) or a skimmable low step
         const edge = this.normal.y > 0.35 && this.normal.y <= 0.7;
-        const low = vn < 0 && (soft || edge || this.isLowLedge(world, p));
+        let low = vn < 0 && (soft || edge || this.isLowLedge(world, p));
+        if (low && !soft && !edge && world.deepestDynamic) {
+          // round 32: a boat is never hopped like a ledge. A gunwale low enough to step over is free (like a kerb),
+          // anything taller (a deckhouse, a hull side) is a wall and the crash rules apply.
+          if (this.columnTop(world, p) - (p.y - F.radius) + 0.05 > F.stepUp) low = false;
+        }
         if (soft && vn < 0 && this.normal.y <= 0.7) {
           // thin props (lamp posts, trees) brush the drone aside: glance round them, no bounce, no crash
           const hs = Math.hypot(v.x, v.z);
@@ -517,6 +522,26 @@ export class Drone {
               }
             }
           }
+        }
+      }
+      if (depth > 0 && world.pushBox) {
+        // round 32: a moving boat carries the drone off its side instead of bulldozing it. The crash test above used the
+        // drone's own speed only (a boat running into a hovering drone is never a crash); here the drone leaves the hull
+        // face at least as fast as the face moves, and off a bow or stern it is also slid out to the side, so the boat
+        // goes past and the drone never stays pinned on it.
+        const b = world.pushBox, n = world.pushNormal, faceV = world.pushSpeed;
+        const out = v.x * n.x + v.z * n.z;
+        if (out < faceV + 0.6) { v.x += n.x * (faceV + 0.6 - out); v.z += n.z * (faceV + 0.6 - out); }
+        const along = n.x * b.s + n.z * b.c; // contact normal along the boat's heading
+        if (Math.abs(along) > 0.6) {
+          const ox = p.x - b.x, oz = p.z - b.z, side = Math.sign(ox * b.c - oz * b.s) || 1;
+          const k = (faceV + 2) * side;
+          // a direct sideways slide (the drone's lateral grip would eat a pure velocity kick) plus some drift; contacts
+          // come only every few frames (the drone leaves the face faster than it moves), so each one slides a fair bit
+          p.x += b.c * k * h * 5;
+          p.z -= b.s * k * h * 5;
+          v.x += b.c * k * h * 6;
+          v.z -= b.s * k * h * 6;
         }
       }
       // ground

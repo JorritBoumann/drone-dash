@@ -1,0 +1,11 @@
+node water31.mjs > water-d-r32b.log 2>&1
+MOBILE=1 SEEDS=22,58 node water31.mjs > water-m-r32b.log 2>&1
+node water31b.mjs > waterb-d-r32b.log 2>&1
+MOBILE=1 SEEDS=22 node water31b.mjs > waterb-m-r32b.log 2>&1
+node acceptance-probe.mjs > flat-b.log 2>&1
+node pop32.mjs > pop-d-b.log 2>&1
+node boatcol32.mjs > boatcol32-b.log 2>&1
+node boats31.mjs > boats31-b.log 2>&1; SEEDS=130 node boats31.mjs > boats31-130-b.log 2>&1
+WAKEONLY=1 WAKESHOT=1 node water31b.mjs > wake-b.log 2>&1
+SEED=130 node trisweep31.mjs > trisweep-d-130-b.log 2>&1
+END

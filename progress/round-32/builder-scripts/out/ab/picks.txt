@@ -1,0 +1,10 @@
+pair-01 T Near-identical water; same wave scale, colour and glint on both sides.
+pair-02 A Broad painterly swells with warm sheen; B reads as fine grainy noise.
+pair-03 A Natural sun-glint band and readable wave scale; B uniformly busy texture.
+pair-04 A Clean warm wave pattern; B has blurry streaks and washed-out foreground.
+pair-05 B Crisp sun glitter and deeper blue; A looks hazy and smeared.
+pair-06 A Believable swell scale with shore foam; B tiny ripples look pond-like and noisy.
+pair-07 T Water essentially identical; only boats differ.
+pair-08 A Rich rolling waves with visible wake; B fine glitter reads as noise.
+pair-09 T Practically identical water rendering.
+pair-10 T Practically identical water rendering.

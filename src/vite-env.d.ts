@@ -140,8 +140,12 @@ interface DroneDashApi {
   boats?(): Array<Record<string, number | string | boolean>>;
   boatFootprints?(): unknown;
   waterAt?(x: number, z: number): number;
+  /** Round 32: the swell height as drawn for the current view (what the boats ride). */
+  waterShown?(x: number, z: number): number;
   waterOn?(on: boolean): void;
   boatsOn?(on: boolean): void;
+  /** Round 32: the boat and dock collider boxes (turning boxes) as the collision world sees them. */
+  boatColliders?(): Array<{ x: number; z: number; s: number; c: number; hx: number; hz: number; y0: number; y1: number; soft: boolean; on: boolean }>;
   droneBox?(): { x: number; y: number; w: number; h: number; behind: boolean; shift: number };
   renderStats?(): { tris: number; calls: number };
   programs?(): string[];

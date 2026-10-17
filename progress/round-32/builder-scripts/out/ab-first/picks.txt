@@ -1,0 +1,10 @@
+pair-01 B Larger smooth swells read as sea at this height; A is fine high-frequency noise.
+pair-02 B Richer teal depth and contrast; A looks hazy, washed-out purple.
+pair-03 B Calmer broad waves with soft glint; A is busy glittery static.
+pair-04 T Practically identical surfaces, colour and scale.
+pair-05 B Broader waves and a strong sun-glint path; A is uniform fine sparkle.
+pair-06 T Near identical; A marginally crisper, B marginally softer.
+pair-07 A Smooth broad swells with clean glint; B is busy fine sparkle texture.
+pair-08 A Gentle broad swell bands; B is dense noisy ripples, too small for camera height.
+pair-09 T Very similar dusk ripples; no meaningful water difference.
+pair-10 T Near identical; B has slightly brighter foreground glint only.

@@ -1,0 +1,3 @@
+ %CPU COMM
+ 99.5 /usr/sbin/BTLEServer
+ 18.0 /usr/sbin/systemstats

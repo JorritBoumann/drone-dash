@@ -58,7 +58,10 @@ const TEACH_HINTS: Record<string, [string, string]> = {
   wind: ['High wind', 'Up high the wind slows you'],
 };
 /** Round 25: when several systems wait for their introduction, this order wins (the street bonus first). */
-/** Round 28: the phone's wider room floor around a slow drone (x the desktop 4.2 m), see CameraRig.keepRoom. */
+/**
+ * Round 28: the phone's wider room floor around a slow drone (x the old desktop 4.2 m), see CameraRig.keepRoom.
+ * Round 29: desktop uses it too (the same view angle, the same crowding after a drop by a wall).
+ */
 const CAMERA_TOUCH_ROOM = 2.1;
 const TEACH_ORDER = ['slip', 'combo', 'medal', 'clock', 'route', 'view', 'wind'];
 const MEDAL_COLORS = [new THREE.Color('#e0955a'), new THREE.Color('#eef2f7'), new THREE.Color('#ffd166'), new THREE.Color('#5ff5d4')];
@@ -214,8 +217,8 @@ export class Game {
 
     const touch = window.matchMedia?.('(pointer: coarse)').matches ?? false;
     this.hud.setTouch(touch);
-    this.cameraRig.touchRoom = touch ? CAMERA_TOUCH_ROOM : 1;
-    window.addEventListener('touchstart', () => { this.hud.setTouch(true); this.cameraRig.touchRoom = CAMERA_TOUCH_ROOM; }, { once: true, passive: true });
+    this.cameraRig.touchRoom = CAMERA_TOUCH_ROOM;
+    window.addEventListener('touchstart', () => { this.hud.setTouch(true); }, { once: true, passive: true });
 
     this.renderer = createRenderer(canvas);
     this.renderer.info.autoReset = false;
@@ -253,6 +256,7 @@ export class Game {
 
     this.lighting = new LightingRig(this.scene, touch ? 1024 : QUALITY.shadowMapSize, QUALITY.shadowExtent, MOODS[this.look.mood]);
     this.env = new Environment(this.layout, this.seed, this.look.mood, touch); // round 22: street life follows the mood
+    this.env.viewCam = this.camera; // round 29: far people outside the view are not drawn
     this.scene.add(this.env.group);
 
     this.scene.add(this.drone.group);
@@ -361,7 +365,27 @@ export class Game {
     // ?assets=0 keeps the procedural stand-ins (A/B perf checks)
     if (new URLSearchParams(window.location.search).get('assets') !== '0') void this.loadAssets();
     // round 28: the audio context is made on the title screen (it was the 240 ms first-flight hitch inside start())
-    window.setTimeout(() => { if (this.state === 'title') this.audio.prewarm(); }, 1200);
+    // round 29: right after the first frame, not 1.2 s later: a quick Play (1.7 s after load) still made it inside start()
+    requestAnimationFrame(() => window.setTimeout(() => { if (this.state === 'title') this.audio.prewarm(); }, 30));
+    window.setTimeout(() => this.warmPrograms(), 400); // assets off or slow: warm the procedural city's shaders anyway
+  }
+
+  /**
+   * Round 29: compile every shader the run will need while the title is up. Objects hidden on the title (route gates,
+   * pad markers, effects) used to compile on the first playing frame. They are shown for one synchronous compile and
+   * hidden again before anything is drawn.
+   */
+  private warmPrograms(): void {
+    if (this.state !== 'title') return;
+    const hidden: THREE.Object3D[] = [];
+    this.scene.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+    try {
+      this.pipeline.compileScene();
+    } catch {
+      /* a failed warm-up only costs the old first-frame compile */
+    } finally {
+      for (const o of hidden) o.visible = false;
+    }
   }
 
   private assetMs = -1;
@@ -383,6 +407,7 @@ export class Game {
       this.scene.add(this.assetGroup);
       this.env.commitAssets();
       this.assetMs = performance.now() - t0;
+      this.warmPrograms();
     } catch (err) {
       console.warn('street assets failed to load; keeping the procedural stand-ins', err);
     }
@@ -694,7 +719,7 @@ export class Game {
       const tgt = this.state === 'playing' ? this.delivery.target : null;
       if (tgt && tgt.pos.y < 2) this.env.people.setActivePad(tgt.pos.x, tgt.pos.z, tgt.radius);
       else this.env.people.setActivePad(0, 0, 0);
-      this.env.setFocus(this.camera.position, this.drone.group.position, this.drone.velocity.x, this.drone.velocity.z);
+      this.env.setFocus(this.camera.position, this.drone.group.position, this.drone.velocity.x, this.drone.velocity.z, this.camera.getWorldDirection(this.tmp));
       this.env.update(animDt, time);
       const sh = this.cityMaterial.userData.shader;
       if (sh) sh.uniforms.uTime.value = time;
@@ -1866,6 +1891,8 @@ export class Game {
 
   private render(): void {
     this.detail.update(this.camera.position);
+    this.camera.updateMatrixWorld();
+    this.env.syncView(this.camera.position, this.camera.getWorldDirection(this.tmp2));
     this.renderer.info.reset();
     this.pipeline.render();
     this.drawCalls = this.renderer.info.render.calls;
@@ -2054,7 +2081,7 @@ export class Game {
         this.camera.position.set(px, py, pz);
         this.camera.lookAt(tx, ty, tz);
         this.camera.updateMatrixWorld();
-        this.render();
+        this.render(); // round 29: render() redoes the tree and people view cones for this camera
         this.camera.position.copy(p0); this.camera.quaternion.copy(q0); this.camera.updateMatrixWorld();
       },
       streetPropAudit: (r = 40, x?: number, z?: number) => propAudit(this.layout.props, this.layout,
@@ -2105,6 +2132,35 @@ export class Game {
           }
         });
         return { x: x0, y: y0, w: x1 - x0, h: y1 - y0, behind, shift: this.touchShift };
+      },
+      // round 29: compiled shader programs (name and id), to see which ones compile late
+      programs: () => (this.renderer.info.programs ?? []).map((p) => `${p.id}:${p.name}:${p.cacheKey}`),
+      // round 29: an instanced mesh's count and its first instances' positions and scales (debug)
+      meshInfo: (name: string, n = 4) => {
+        const m = this.scene.getObjectByName(name) as THREE.InstancedMesh | undefined;
+        if (!m) return null;
+        const M = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+        const out: number[][] = [];
+        for (let i = 0; i < Math.min(n, m.count ?? 0); i++) { m.getMatrixAt(i, M); M.decompose(p, q, sc); out.push([p.x, p.y, p.z, sc.x, sc.y, sc.z].map((v) => +v.toFixed(2))); }
+        return { count: m.count, visible: m.visible, parent: m.parent?.name ?? '', first: out };
+      },
+      // round 29: the last render's counts (the diagnostics object is published before the render, so it lags one frame)
+      renderStats: () => ({ tris: this.triangles, calls: this.drawCalls }),
+      // round 29: triangles per mesh at the current view (each visible mesh hidden in turn, one render each)
+      triBreakdown: (min = 3000) => {
+        const tris = () => { this.render(); return this.renderer.info.render.triangles; };
+        const all = tris();
+        const meshes: THREE.Mesh[] = [];
+        this.scene.traverseVisible((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
+        const out: Array<{ name: string; tris: number }> = [];
+        for (const m of meshes) {
+          m.visible = false;
+          const d = all - tris();
+          m.visible = true;
+          if (d >= min) out.push({ name: m.name || m.parent?.name || m.type, tris: d });
+        }
+        tris();
+        return { all, parts: out.sort((a, b) => b.tris - a.tris) };
       },
     };
     window.__THREE_GAME_TEST_HOOKS__ = {

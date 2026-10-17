@@ -136,6 +136,10 @@ interface DroneDashApi {
   people?(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }>;
   /** Round 24: the drone's screen box in CSS px (visible vertices through the render camera) and the touch framing shift. */
   droneBox?(): { x: number; y: number; w: number; h: number; behind: boolean; shift: number };
+  renderStats?(): { tris: number; calls: number };
+  programs?(): string[];
+  meshInfo?(name: string, n?: number): { count: number; visible: boolean; parent: string; first: number[][] } | null;
+  triBreakdown?(min?: number): { all: number; parts: Array<{ name: string; tris: number }> };
   /** Round 28: CC0 street assets loaded and in use; street furniture within r of a point (default the drone); shop-front audit. */
   assetsReady?(): { on: boolean; ms: number; propsVisible: number; treesNear: number[]; carModels: boolean };
   streetPropAudit?(r?: number, x?: number, z?: number): { count: number; kinds: Record<string, number>; kindCount: number; pavementM: number; perTenM: number };

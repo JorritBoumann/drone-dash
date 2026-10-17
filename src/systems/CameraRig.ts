@@ -55,6 +55,14 @@ const YAW_STEPS = [0.12, 0.25, 0.4, 0.6, 0.85, 1.15, 1.5, 2.0, 2.6, 3.2];
 const SWING = { need: 3.2, keep: 2.6, rate: 3.2, hold: 0.9, back: 1.4, minDist: 2.4, slowDist: 4.2, maxYaw: 0.6, maxSpeed: 6 };
 /** Round 23: the camera never moves more than this relative to the drone in one frame (no pull-in snaps). */
 const MAX_REL_STEP = 1.7;
+/** Round 29: the camera is never closer than this to the drone's look point (0.4 m over its centre), in any mode (m). */
+const HARD_GAP = 2.35;
+/** Round 29: how fast the room floor backs the camera off when it grows (m/s), and the most a rise moves it a frame (m). */
+const FLOOR_RATE = 9;
+const RISE_STEP = 2.4;
+/** Round 29: the most the room floor and the hard gap move the camera out in one frame (m); under SOFT_GAP (m) no limit. */
+const PUSH_STEP = 2.0;
+const SOFT_GAP = 2.1;
 /** Round 26: the drone's centre is kept inside these normalised screen bounds (y up; -1 is the bottom edge). */
 const FRAME = { bottom: -0.45, top: 0.6, side: 0.8 };
 
@@ -287,7 +295,10 @@ export class CameraRig {
   private readonly frameV = new THREE.Vector3();
   /** Round 26: seconds left of the wide camera floor after a pickup or drop (Game calls holdRoom). */
   private roomHold = 0;
-  /** Round 28: scale of the slow-drone room floor (1 on desktop, more on touch screens; Game sets it). */
+  /**
+   * Round 28: scale of the slow-drone room floor. Round 29: the same on every device (Game sets it once): the round 28
+   * phone value. On desktop the 4.2 m floor let the drone fill up to 77% of the screen height after a drop by a wall.
+   */
   touchRoom = 1;
   holdRoom(seconds: number): void {
     this.roomHold = Math.max(this.roomHold, seconds);
@@ -384,7 +395,9 @@ export class CameraRig {
     this.yawUse = base;
   }
 
-  private keepRoom(world: CollisionWorld, drone: Drone): void {
+  /** Round 29: the room floor in force (m), eased toward its target so it never jumps out. */
+  private floorEff = 0;
+  private keepRoom(world: CollisionWorld, drone: Drone, dt: number): void {
     const cam = this.camera.position, dp = drone.group.position;
     const rel = this.tmp.copy(cam).sub(dp);
     const L = rel.length();
@@ -394,11 +407,21 @@ export class CameraRig {
     // Round 28: on a phone (narrower view) the slow floor is wider still: 4.2 m from close above filled up to 74% of
     // the screen height after a pickup beside a wall.
     const slow = SWING.slowDist * this.touchRoom;
-    const want = this.roomHold > 0 ? slow : THREE.MathUtils.lerp(slow, SWING.minDist, THREE.MathUtils.smoothstep(drone.speed, 4, 9));
-    if (L >= want) return;
+    const target = this.roomHold > 0 ? slow : THREE.MathUtils.lerp(slow, SWING.minDist, THREE.MathUtils.smoothstep(drone.speed, 4, 9));
+    // round 29: the floor never jumps out (with the wider desktop floor a camera 8.8 m up could appear in one frame).
+    // When it wants more room than it had, it holds the camera where it is and backs it off at FLOOR_RATE m/s.
+    if (target <= this.floorEff) this.floorEff = target;
+    else this.floorEff = Math.min(target, Math.max(this.floorEff, Math.min(L, target)) + FLOOR_RATE * dt);
+    const want = this.floorEff;
+    if (L >= want - 0.02) return;
     if (L > 0.05) {
       this.cand.copy(dp).addScaledVector(rel, want / L);
-      if (world.segmentFraction(dp, this.cand, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(this.cand), 0.3)) { cam.copy(this.cand); return; }
+      if (world.segmentFraction(dp, this.cand, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(this.cand), 0.3)) {
+        // round 29: straight out, at most PUSH_STEP m a frame (a camera pulled in behind a corner used to jump 6 m out;
+        // much slower and a drop beside a wall filled 60% of the screen for a moment again)
+        cam.copy(dp).addScaledVector(rel, Math.min(want, L + PUSH_STEP * Math.max(1, dt * 60)) / L);
+        return;
+      }
     }
     // rise: mostly up, a little back along the current horizontal direction (or behind the drone's heading)
     let hx = rel.x, hz = rel.z;
@@ -407,12 +430,59 @@ export class CameraRig {
     for (const [back, up] of [[0.9, want * 0.95], [0.4, want * 1.1], [0, want * 1.2]]) {
       this.cand.set(dp.x + hx * back, dp.y + up, dp.z + hz * back);
       if (world.segmentFraction(dp, this.cand, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(this.cand), 0.3)) {
-        // blend toward it so a rise is a quick glide, not a cut (the floor below still holds next frame)
-        cam.lerp(this.cand, 0.5);
-        if (cam.distanceTo(dp) < want * 0.9) cam.copy(this.cand);
+        // blend toward it so a rise is a quick glide, not a cut (the floor below still holds next frame).
+        // Round 29: at most RISE_STEP m a frame (it used to finish the rise in one frame when still short of it).
+        // well inside the floor (a wall cut the view in) it goes the full step; near the floor it halves the gap
+        const d = cam.distanceTo(this.cand), step = RISE_STEP * Math.max(1, dt * 60);
+        cam.lerp(this.cand, Math.min(L < want * 0.9 ? 1 : 0.5, step / Math.max(d, 1e-4)));
         return;
       }
     }
+  }
+
+  /**
+   * Round 29: the last word on distance, in open streets, alleys and tunnels alike. Under random orbit in an alley the
+   * clip pull-in could leave the camera 1.86 m from the drone. If it is closer than HARD_GAP: push it straight out from
+   * the drone if that line is clear; else back along the corridor axis (alleys, tunnels) or behind the heading; else up.
+   */
+  private readonly hardBest = new THREE.Vector3();
+  private hardGap(world: CollisionWorld, drone: Drone): boolean {
+    const cam = this.camera.position, dp = this.anchor.copy(drone.group.position);
+    dp.y += 0.4;
+    const rel = this.tmp.copy(cam).sub(dp);
+    const L = rel.length();
+    if (L >= HARD_GAP) return false;
+    const ok = (q: THREE.Vector3) => q.y >= 0.8 && world.segmentFraction(dp, q, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(q), 0.3);
+    const W = HARD_GAP + 0.15;
+    // the move is a glide of at most PUSH_STEP m a frame unless the camera is under SOFT_GAP (then it goes all the way)
+    const go = (q: THREE.Vector3) => { const d = cam.distanceTo(q); cam.lerp(q, L < SOFT_GAP ? 1 : Math.min(1, PUSH_STEP / Math.max(d, 1e-4))); };
+    // candidates: straight out from the drone, out along last frame's direction, back along the corridor (keeping the
+    // side the camera is on) or behind the heading at a few heights, then over the drone. The valid one nearest the
+    // camera wins, so the fix is the smallest move (a wall hit used to swing the camera 4.7 m round the drone).
+    let bx = Math.sin(drone.yaw), bz = Math.cos(drone.yaw);
+    if (this.cor) {
+      const X = this.cor.axis === 'x';
+      const s = Math.sign(X ? rel.x : rel.z) || this.corSign;
+      bx = X ? s : 0; bz = X ? 0 : s;
+    }
+    const roof = this.cor && Number.isFinite(this.cor.roofY) ? this.cor.roofY - 0.6 : Infinity;
+    let bestD = Infinity;
+    const tryQ = (q: THREE.Vector3) => {
+      if (q.distanceTo(dp) < HARD_GAP || !ok(q)) return;
+      const d = q.distanceTo(cam);
+      if (d < bestD) { bestD = d; this.hardBest.copy(q); }
+    };
+    if (L > 0.05) tryQ(this.cand.copy(dp).addScaledVector(rel, W / L));
+    if (this.relValid) {
+      this.cand.copy(this.lastRel).add(drone.group.position).sub(dp);
+      const l = this.cand.length();
+      if (l > 0.05) tryQ(this.cand.multiplyScalar(W / l).add(dp));
+    }
+    for (const [back, up] of [[W, Math.min(1.2, Math.max(0, rel.y))], [W, 0.4], [W * 0.8, W * 0.6], [0.6, W], [0, W]]) {
+      tryQ(this.cand.set(dp.x + bx * back, Math.min(dp.y + up, roof), dp.z + bz * back));
+    }
+    if (bestD < Infinity) { go(this.hardBest); return true; }
+    return false;
   }
 
   /**
@@ -538,7 +608,8 @@ export class CameraRig {
     // round 25: in an open street the camera never closes in below SWING.minDist of the drone (after a delivery beside
     // a wall it used to dive to 1.3 m, so the drone filled the screen). It keeps its direction from the drone if that
     // line is clear; otherwise it rises over the drone, a little behind it.
-    if (this.corW < 0.05) this.keepRoom(world, drone);
+    if (this.corW < 0.05) this.keepRoom(world, drone, dt);
+    else this.floorEff = Math.min(this.floorEff, this.camera.position.distanceTo(drone.group.position));
 
     this.lookSmoothed.lerp(this.look, 1 - Math.exp(-12 * dt));
     cam.lookAt(this.lookSmoothed);
@@ -559,6 +630,8 @@ export class CameraRig {
       this.keepInFrame(drone.group.position);
     }
     cam.position.y = Math.max(cam.position.y, 0.8);
+    // round 29: a hard floor in every mode (alleys and tunnels too): never closer than HARD_GAP to the drone
+    if (this.hardGap(world, drone)) { cam.lookAt(this.lookSmoothed); this.keepInFrame(drone.group.position); }
     this.lastRel.copy(cam.position).sub(drone.group.position);
     this.relValid = true;
 

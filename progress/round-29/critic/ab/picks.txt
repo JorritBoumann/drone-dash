@@ -1,0 +1,26 @@
+Round 29 critic blind picks, written before opening .key.json. Most pairs are near ties: the same scene, the same light
+and props; only the drone size (one side shows a smaller drone, higher in frame) and the random cars differ.
+01 B (tie) more cars visible, same scene
+02 A clear: B has a large untextured white block cut off at the bottom centre (a van right at the camera)
+03 B (tie) a box truck under the drone adds life
+04 A (tie) identical, A drone easier to read
+05 A clear: B has a van cut off at the left edge and a white block at the bottom centre
+06 B (tie) truck and car beside the drone, busier street
+07 B (tie) identical
+08 B (tie) a truck in the street
+09 A (tie) identical, A drone easier to read
+10 B (tie) identical
+11 B (tie) more cars round the drone
+12 A (tie) identical
+13 A small: A drone reads well with the truck and car behind; B has a car tight against the drone and a person cut at the edge
+14 B (tie) A has a truck cut off at the left edge
+15 A (tie) identical
+16 A (tie) identical, A has a truck
+17 B (tie) more cars
+18 B small: taxi, red car and truck give the street life
+19 A (tie) taxi beside a clear drone
+20 A (tie) taxi, drone reads well
+21 A (tie) a truck below the drone
+22 B (tie) identical
+23 A (tie) identical
+24 B (tie) identical

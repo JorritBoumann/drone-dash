@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createSeededRandom, pick, range, type Rng } from '../core/random';
-import { CAR_PAINTS, MOOD_LIGHTS, TAXI_PAINT, VAN_PAINTS, VDIM, VT, buildVehicleGeometry, vehicleMaterial, type VehicleRange } from './StreetKit';
+import { CAR_PAINTS, MOOD_LIGHTS, TAXI_PAINT, VAN_PAINTS, VDIM, VT, WHEELS_MODEL, WHEELS_PROC, buildVehicleGeometry, buildWheelGeometry, vehicleMaterial, type VehicleRange, type WheelSpec } from './StreetKit';
 import type { ModelParts } from './StreetAssets';
 
 /**
@@ -38,6 +38,8 @@ type Car = {
   x: number; z: number; fx: number; fz: number;
   occupy: number; // node id this car is inside (-1)
   color: THREE.Color;
+  // round 29: wheels (distance driven for the spin, front wheel angle, last heading for the turn rate)
+  odo: number; steer: number; yawPrev: number;
 };
 type Van = { axis: 0 | 1; line: number; dir: 1 | -1; pos: number; speed: number; cruise: number; lane: number; bob: number; delay: number; hold: boolean; res: boolean; started: boolean; color: THREE.Color };
 
@@ -74,6 +76,13 @@ export class Traffic {
   readonly capacity: number;
   private readonly baseCount: number;
   private readonly rushCount: number;
+  private readonly wheels: THREE.InstancedMesh;
+  private readonly wheelCap: number;
+  private readonly wq = new THREE.Quaternion();
+  private readonly wq2 = new THREE.Quaternion();
+  private readonly wv = new THREE.Vector3();
+  private readonly ws = new THREE.Vector3();
+  private readonly xAxis = new THREE.Vector3(1, 0, 0);
 
   constructor(roadCenters: number[], half: number, seed: number, mood: number, rushLanes: Array<{ axis: 0 | 1; index: number }>, mobile = false) {
     this.rc = roadCenters;
@@ -124,6 +133,17 @@ export class Traffic {
       this.mesh.add(m);
     }
 
+    // round 29: one instanced mesh for every wheel of the near (detailed) vehicles
+    this.wheelCap = (mobile ? 112 : 136) * 6;
+    this.wheels = new THREE.InstancedMesh(buildWheelGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.08, flatShading: true }), this.wheelCap);
+    this.wheels.name = 'traffic-wheels';
+    this.wheels.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.wheels.castShadow = true;
+    this.wheels.receiveShadow = false;
+    this.wheels.frustumCulled = false;
+    this.wheels.count = 0;
+    this.mesh.add(this.wheels);
+
     const paints = CAR_PAINTS[mood] ?? CAR_PAINTS[0];
     for (let i = 0; i < carCap; i++) {
       const roll = this.rng();
@@ -134,6 +154,7 @@ export class Traffic {
         active: false, type, len: d.len, wid: d.wid, hgt: d.hgt, axis: 0, line: 0, dir: 1, pos: 0, next: 0, plan: 'S', committed: -1,
         speed: 0, cruise: type === VT.truck ? range(this.rng, 7, 8.5) : range(this.rng, 8.5, 11), brake: 0, mode: 'lane',
         ox: 0, oz: 0, r: 0, a0: 0, sweep: 0, arcS: 0, arcLen: 0, toAxis: 0, toDir: 1, inAxis: 0, x: 0, z: 0, fx: 0, fz: 1, occupy: -1, color,
+        odo: this.rng() * 10, steer: 0, yawPrev: NaN,
       });
     }
     // initial cars, spread over the grid
@@ -188,12 +209,39 @@ export class Traffic {
     return axis === 0 ? t < 5 : t >= 6 && t < 11;
   }
 
+  /**
+   * Round 29: the lane a car leaves its next junction on (or, mid-turn, the lane its turn ends on), as one key; -1 when the
+   * car is not committed to a junction. Two cars may only enter the same exit lane one after the other.
+   */
+  private exitLane(c: Car): number {
+    if (c.mode === 'turn') return ((c.toAxis * 2 + (c.toDir > 0 ? 1 : 0)) * 64 + (c.toAxis === 0 ? (c.axis === 0 ? c.line : c.next) : (c.axis === 0 ? c.next : c.line))) * 4096 + this.nodeOf(c);
+    if (c.committed < 0) return -1;
+    const fx = c.axis === 0 ? c.dir : 0, fz = c.axis === 0 ? 0 : c.dir;
+    const rx = -fz, rz = fx;
+    const efx = c.plan === 'S' ? fx : c.plan === 'N' ? rx : -rx, efz = c.plan === 'S' ? fz : c.plan === 'N' ? rz : -rz;
+    const toAxis = efx !== 0 ? 0 : 1, toDir = efx + efz > 0 ? 1 : 0;
+    const nx = c.axis === 0 ? c.next : c.line, nz = c.axis === 0 ? c.line : c.next;
+    return ((toAxis * 2 + toDir) * 64 + (toAxis === 0 ? nz : nx)) * 4096 + c.committed;
+  }
+
   /** Room for the whole car past the exit of the junction on its planned lane. */
   private exitClear(c: Car): boolean {
     const C = this.junction(c);
     const { ex, ez, efx, efz } = this.exitPose(c, C.x, C.z);
+    // round 29: the exit lane is c's once c commits, so look at it as if committed
+    const was = c.committed;
+    c.committed = this.nodeOf(c);
+    const mine = this.exitLane(c);
+    c.committed = was;
     for (const o of this.cars) {
       if (!o.active || o === c) continue;
+      // round 29: a car turning into (or committed to enter) the same exit lane from another approach goes first; a car
+      // mid-turn ahead of c into the same lane has its nose still pointing across the exit, so the heading test below
+      // missed it (rush hour, outer ring corners: the next car turned into it)
+      if (o.mode === 'turn' || o.committed >= 0) {
+        const sameApproach = o.mode === 'lane' && o.axis === c.axis && o.dir === c.dir && o.line === c.line;
+        if (!sameApproach && this.exitLane(o) === mine && (o.mode === 'turn' || o.committed === this.nodeOf(c))) return false;
+      }
       const dx = o.x - ex, dz = o.z - ez;
       const along = dx * efx + dz * efz;
       const lat = Math.abs(dx * efz - dz * efx);
@@ -250,6 +298,37 @@ export class Traffic {
     c.mode = 'turn';
   }
 
+  /**
+   * Round 29: free distance (m, bumper to bumper) ahead of a turning car along its path: the rest of its arc, then the
+   * exit lane. Counts cars already in the exit lane and cars further along a turn into the same lane.
+   */
+  private turnPathGap(c: Car): number {
+    const rest = c.arcLen - c.arcS;
+    const a1 = c.a0 + c.sweep;
+    const ex = c.ox + Math.cos(a1) * c.r, ez = c.oz + Math.sin(a1) * c.r;
+    const s = Math.sign(c.sweep);
+    const efx = Math.round(-Math.sin(a1) * s), efz = Math.round(Math.cos(a1) * s);
+    const mine = this.exitLane(c);
+    let gap = 99;
+    for (const o of this.cars) {
+      if (!o.active || o === c) continue;
+      let ahead: number;
+      if (o.mode === 'turn') {
+        if (this.exitLane(o) !== mine) continue;
+        ahead = rest - (o.arcLen - o.arcS); // o is that much further along toward the same exit point
+        if (ahead <= 0) continue;
+      } else {
+        const dx = o.x - ex, dz = o.z - ez;
+        const along = dx * efx + dz * efz, lat = Math.abs(dx * efz - dz * efx);
+        if (lat > 1.7 || o.fx * efx + o.fz * efz < 0.3 || along < -o.len / 2 - 1 || along > 30) continue;
+        ahead = rest + along;
+      }
+      const g = ahead - (o.len + c.len) / 2;
+      if (g < gap) gap = g;
+    }
+    return gap;
+  }
+
   private finishTurn(c: Car): void {
     const prevAxis = c.axis;
     const nodeX = prevAxis === 0 ? c.next : c.line;
@@ -284,9 +363,17 @@ export class Traffic {
     c.axis = axis; c.line = line; c.dir = dir; c.pos = pos; c.next = next; c.mode = 'lane'; c.committed = -1; c.occupy = -1;
     this.place(c);
     if (cam && Math.hypot(c.x - cam.x, c.z - cam.z) < 70) return false;
+    const fromNode = axis === 0 ? this.nodeId(from, line) : this.nodeId(line, from);
     for (const o of this.cars) {
       if (!o.active || o === c) continue;
       if (Math.hypot(o.x - c.x, o.z - c.z) < (o.len + c.len) / 2 + 4) return false;
+      // round 29: never right in front of a car already in this lane (it could not stop in time: rush hour, seed 58,
+      // a taxi spawned 5 m ahead of a moving truck), nor where a car is about to leave the junction behind
+      if (o.mode === 'lane' && o.axis === axis && o.line === line && o.dir === dir) {
+        const behind = (c.pos - o.pos) * dir; // + : o is behind the new car
+        if (behind > 0 && behind < (o.len + c.len) / 2 + 4 + (o.speed * o.speed) / (2 * BRAKE) + 4) return false;
+      }
+      if ((o.mode === 'turn' || o.committed >= 0) && this.nodeOf(o) === fromNode) return false;
     }
     c.active = true;
     c.speed = c.cruise * 0.6;
@@ -302,7 +389,8 @@ export class Traffic {
       const active = this.cars.filter((c) => c.active);
       if (active.length < this.target) {
         const c = this.cars.find((k) => !k.active);
-        if (c) this.spawn(c, cam);
+        // round 29: a few tries a tick (the spawn rule is stricter now, so rush hour still fills at the old rate)
+        if (c) for (let k = 0; k < 3 && !this.spawn(c, cam); k++);
       } else if (active.length > this.target) {
         const c = active.find((k) => k.mode === 'lane' && k.committed < 0 && k.occupy < 0 && Math.hypot(k.x - cam.x, k.z - cam.z) > 80);
         if (c) c.active = false;
@@ -382,6 +470,10 @@ export class Traffic {
       if (c.mode === 'turn') {
         const vt = c.r < BOX ? 4.6 : 6.4;
         vmax = Math.min(vmax, vt);
+        // round 29: keep the gap along the rest of the arc and on into the exit lane (the plain look-ahead above uses the
+        // nose's heading, which points across the exit lane for most of the turn)
+        const pg = this.turnPathGap(c);
+        if (pg < 99) vmax = Math.min(vmax, Math.sqrt(2 * 4 * Math.max(0, pg - 2.2)));
         const prev = c.speed;
         c.speed = c.speed < vmax ? Math.min(vmax, c.speed + ACCEL * dt) : Math.max(vmax, c.speed - BRAKE * dt);
         c.brake = c.speed < prev - 0.01 || c.speed < 0.3 ? 1 : Math.max(0, c.brake - dt * 3);
@@ -522,8 +614,38 @@ export class Traffic {
     this.clock += dt;
     this.camAt.copy(cam);
     this.updateCars(Math.min(dt, 0.1), cam);
+    this.updateWheels(Math.min(dt, 0.1));
     if (this.vans.length && (this.rushTarget > 0 || this.rushClock === 0)) this.updateVans(Math.min(dt, 0.1));
     this.write();
+  }
+
+  /** Round 29: redo the near / far split (and the wheels) for a camera that has jumped since the last update. */
+  relod(cam: THREE.Vector3): void {
+    this.camAt.copy(cam);
+    this.write();
+  }
+
+  /** Round 29: wheel spin (distance driven) and steering (from the heading's turn rate, a few degrees at most). */
+  private updateWheels(dt: number): void {
+    for (const c of this.cars) {
+      if (!c.active) { c.yawPrev = NaN; continue; }
+      c.odo += c.speed * dt;
+      const yaw = Math.atan2(c.fx, c.fz);
+      let want = 0;
+      if (!Number.isNaN(c.yawPrev) && c.speed > 0.3) {
+        let dy = yaw - c.yawPrev;
+        dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        const spec = this.wheelSpec(c.type);
+        const base = spec ? spec.front - spec.z[0] : 2.6;
+        want = THREE.MathUtils.clamp(Math.atan((base * dy) / (c.speed * dt)), -0.34, 0.34);
+      }
+      c.yawPrev = yaw;
+      c.steer += (want - c.steer) * (1 - Math.exp(-7 * dt));
+    }
+  }
+
+  private wheelSpec(type: number): WheelSpec | null {
+    return (this.modelsOn && type <= VT.taxi ? WHEELS_MODEL[type] : WHEELS_PROC[type]) ?? null;
   }
 
   /** Writes the live vehicles into the instance buffers (compacted, so empty slots cost nothing). */
@@ -540,12 +662,30 @@ export class Traffic {
       const info = this.typeInfo[t].array as Float32Array;
       info[k * 2] = t % (VT.hover + 1); info[k * 2 + 1] = brake;
     };
+    let nw = 0;
     for (const c of this.cars) {
       if (!c.active) continue;
       this.q.setFromAxisAngle(this.up, Math.atan2(c.fx, c.fz));
       this.m.compose(this.v.set(c.x, 0, c.z), this.q, this.s1);
       put(c.type, c.color, c.brake);
+      // round 29: wheels on the near vehicles (the far version has none, as before)
+      const dx = c.x - cam.x, dz = c.z - cam.z;
+      const spec = dx * dx + dz * dz <= far2 ? this.wheelSpec(c.type) : null;
+      if (!spec || nw + spec.z.length * 2 > this.wheelCap) continue;
+      const spin = c.odo / spec.r; // rolling forward (+z): the top of the wheel moves forward
+      this.ws.set(spec.w, spec.r, spec.r);
+      for (const wz of spec.z) for (const sx of [-1, 1]) {
+        const lx = sx * spec.x;
+        this.wv.set(c.x + lx * c.fz + wz * c.fx, spec.r, c.z - lx * c.fx + wz * c.fz);
+        this.wq.copy(this.q);
+        if (wz === spec.front && c.steer !== 0) this.wq.multiply(this.wq2.setFromAxisAngle(this.up, c.steer));
+        this.wq.multiply(this.wq2.setFromAxisAngle(this.xAxis, spin));
+        this.m.compose(this.wv, this.wq, this.ws);
+        this.wheels.setMatrixAt(nw++, this.m);
+      }
     }
+    this.wheels.count = nw;
+    this.wheels.instanceMatrix.needsUpdate = true;
     for (const v of this.vans) {
       if (!this.vanLive(v)) continue;
       const y = 3.1 + Math.sin(v.bob) * 0.15;

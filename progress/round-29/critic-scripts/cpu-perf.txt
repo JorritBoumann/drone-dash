@@ -1,0 +1,6 @@
+ %CPU COMM
+ 97.6 /usr/sbin/BTLEServer
+ 17.6 /usr/sbin/systemstats
+ %CPU COMM
+ 98.3 /usr/sbin/BTLEServer
+  8.6 /Applications/Brave Browser.app/Contents/Frameworks/Brave Browser Framework.framework/Versions/152.1.94.121/Helpers/Brave Browser Helper (Renderer).app/Contents/MacOS/Brave Browser Helper (Renderer)

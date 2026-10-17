@@ -112,6 +112,20 @@ export class RenderPipeline {
     }
   }
 
+  /**
+   * Round 29: compile the scene's shaders for the target they are really drawn into (with post-processing that is the
+   * composer's linear buffer, not the canvas: programs compiled for the canvas did not match and compiled again on use).
+   */
+  compileScene(): void {
+    const prev = this.renderer.getRenderTarget();
+    if (this.usePost && this.composer) this.renderer.setRenderTarget(this.composer.readBuffer);
+    try {
+      this.renderer.compile(this.scene, this.camera);
+    } finally {
+      this.renderer.setRenderTarget(prev);
+    }
+  }
+
   render(): void {
     if (this.usePost && this.composer) this.composer.render();
     else this.renderer.render(this.scene, this.camera);

@@ -26,6 +26,8 @@ Pipeline: `progress/round-28/builder-scripts/blender_pipeline.py` (flatten to ve
 | Tree | https://poly.pizza/m/1BkD9JnKrE | Quaternius | Blender MCP | tree species 1 (round), near the camera | in `public/assets/models/trees.glb` |
 | Tree | https://poly.pizza/m/b0boebSV1r | Quaternius | Blender MCP | tree species 2 (oak), near the camera | in `trees.glb` |
 
+Round 29: no new files. The car GLBs are unchanged on disk. At load the game drops the leftover wheel shards from each car's `trim` part (about 200 triangles inside the arches; the kit's wheels did not survive the round 28 decimation) and raises the body 7 cm. The wheels are procedural instanced meshes in code (`StreetKit.buildWheelGeometry`, tyre, sidewall and five-hole rim), no asset.
+
 `street_props.glb`: 113 KB, 1,468 tris for all eight props together. `trees.glb`: 83 KB, 802 tris for both species (trunk plus canopy).
 
 ## Textures (Poly Haven)

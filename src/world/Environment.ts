@@ -181,6 +181,9 @@ type PropRec = {
   hidden: boolean;
   parts: Array<{ mesh: THREE.InstancedMesh; index: number; matrix: THREE.Matrix4 }>;
 };
+/** Round 29: trees closer than this (m) always use the model; further out only inside the view cone (cos of its half angle). */
+const TREE_FULL = 22;
+const TREE_CONE = 0.2;
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
 type TreeSpecLike = CityLayout['trees'][number];
@@ -198,6 +201,13 @@ export class Environment {
   readonly people: Pedestrians;
   private readonly focusCam = new THREE.Vector3(0, 80, 0);
   private readonly focusDrone = new THREE.Vector3(0, 80, 0);
+  /** Round 29: the camera whose view volume culls the far people (Game sets it). */
+  viewCam: THREE.Camera | null = null;
+  private readonly frustum = new THREE.Frustum();
+  private readonly projScreen = new THREE.Matrix4();
+  /** Round 29: the camera's horizontal view direction (unit) and its look y (for the tree view cone). */
+  private readonly focusDir = { x: 0, z: -1 };
+  private focusPitch = 0;
   private focusVx = 0;
   private focusVz = 0;
   private readonly treeMaterials: THREE.MeshStandardMaterial[] = [];
@@ -266,11 +276,36 @@ export class Environment {
   }
 
   /** Round 22: where the camera and the drone are (people are drawn near the camera and react to the drone). */
-  setFocus(cam: THREE.Vector3, drone: THREE.Vector3, vx: number, vz: number): void {
+  setFocus(cam: THREE.Vector3, drone: THREE.Vector3, vx: number, vz: number, look?: THREE.Vector3): void {
     this.focusCam.copy(cam);
+    if (look) {
+      const l = Math.hypot(look.x, look.z);
+      if (l > 0.05) { this.focusDir.x = look.x / l; this.focusDir.z = look.z / l; }
+      this.focusPitch = look.y;
+    }
+    if (this.viewCam) {
+      this.viewCam.updateMatrixWorld();
+      this.projScreen.multiplyMatrices(this.viewCam.projectionMatrix, this.viewCam.matrixWorldInverse);
+      this.frustum.setFromProjectionMatrix(this.projScreen);
+      this.people.frustum = this.frustum;
+    }
     this.focusDrone.copy(drone);
     this.focusVx = vx;
     this.focusVz = vz;
+  }
+
+  /**
+   * Round 29: called just before a frame is drawn. The view cones (trees, people) were set from the camera of the frame
+   * before; when the camera has since turned or jumped (a teleport, a fast orbit), redo them for the camera drawn.
+   */
+  syncView(cam: THREE.Vector3, look: THREE.Vector3): void {
+    const l = Math.hypot(look.x, look.z);
+    const dot = l > 0.05 ? (look.x * this.focusDir.x + look.z * this.focusDir.z) / l : 1;
+    if (dot > 0.995 && Math.abs(look.y - this.focusPitch) < 0.08 && cam.distanceToSquared(this.focusCam) < 2.25) return;
+    if (this.streetOn.traffic && cam.distanceToSquared(this.focusCam) > 9) this.traffic.relod(cam);
+    this.setFocus(cam, this.focusDrone, this.focusVx, this.focusVz, look);
+    this.updateTreeLod(cam);
+    if (this.streetOn.people) this.people.update(0, cam, this.focusDrone, this.focusVx, this.focusVz);
   }
 
   /** Round 18: rush hour on (true) or reset (false). The lanes light up and hover-vans stream in from the city edge. */
@@ -561,10 +596,17 @@ export class Environment {
     // the model range shrinks with camera height (from 25 m up), where a tree is a few pixels wide
     const tr = this.treeRange * (cam.y > 25 ? Math.max(0.55, 1 - (cam.y - 25) / 60) : 1);
     const r2 = tr * tr;
+    // round 29: beyond TREE_FULL m only trees inside a wide cone round the view direction get the model (the rest keep
+    // the light blob, so their shadows stay); a park behind the camera took the triangle count to 662k. Looking steeply
+    // down (the cone means little there) every tree in range keeps its model.
+    const fx = this.focusDir.x, fz = this.focusDir.z;
+    const steep = this.focusPitch < -0.8;
     let changed = force;
     for (const t of this.treeLod) {
       const dx = t.rec.x - cam.x, dz = t.rec.z - cam.z;
-      const st = t.rec.hidden ? 2 : dx * dx + dz * dz < r2 ? 1 : 0;
+      const d2 = dx * dx + dz * dz;
+      let st = t.rec.hidden ? 2 : d2 < r2 ? 1 : 0;
+      if (st === 1 && !steep && d2 > TREE_FULL * TREE_FULL && dx * fx + dz * fz < TREE_CONE * Math.sqrt(d2)) st = 0;
       if (st !== t.state) { t.state = st; changed = true; }
     }
     if (!changed) return;

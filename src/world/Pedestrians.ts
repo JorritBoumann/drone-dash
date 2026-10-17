@@ -14,6 +14,9 @@ import { benchSpots } from './BuildingDetail';
 
 /** Round 23: people further than this from the camera use the low-detail figure (m). */
 const LOD_NEAR = 40;
+/** Round 29: people closer than this (m) are always drawn; further out only in or near the camera's view (margin, m). */
+const PEOPLE_FULL = 14;
+const PEOPLE_MARGIN = 3.5;
 const SIDEWALK_H = 0.25;
 const PATH_H = SIDEWALK_H + 0.12;
 
@@ -341,6 +344,11 @@ export class Pedestrians {
     return this.pad.r > 0 && Math.hypot(x - this.pad.x, z - this.pad.z) < this.pad.r + m;
   }
 
+  /** Round 29: the camera's view volume (Environment keeps it current); null draws everyone in range. */
+  frustum: THREE.Frustum | null = null;
+  private readonly sph = new THREE.Sphere();
+  private readonly sv = new THREE.Vector3();
+
   update(dt: number, cam: THREE.Vector3, drone: THREE.Vector3, dvx: number, dvz: number): void {
     const R = this.R;
     const dspeed = Math.hypot(dvx, dvz);
@@ -454,6 +462,10 @@ export class Pedestrians {
       w.hid = this.inPad(x, z, 0.15);
       if (w.hid) { this.padHidden++; continue; }
       if (this.inPad(x, z, 0)) this.onPad++;
+      // round 29: beyond PEOPLE_FULL m only people in (or just outside) the camera's view are drawn (both versions were
+      // drawn all round the camera: 200k triangles by a busy park). The margin covers a camera a frame ahead of the test.
+      // Everything above (reactions, the pad rule, the positions the probes read) still runs for everyone in range.
+      if (d > PEOPLE_FULL && this.frustum && !this.frustum.intersectsSphere(this.sph.set(this.sv.set(x, (p ? p.y : w.y) + 0.9, z), 1.2 + PEOPLE_MARGIN + d * 0.04))) continue;
       const fade = Math.min(1, (R - d) / 10);
       const s = w.scale * fade;
       this.q.setFromAxisAngle(this.up, w.yaw);

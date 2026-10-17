@@ -58,7 +58,6 @@ function profile(pts: Array<[number, number]>, width: number, x = 0): THREE.Buff
   return g;
 }
 const box = (w: number, h: number, d: number, x: number, y: number, z: number) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
-const wheel = (r: number, w: number, x: number, z: number, y = r) => new THREE.CylinderGeometry(r, r, w, 8).rotateZ(Math.PI / 2).translate(x, y, z);
 
 const TYRE = '#1f2226';
 const TRIM_DARK = '#30353c';
@@ -91,7 +90,8 @@ function carBody(t: number, L: number, W: number, cabin: Array<[number, number]>
   out.push(finish(box(W + 0.02, 0.16, 0.18, 0, 0.38, -h - 0.02), TRIM_DARK, t));
   // grille strip
   out.push(finish(box(W * 0.46, 0.08, 0.04, 0, 0.5, h + 0.005), CHROME, t));
-  for (const z of wheelZ) for (const s of [-1, 1]) out.push(finish(wheel(r, 0.24, s * (W / 2 - 0.1), z), TYRE, t));
+  // round 29: the wheels are their own instanced mesh now (spin and steer, see buildWheelGeometry / WHEELS)
+  void wheelZ; void r;
   lights(t, out, W / 2 - 0.3, 0.62, h + 0.01, 0.68, -h - 0.01);
   return out;
 }
@@ -105,6 +105,11 @@ function modelBody(t: number, parts: Map<string, THREE.BufferGeometry>): THREE.B
   const out: THREE.BufferGeometry[] = [];
   for (const [role, g] of parts) {
     let n = g.index ? g.toNonIndexed() : g.clone();
+    // round 29: the kit's own wheels survived the decimation only as broken shards inside the arches (about 200 of each
+    // car's trim triangles): drop them, the instanced wheels take their place
+    const spec = WHEELS_MODEL[t];
+    if (role === 'trim' && spec) n = dropInside(n, spec, spec.r - MODEL_RIDE);
+    n.translate(0, MODEL_RIDE, 0); // round 29: up on its wheels
     for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'color') n.deleteAttribute(k);
     n.computeVertexNormals();
     const count = n.getAttribute('position').count;
@@ -117,8 +122,85 @@ function modelBody(t: number, parts: Map<string, THREE.BufferGeometry>): THREE.B
     n = null as unknown as THREE.BufferGeometry;
   }
   const d = VDIM[t];
-  lights(t, out, d.wid / 2 - 0.32, 0.58, d.len / 2 + 0.012, 0.66, -d.len / 2 - 0.012, 0.3, 0.12);
+  lights(t, out, d.wid / 2 - 0.32, 0.58 + MODEL_RIDE, d.len / 2 + 0.012, 0.66 + MODEL_RIDE, -d.len / 2 - 0.012, 0.3, 0.12);
   return out;
+}
+
+/**
+ * Round 29: wheels. The CC0 car bodies came without wheels (empty arches, body on the road), so every ground vehicle now
+ * gets instanced wheels: a dark tyre with a sidewall and a light five-hole rim on both faces, flat shaded like the kit.
+ * Unit size (radius 1, width 1 along x): each instance is scaled to its wheel. Traffic spins them with the distance
+ * driven and turns the front pair a little through a corner. The model bodies ride MODEL_RIDE m higher, so the arches
+ * sit just over the tyres. The procedural bodies (vans, trucks, and the cars before the models load) keep their old
+ * wheel spots.
+ */
+export const MODEL_RIDE = 0.07;
+
+/** Round 29: a non-indexed geometry without the triangles whose centre lies inside a wheel (axle height `ay`). */
+function dropInside(g: THREE.BufferGeometry, spec: WheelSpec, ay: number): THREE.BufferGeometry {
+  const pos = g.getAttribute('position'), col = g.getAttribute('color');
+  const keepP: number[] = [], keepC: number[] = [];
+  for (let i = 0; i < pos.count; i += 3) {
+    const cx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3;
+    const cy = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
+    const cz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+    if (Math.abs(cx) > 0.4 && spec.z.some((z) => Math.hypot(cz - z, cy - ay) < spec.r + 0.02)) continue;
+    for (let k = i; k < i + 3; k++) {
+      keepP.push(pos.getX(k), pos.getY(k), pos.getZ(k));
+      if (col) keepC.push(col.getX(k), col.getY(k), col.getZ(k));
+    }
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(keepP, 3));
+  if (col) out.setAttribute('color', new THREE.Float32BufferAttribute(keepC, 3));
+  return out;
+}
+export type WheelSpec = { r: number; w: number; x: number; z: number[]; front: number };
+/** Procedural bodies (round 22 positions). Index = vehicle type. `front`: z of the steering axle. */
+export const WHEELS_PROC: Array<WheelSpec | null> = [
+  { r: 0.32, w: 0.24, x: 0.76, z: [-1.22, 1.22], front: 1.22 },
+  { r: 0.33, w: 0.24, x: 0.81, z: [-1.45, 1.45], front: 1.45 },
+  { r: 0.33, w: 0.24, x: 0.81, z: [-1.45, 1.45], front: 1.45 },
+  { r: 0.35, w: 0.26, x: 0.88, z: [-1.65, 1.6], front: 1.6 },
+  { r: 0.42, w: 0.3, x: 0.92, z: [-2.2, -1.15, 2.0], front: 2.0 },
+  null,
+];
+/** CC0 model bodies: the arch centres measured on the meshes (rear -1.25, front 1.15 on all three). */
+export const WHEELS_MODEL: Array<WheelSpec | null> = [
+  { r: 0.31, w: 0.22, x: 0.74, z: [-1.25, 1.15], front: 1.15 },
+  { r: 0.31, w: 0.22, x: 0.79, z: [-1.25, 1.15], front: 1.15 },
+  { r: 0.31, w: 0.22, x: 0.79, z: [-1.25, 1.15], front: 1.15 },
+];
+
+export function buildWheelGeometry(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const col = (g: THREE.BufferGeometry, hex: string) => {
+    let n = g.index ? g.toNonIndexed() : g;
+    for (const k of Object.keys(n.attributes)) if (k !== 'position') n.deleteAttribute(k);
+    n.computeVertexNormals();
+    const c = new THREE.Color(hex), count = n.getAttribute('position').count, a = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+    n.setAttribute('color', new THREE.BufferAttribute(a, 3));
+    parts.push(n);
+    n = null as unknown as THREE.BufferGeometry;
+  };
+  const SEG = 10;
+  // tread (open cylinder along x)
+  col(new THREE.CylinderGeometry(1, 1, 1, SEG, 1, true).rotateZ(Math.PI / 2), TYRE);
+  for (const s of [-1, 1]) {
+    const face = (g: THREE.BufferGeometry, off: number) => { if (s < 0) g.rotateY(-Math.PI / 2); else g.rotateY(Math.PI / 2); return g.translate(s * off, 0, 0); };
+    col(face(new THREE.RingGeometry(0.64, 1, SEG, 1), 0.5), '#262a2f'); // sidewall
+    col(face(new THREE.CircleGeometry(0.64, SEG), 0.46), '#b9c0c7'); // rim
+    // five dark holes round the hub: they make the spin visible
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
+      col(face(new THREE.CircleGeometry(0.13, 4).translate(Math.cos(a) * 0.38, Math.sin(a) * 0.38, 0), 0.475), '#3a3f46');
+    }
+    col(face(new THREE.CircleGeometry(0.14, 6), 0.48), '#7e868f'); // hub
+  }
+  const g = mergeGeometries(parts)!;
+  for (const p of parts) p.dispose();
+  return g;
 }
 
 export function buildVehicleGeometry(models?: ModelParts): THREE.BufferGeometry {
@@ -134,7 +216,7 @@ export function buildVehicleGeometry(models?: ModelParts): THREE.BufferGeometry 
   // 2 taxi: the sedan with a lit roof sign and a dark check band
   if (m2) {
     parts.push(...modelBody(2, m2));
-    parts.push(finish(box(0.5, 0.06, 0.2, 0, 1.6, -0.05), '#ffe7a0', 2, { glow: 3 }));
+    parts.push(finish(box(0.5, 0.06, 0.2, 0, 1.6 + MODEL_RIDE, -0.05), '#ffe7a0', 2, { glow: 3 }));
   } else {
     parts.push(...carBody(2, 4.5, 1.82, [[-1.45, 0.8], [0.95, 0.8], [0.28, 1.36], [-0.98, 1.36]], [-1.0, 0.3, 1.39], [-0.35], [-1.45, 1.45], 0.33));
     parts.push(finish(box(0.74, 0.2, 0.3, 0, 1.53, -0.32), '#ffe7a0', 2, { glow: 3 }));
@@ -152,7 +234,6 @@ export function buildVehicleGeometry(models?: ModelParts): THREE.BufferGeometry 
     parts.push(finish(box(W + 0.02, 0.18, 0.18, 0, 0.42, h + 0.02), TRIM_DARK, t));
     parts.push(finish(box(W + 0.02, 0.18, 0.18, 0, 0.42, -h - 0.02), TRIM_DARK, t));
     parts.push(finish(box(0.04, 1.3, 0.04, 0, 1.18, -h - 0.01), TRIM_DARK, t)); // rear door split
-    for (const z of [-1.65, 1.6]) for (const s of [-1, 1]) parts.push(finish(wheel(0.35, 0.26, s * (W / 2 - 0.1), z), TYRE, t));
     lights(t, parts, W / 2 - 0.28, 0.7, h + 0.01, 0.62, -h - 0.01, 0.3, 0.2);
   }
   // 4 box truck: cab + cream cargo box (2.1 m tall, clears the hover-vans' pads)
@@ -165,7 +246,6 @@ export function buildVehicleGeometry(models?: ModelParts): THREE.BufferGeometry 
     parts.push(finish(box(W + 0.03, 0.06, 4.13, 0, 2.08, -h + 2.05), '#c9bba5', t));
     parts.push(finish(box(W - 0.3, 0.3, L - 0.4, 0, 0.42, 0), TRIM_DARK, t));
     parts.push(finish(box(W + 0.02, 0.2, 0.2, 0, 0.5, h + 0.02), TRIM_DARK, t));
-    for (const z of [-h + 0.95, -h + 2.0, h - 1.15]) for (const s of [-1, 1]) parts.push(finish(wheel(0.42, 0.3, s * (W / 2 - 0.14), z), TYRE, t));
     lights(t, parts, W / 2 - 0.3, 0.78, h + 0.01, 0.62, -h - 0.01, 0.3, 0.16);
   }
   // 5 hover-van (rush hour): rounded pod on four glowing pads, origin at its centre

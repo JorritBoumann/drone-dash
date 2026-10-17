@@ -1,0 +1,22 @@
+for i in 1 2 3; do node hitch29.mjs > hitch29-d-$i.log 2>&1; DEV=iphone node hitch29.mjs > hitch29-m-$i.log 2>&1; done
+node trisweep28.mjs > trisweep-d-22.log 2>&1
+SEED=130 node trisweep28.mjs > trisweep-d-130.log 2>&1
+MOBILE=1 node trisweep28.mjs > trisweep-m-22.log 2>&1
+MOBILE=1 SEED=130 node trisweep28.mjs > trisweep-m-130.log 2>&1
+SEED=22 node cars29.mjs > cars29-22.log 2>&1; SEED=130 TAG=car29b node cars29.mjs > cars29-130.log 2>&1
+PORT=5191 LONG=1 PLAN=single SEEDS=4,4,4,22,130,58 node traffic-rt28.mjs > traffic-rt29-final.log 2>&1
+node street-probe.mjs > street-probe.log 2>&1
+node pad-people23.mjs > pad-people.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud29- node hud-probe27.mjs > hud-m-22.log 2>&1
+NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 PFX=ch29- node hud-probe28.mjs > ch-d-22.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 PFX=ch29- node hud-probe28.mjs > ch-m-130.log 2>&1
+node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 node farm-probe.mjs > farm-$s.log 2>&1; done
+PORT=5192 TAG=art28b node art28.mjs > art28b.log 2>&1
+TAG=art29 node art28.mjs > art29.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1

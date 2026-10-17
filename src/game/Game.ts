@@ -36,6 +36,19 @@ import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goal
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
 const BEST_KEY = 'drone-dash-best-v1';
+/** Round 25: set when a run ends. With it (or a saved best) the player is returning: full HUD from the start, no hints. */
+const PLAYED_KEY = 'drone-dash-played-v1';
+/** Round 25: layered teaching on a new player's first run. Nothing new on the HUD before `from` s, then one system at a time, `gap` s apart. */
+const TEACH = { from: 30, gap: 4 };
+const TEACH_HINTS: Record<string, [string, string]> = {
+  slip: ['Slipstream', 'Fly low by walls: bonus paid on delivery'],
+  clock: ['Slow clock', 'Drafting toward the marker slows the clock'],
+  combo: ['Combo', 'Fast drops in a row raise the multiplier'],
+  route: ['Shortcuts', 'Arches mark alleys and tunnels'],
+  wind: ['High wind', 'Up high the wind slows you'],
+};
+/** Round 25: when several systems wait for their introduction, this order wins (the street bonus first). */
+const TEACH_ORDER = ['slip', 'combo', 'medal', 'clock', 'route', 'view', 'wind'];
 const MEDAL_COLORS = [new THREE.Color('#e0955a'), new THREE.Color('#eef2f7'), new THREE.Color('#ffd166'), new THREE.Color('#5ff5d4')];
 
 function readBest(): number {
@@ -66,6 +79,14 @@ export class Game {
   private readonly drone = new Drone();
   private readonly marker = new ObjectiveMarker();
   private readonly gate = new RouteGate(); // round 20: the suggested route's entrance arch and exit arch
+  private readonly gateRoot = new THREE.Group(); // round 25: hides the arches until the teaching layer introduces routes
+  // round 25: layered teaching (see TEACH)
+  private teachOn = false;
+  private readonly learned = new Set<string>();
+  private teachQueue: string[] = [];
+  private teachLast = -99;
+  /** Round 25: first appearance (run seconds) of each taught system, for probes. */
+  private teachLog: Array<{ k: string; t: number }> = [];
   private readonly slip = new Slipstream();
   private slipClockK = 0; // 0..1 draft pace this frame for the slow clock (see SLIPSTREAM.clockRate)
   private slipClockGain = 0; // clock seconds gained per second this frame (the clock runs at 1 - this speed)
@@ -213,7 +234,8 @@ export class Game {
 
     this.scene.add(this.drone.group);
     this.scene.add(this.marker.group);
-    this.scene.add(this.gate.group);
+    this.gateRoot.add(this.gate.group);
+    this.scene.add(this.gateRoot);
     this.scene.add(this.vfx.group);
 
     this.blob = new THREE.Mesh(
@@ -381,8 +403,16 @@ export class Game {
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
-    this.hud.armSlipHint();
-    this.hud.armViewHint();
+    // round 25: a new player's first run teaches in layers; returning players get the full HUD and no hints
+    this.teachOn = !this.returning();
+    this.learned.clear();
+    this.teachQueue = [];
+    this.teachLast = -99;
+    this.teachLog = [];
+    this.hud.setTeach(this.teachOn);
+    this.gateRoot.visible = true;
+    this.hud.armSlipHint(false); // round 25: the teaching layer's slipstream hint replaces the in-meter one
+    this.hud.armViewHint(false); // round 25: the camera hint is one of the taught layers now
     this.cameraRig.resetView();
     this.setMarkerFromDelivery();
     this.hud.setDeliveries(0);
@@ -460,6 +490,11 @@ export class Game {
 
   private endRun(): void {
     this.state = 'over';
+    try {
+      window.localStorage.setItem(PLAYED_KEY, '1');
+    } catch {
+      /* storage unavailable */
+    }
     this.hud.setOvertime(false);
     this.audio.setOvertime(false);
     this.input.enabled = false;
@@ -700,7 +735,7 @@ export class Game {
       if (this.rushActive && bannerUp) { /* tag in the pill shows the window */ }
       else if (this.rushActive) this.hud.popText('Rush order!', `Deliver in ${Math.ceil(this.rushWindow)} s for +${RUSH.bonus}`, 'rush');
       else if (this.delivery.lastCall) this.hud.popText('Last call!', 'Short job · no time bonus', 'pickup');
-      else this.hud.popText('Parcel secured!', 'Now deliver it', 'pickup');
+      else this.hud.popText('Parcel secured!', `Deliver for +${Math.round(RUN.baseScore + this.delivery.legDistance * RUN.perMetre)}`, 'pickup');
       this.setMarkerFromDelivery();
     } else if (ev?.type === 'delivered') {
       d.setCarrying(false);
@@ -709,7 +744,8 @@ export class Game {
       this.vfx.burst(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 1), MARKER_COLORS.drop, 56, 12, 0.22, this.fxRng);
       this.vfx.ring(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 0.3), MARKER_COLORS.drop, 9);
       this.cameraRig.addShake(0.2);
-      const sub = ev.fast ? (ev.combo > 1 ? `Fast drop · ${fmtX(this.delivery.multiplier)} combo` : 'Fast drop!') : 'Delivered';
+      // round 25: the fast drop names its time bonus (more the further under par)
+      const sub = ev.fast ? (ev.combo > 1 ? `Fast +${ev.fastPts} · ${fmtX(this.delivery.multiplier)} combo` : `Fast drop +${ev.fastPts}`) : 'Too slow for a fast bonus';
       // round 17: an overtime delivery pays the bank by the share of the leg flown when the clock ran out (so overtime
       // finishes a parcel that was nearly there; it does not cash in a bank farmed far from the drop)
       let otCut = 0;
@@ -737,15 +773,16 @@ export class Game {
       this.bank = 0;
       this.newLeg(ev.site.pos);
       this.hud.setBank(0, false);
+      // round 25: the delivery is the headline: "+N delivered", the street bonus rides along as an add-on
       const subs = [rush > 0 ? `Rush +${rush}` : sub];
-      if (paid > 0) subs.push(otCut > 0 ? `street bonus +${paid} (${Math.round(this.otShare * 100)}%)` : `street bonus +${paid}`);
-      this.hud.popText(`+${ev.points + paid + rush}`, subs.join(' · '), 'drop');
+      if (paid > 0) subs.push(otCut > 0 ? `+${paid} street bonus (${Math.round(this.otShare * 100)}%)` : `+${paid} street bonus`);
+      this.hud.popText(`+${ev.points + rush} delivered`, subs.join(' · '), 'drop');
       // round 19: the paid street bonus is named in the delivery pop's line (no second pop on top of it)
       if (ev.final) {
         // round 17: the overtime delivery ends the run on a high: no new job, a short beat, then the game-over card
         this.finishHold = 1.6;
         this.scoreLog.push({ t: this.rt(), k: 'otdrop', v: ev.points + paid + rush });
-        this.hud.popText(`+${ev.points + paid + rush}`, 'Made it! · overtime delivery', 'drop');
+        this.hud.popText(`+${ev.points + rush} delivered`, paid > 0 ? `Made it! · +${paid} street bonus` : 'Made it! · overtime delivery', 'drop');
         this.hud.setObjective('drop', 'Run complete');
         this.hud.setRouteHint(null);
         this.hud.setOvertime(false, true);
@@ -790,6 +827,7 @@ export class Game {
     const windy = d.headwind > 0.35 && d.speed > 7;
     this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, windy, this.slip.hug > 0.4, dt, this.slipRateTier(), this.slipCue());
     this.hud.setWind(windy);
+    this.updateTeach(windy);
     this.updateNav();
     this.updateGateTag();
 
@@ -807,6 +845,7 @@ export class Game {
   private beginOvertime(): void {
     this.otShare = this.legShare();
     this.scoreLog.push({ t: this.rt(), k: 'overtime', v: this.delivery.overtimeGiven, c: Math.round(Math.hypot(this.delivery.target.pos.x - this.drone.group.position.x, this.delivery.target.pos.z - this.drone.group.position.z)) });
+    this.teachNow('overtime');
     this.hud.eventPop('Overtime', `${this.delivery.overtimeGiven} s to finish this delivery · no new jobs`);
     this.scoreLog.push({ t: this.rt(), k: 'otshare', v: Math.round(this.otShare * 100), c: this.bank });
     this.hud.setOvertime(true);
@@ -905,6 +944,61 @@ export class Game {
     this.vfx.burst(p, new THREE.Color('#fff1c9'), 10, 9 + s * 4, 0.1, this.fxRng);
   }
 
+  /** Round 25: saved progress exists (a finished run, a best score or a medal). */
+  private returning(): boolean {
+    try {
+      if (window.localStorage.getItem(PLAYED_KEY)) return true;
+    } catch {
+      /* storage unavailable: teach */
+    }
+    return this.best > 0 || this.bestTier > 0;
+  }
+
+  /** Round 25: is this system's HUD shown (always, unless a first run has not introduced it yet)? */
+  private shown(key: string): boolean {
+    return !this.teachOn || this.learned.has(key);
+  }
+
+  /** Round 25: a system happened for the first time: queue its introduction. */
+  private teach(key: string): void {
+    if (!this.teachOn || this.learned.has(key) || this.teachQueue.includes(key)) return;
+    this.teachQueue.push(key);
+  }
+
+  /** Round 25: introduce now (rush hour and overtime bring their own banner, which is their hint). */
+  private teachNow(key: string): void {
+    if (!this.teachOn || this.learned.has(key)) return;
+    this.teachQueue = this.teachQueue.filter((k) => k !== key);
+    this.reveal(key);
+  }
+
+  private reveal(key: string): void {
+    this.learned.add(key);
+    this.hud.learn(key);
+    this.teachLast = this.runTime;
+    this.teachLog.push({ k: key, t: Math.round(this.runTime * 10) / 10 });
+    const h = TEACH_HINTS[key];
+    if (h) this.hud.hintPop(h[0], h[1]);
+    else if (key === 'view') this.hud.showViewHint();
+    else if (key === 'medal' && this.tier > 0) this.audio.medal(this.tier, this.hud.medalPop(this.tier, true));
+  }
+
+  /** Round 25: what has happened so far, and the next introduction once the run is 30 s old (one at a time). */
+  private updateTeach(windy: boolean): void {
+    this.gateRoot.visible = this.shown('route');
+    if (!this.teachOn) return;
+    const D = this.delivery;
+    if (this.slip.drafting || D.deliveries >= 1) this.teach('slip');
+    if (this.learned.has('slip') && this.slipClockGain > 0.05) this.teach('clock');
+    if (D.combo >= 1) this.teach('combo');
+    if (D.deliveries >= 2) this.teach('route');
+    if (D.deliveries >= 1) this.teach('view');
+    if (windy) this.teach('wind');
+    if (this.runTime < TEACH.from || !this.teachQueue.length || this.runTime - this.teachLast < TEACH.gap) return;
+    this.teachQueue.sort((a, b) => TEACH_ORDER.indexOf(a) - TEACH_ORDER.indexOf(b));
+    this.reveal(this.teachQueue.shift()!);
+  }
+
   /** Medals: crossing a tier's score is a moment (banner, fanfare, sparkle) and is counted for scripts. */
   private checkMedal(): void {
     const score = this.delivery.score;
@@ -913,7 +1007,9 @@ export class Game {
     if (t <= this.tier) return;
     for (let k = this.tier + 1; k <= t; k++) this.tierPasses.push({ tier: k, name: tierName(k), score, t: Math.round(this.runTime * 10) / 10 });
     this.tier = t;
-    this.audio.medal(t, this.hud.medalPop(t));
+    // round 25: on a new player's first run the medal banner waits for the medal layer's introduction
+    if (this.shown('medal')) this.audio.medal(t, this.hud.medalPop(t));
+    else this.teach('medal');
     const c = MEDAL_COLORS[Math.min(t, MEDAL_COLORS.length) - 1];
     this.vfx.burst(this.drone.group.position, c, 26 + t * 6, 8 + t, 0.16, this.fxRng);
     this.cameraRig.addShake(0.12);
@@ -1206,9 +1302,20 @@ export class Game {
       x = cx + dx; y = cy + dy;
       angle = Math.atan2(dy, dx) + Math.PI / 2;
     }
-    const ok = Number.isFinite(x) && Number.isFinite(y);
+    let ok = Number.isFinite(x) && Number.isFinite(y);
     if (!ok) off = false;
     const dist = Math.hypot(g.x - this.drone.group.position.x, g.z - this.drone.group.position.z);
+    // round 25: the pill stays fully on screen and, on a touch screen, off the stick, its "Fly" label, the buttons, the
+    // top panels and a showing centre pop (it walks the screen edge to the nearest free spot, as the pad marker does)
+    if (ok) {
+      const name = m.stage === 'entrance' ? m.name : 'Way out';
+      const r = this.gateTagPlace(w, h, x, y, off, angle, behind, v.x, v.y, this.hud.gateTagSize(name, Math.round(dist)));
+      x = r.x;
+      y = r.y;
+      off = r.off;
+      angle = r.angle;
+      ok = Number.isFinite(x) && Number.isFinite(y);
+    }
     this.hud.setGate(x, y, off, angle, m.stage === 'entrance' ? m.name : 'Way out', m.kind, ok, Math.round(dist));
     if (m.tagAt < 0 && ok) m.tagAt = this.rt();
     m.tagOn = ok && !off;
@@ -1232,6 +1339,7 @@ export class Game {
       this.env.setRush(true);
       this.scoreLog.push({ t: this.rt(), k: 'rushhour', v: 0 });
       const aboard = this.delivery.phase === 'deliver';
+      this.teachNow('rush');
       this.hud.eventPop('Rush hour', aboard ? `This parcel is a rush order: +${RUSH.bonus} if you beat the tag` : `Rush parcels pay +${RUSH.bonus} if you beat the tag`);
       this.audio.rushHour();
       this.cameraRig.addShake(0.12);
@@ -1366,7 +1474,9 @@ export class Game {
       this.hud.setBank(this.bank, d.carrying);
       d.boost = Math.min(1, d.boost + SLIPSTREAM.boost);
       this.audio.slipPayout(ev.chain);
-      if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus');
+      // round 25: before the slipstream layer is introduced, payouts bank quietly (no pop)
+      if (!this.shown('slip')) { /* banked, shown with the delivery */ }
+      else if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus');
       else if (this.stale) this.hud.slipPop('Off route', ev.chain, 'No bonus · head for the marker');
       else this.hud.slipPop('Bonus full', ev.chain, d.carrying ? 'Deliver to cash in' : 'Grab the parcel');
       this.cameraRig.addShake(0.06 + 0.03 * ev.chain);
@@ -1502,6 +1612,59 @@ export class Game {
     return { l: l - 6, t: t - 6, r: r + 6, b: b + 6 };
   }
 
+  /** Round 25: gate tag footprint (pill centred on the point, plus the edge arrow turned to its angle) and placement. */
+  private gateFoot(x: number, y: number, angle: number, arrow: boolean, pw: number, ph: number): Box {
+    let l = x - pw / 2, r = x + pw / 2, t = y - ph / 2, b = y + ph / 2;
+    if (arrow) {
+      const c = Math.cos(angle), sn = Math.sin(angle);
+      for (const [px, py] of [[-12, -42], [12, -42], [-12, -26], [12, -26]]) {
+        const ax = px * c - py * sn + x, ay = px * sn + py * c + y;
+        l = Math.min(l, ax); r = Math.max(r, ax); t = Math.min(t, ay); b = Math.max(b, ay);
+      }
+    }
+    return { l: l - 6, t: t - 6, r: r + 6, b: b + 6 };
+  }
+
+  private gateTagPlace(w: number, h: number, x: number, y: number, off: boolean, angle: number, behind: boolean, nx: number, ny: number, size: { w: number; h: number }): { x: number; y: number; off: boolean; angle: number } {
+    const gut = 10;
+    const hw = size.w / 2 + gut, hh = size.h / 2 + 4;
+    // where the arch really is (screen px; mirrored and pushed far out when behind), for the arrow
+    let tx = (nx * 0.5 + 0.5) * w, ty = (-ny * 0.5 + 0.5) * h;
+    if (behind) { tx = w / 2 + (w / 2 - tx) * 50; ty = h / 2 + ((h / 2 - ty) || 1) * 50; }
+    const ang = (px: number, py: number) => Math.atan2(ty - py, tx - px) + Math.PI / 2;
+    // fully on screen
+    const cx = THREE.MathUtils.clamp(x, hw, w - hw), cy = THREE.MathUtils.clamp(y, hh + 46, h - hh);
+    if (cx !== x || cy !== y) { x = cx; y = cy; off = true; angle = ang(x, y); }
+    const geo = this.hud.touchLayout(w, h);
+    if (!geo) return { x, y, off, angle };
+    const hit = (a: Box, list: Box[]) => list.some((q) => a.l < q.r && q.l < a.r && a.t < q.b && q.t < a.b);
+    const blocks = [...geo.controls, ...geo.top];
+    if (this.hud.popShowing) blocks.push(geo.slot);
+    if (!hit(this.gateFoot(x, y, angle, off, size.w, size.h), blocks)) return { x, y, off, angle };
+    // walk the edge rectangle both ways; the first free spot wins
+    const mx = hw, y0 = 30 + hh, y1 = h - hh - 8;
+    const W = Math.max(1, w - 2 * mx), H = Math.max(1, y1 - y0), P = 2 * (W + H);
+    const at = (s: number): [number, number] => {
+      s = ((s % P) + P) % P;
+      if (s < W) return [mx + s, y0];
+      if (s < W + H) return [w - mx, y0 + s - W];
+      if (s < 2 * W + H) return [w - mx - (s - W - H), y1];
+      return [mx, y1 - (s - 2 * W - H)];
+    };
+    const ex = THREE.MathUtils.clamp(x, mx, w - mx), ey = THREE.MathUtils.clamp(y, y0, y1);
+    const dl = ex - mx, dr = w - mx - ex, dtp = ey - y0, db = y1 - ey;
+    const mm = Math.min(dl, dr, dtp, db);
+    const s0 = mm === dtp ? ex - mx : mm === dr ? W + ey - y0 : mm === db ? W + H + (w - mx - ex) : 2 * W + H + (y1 - ey);
+    for (let step = 4; step < P / 2; step += 4) {
+      for (const sgn of [1, -1]) {
+        const [px, py] = at(s0 + sgn * step);
+        const a = ang(px, py);
+        if (!hit(this.gateFoot(px, py, a, true, size.w, size.h), blocks)) return { x: px, y: py, off: true, angle: a };
+      }
+    }
+    return { x, y, off, angle };
+  }
+
   private navTouch(geo: TouchLayout, w: number, h: number, x: number, y: number, tx: number, ty: number, off: boolean, dist: number): { x: number; y: number; off: boolean; angle: number } {
     const hit = (a: Box, list: Box[]) => list.some((q) => a.l < q.r && q.l < a.r && a.t < q.b && q.t < a.b);
     const blocks = [...geo.controls, ...geo.top];
@@ -1618,6 +1781,7 @@ export class Game {
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
       slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
       scoreLog: this.scoreLog,
+      teach: { on: this.teachOn, log: this.teachLog, queue: this.teachQueue.slice() },
       routeHint: this.routeHint ? { ...this.routeHint } : null,
       narrow: this.narrow ? { ...this.narrow } : null,
       routeMark: this.mark ? { kind: this.mark.kind, name: this.mark.name, names: this.mark.names.slice(), stage: this.mark.stage, gate: { x: this.mark.gate.x, y: this.mark.gate.y, z: this.mark.gate.z }, inward: { ...this.mark.inward }, exit: { x: this.mark.exit.x, y: this.mark.exit.y, z: this.mark.exit.z }, outward: { ...this.mark.outward }, width: this.mark.width, legAt: this.mark.legAt, shownAt: this.mark.shownAt, seenAt: this.mark.seenAt, seenDist: this.mark.seenDist, tagAt: this.mark.tagAt, tagOn: this.mark.tagOn, gateIn: this.mark.gateIn, board: this.gate.text, n: this.marksThisLeg } : null,

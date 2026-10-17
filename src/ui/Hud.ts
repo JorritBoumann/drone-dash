@@ -196,6 +196,30 @@ export class Hud {
     this.touchAt = -1e9;
   }
 
+  /**
+   * Round 25: layered teaching. On a new player's first run the HUD starts with the score, clock, objective pill and pad
+   * marker only. Each system's HUD parts show once the game introduces it (`learn`). Returning players get everything.
+   * Gated parts are hidden by CSS (`#app.teach:not(.l-<key>)`), so they keep their normal show/hide logic underneath.
+   */
+  setTeach(on: boolean): void {
+    this.app.classList.toggle('teach', on);
+    for (const c of Array.from(this.app.classList)) if (c.startsWith('l-')) this.app.classList.remove(c);
+    this.touchAt = -1e9;
+  }
+
+  learn(key: string): void {
+    this.app.classList.add(`l-${key}`);
+    this.touchAt = -1e9;
+  }
+
+  /** Round 25: a one-time teaching hint, in the event banner slot (on touch: the round 24 pop slot). */
+  hintPop(main: string, sub: string): void {
+    this.centre('event', this.eventPopEl, () => {
+      this.eventPopMain.textContent = main;
+      this.eventPopSub.textContent = sub;
+    }, `hint:${main}`);
+  }
+
   get isTouch(): boolean {
     return this.app.classList.contains('touch');
   }
@@ -240,10 +264,11 @@ export class Hud {
     if (btns) controls.push(btns);
     const top: Box[] = [centre, score, right].filter((b): b is Box => !!b);
     const pillBottom = centre ? centre.b : 0;
-    // pop slot: from the left gutter (safe area) to 72 px left of the screen centre (the drone sits on the centre line);
+    // pop slot: from the left gutter (safe area) to 100 px left of the screen centre (the drone sits on the centre line;
+    // round 25: 72 -> 100 px, the two-line hints and delivery pops reached its rotors);
     // vertically centred between the score panel and the stick
     const left = stick ? stick.l : 18;
-    const slotR = w / 2 - 72;
+    const slotR = w / 2 - 100;
     const upper = Math.max(score ? score.b : 0, pillBottom * 0.6) + 8;
     const lower = (stick ? stick.t - 20 : h * 0.7) - 6;
     const cy = Math.max(upper + 30, Math.min((upper + lower) / 2, h * 0.62));
@@ -390,6 +415,26 @@ export class Hud {
     this.routeHintName.textContent = name;
   }
 
+  private gatePill = document.querySelector('.gate-tag-pill') as HTMLElement;
+  private gatePillSize = { name: '', dist: '', w: 120, h: 22 };
+  /** Round 25: the gate tag's pill size in px (measured when its text changes; it is centred on the tag point). */
+  gateTagSize(name: string, dist: number): { w: number; h: number } {
+    const g = this.gatePillSize, ds = `${dist}`.length + '';
+    if (g.name !== name || g.dist !== ds) {
+      const r = this.gatePill.getBoundingClientRect();
+      if (r.width > 0 && this.gateTagName.textContent === name) {
+        g.name = name;
+        g.dist = ds;
+        g.w = r.width;
+        g.h = r.height;
+      } else {
+        // not laid out yet (hidden): estimate from the text
+        g.w = Math.max(g.w, 44 + name.length * 7 + `${dist} m`.length * 7);
+      }
+    }
+    return { w: g.w, h: g.h };
+  }
+
   /** Round 20: the gate tag. `name` empty or `visible` false hides it. */
   setGate(x: number, y: number, offscreen: boolean, angle: number, name: string, kind: string, visible: boolean, dist = 0): void {
     const on = visible && !!name;
@@ -450,7 +495,7 @@ export class Hud {
    * Medal moment: a big medal banner where the delivery pop shows. If a delivery pop is still up (a drop is the usual way
    * across a line), the banner waits until that pop has been read, then takes its place. The goal row flashes too.
    */
-  medalPop(tier: number): number {
+  medalPop(tier: number, intro = false): number {
     const next = nextGoal(GOALS.tiers[tier - 1].score);
     this.goal.classList.remove('flash');
     void this.goal.offsetWidth;
@@ -458,7 +503,7 @@ export class Hud {
     // round 19: through the centre queue (a delivery pop that is still up is read first, then the banner takes its place)
     return this.centre('medal', this.medalPopEl, () => {
       this.medalPopName.textContent = `${tierName(tier)}!`;
-      this.medalPopSub.textContent = next ? `Next: ${next.name} ${fmt(next.score)}` : 'Top medal';
+      this.medalPopSub.textContent = intro && next ? `First medal · next: ${next.name} ${fmt(next.score)}` : next ? `Next: ${next.name} ${fmt(next.score)}` : 'Top medal';
       this.medalPopEl.dataset.m = String(tier);
     }, `${tierName(tier)}!`);
   }
@@ -738,7 +783,8 @@ export class Hud {
   }
 
   /** Called at the start of a run: arms the first-time slipstream hint for the first two runs on this device. */
-  armSlipHint(): void {
+  armSlipHint(enabled = true): void {
+    if (!enabled) { this.hintArmed = false; return; }
     if (this.hintRuns === 0) {
       try {
         this.hintRuns = 1 + Number(localStorage.getItem('drone-dash-slip-hint') || 0);
@@ -758,10 +804,11 @@ export class Hud {
    * Round 21: on the first two runs on this device, a one-line camera hint shows above the bottom bar from 1.5 s to
    * 7.5 s into the run, and goes away as soon as the player looks around.
    */
-  armViewHint(): void {
+  armViewHint(enabled = true): void {
     window.clearTimeout(this.viewHintTimer);
     this.viewHint.classList.remove('show');
     this.viewHintOn = false;
+    if (!enabled) return;
     let runs = 1;
     try {
       runs = 1 + Number(localStorage.getItem('drone-dash-view-hint') || 0);
@@ -776,6 +823,14 @@ export class Hud {
       this.viewHint.classList.add('show');
       this.viewHintTimer = window.setTimeout(() => this.viewUsed(), 6000);
     }, 1500);
+  }
+
+  /** Round 25: show the camera hint now (the teaching layer introduces it), for 6 s or until the player looks around. */
+  showViewHint(): void {
+    window.clearTimeout(this.viewHintTimer);
+    this.viewHintOn = true;
+    this.viewHint.classList.add('show');
+    this.viewHintTimer = window.setTimeout(() => this.viewUsed(), 6000);
   }
 
   /** The player orbited or zoomed: the camera hint has done its job. */

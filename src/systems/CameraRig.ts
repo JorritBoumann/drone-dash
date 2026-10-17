@@ -46,6 +46,13 @@ const CAM_PAD = 0.34;
 const CAND: Array<[number, number]> = [[0.3, 0], [-0.3, 0], [0.6, 0], [-0.6, 0], [1.0, 0], [-1.0, 0], [0, 1.5], [0, 3]];
 /** Round 23: orbit angles (rad) swept out from straight behind the drone to find how far the view can swing clear. */
 const YAW_STEPS = [0.12, 0.25, 0.4, 0.6, 0.85, 1.15, 1.5, 2.0, 2.6, 3.2];
+/**
+ * Round 25: open-street swing. When the view straight behind a slow drone is blocked within `need` m (a pad beside a
+ * wall, the drone turned to face away from a facade), the camera swings round the drone (at most `maxYaw`) to the nearest
+ * angle with clear room instead of being pulled in until the drone fills the screen. Not in alleys or tunnels (their own
+ * framing) and not above `maxSpeed` (the view stays behind the heading). CameraRig.keepRoom is the hard floor.
+ */
+const SWING = { need: 3.2, keep: 2.6, rate: 3.2, hold: 0.9, back: 1.4, minDist: 2.4, maxYaw: 0.6, maxSpeed: 6 };
 /** Round 23: the camera never moves more than this relative to the drone in one frame (no pull-in snaps). */
 const MAX_REL_STEP = 1.7;
 
@@ -84,6 +91,10 @@ export class CameraRig {
   private readonly idealDir = new THREE.Vector3();
   private yawUse = 0;
   private yawHeld = 0; // round 23: the orbit yaw actually used (the player's, held back where it would swing into a wall)
+  private swing = 0; // round 25: automatic swing (rad) away from a wall right behind the drone in an open street
+  private swingWant = 0;
+  private swingIdle = 99; // s since the swing was last needed
+  private swingSearch = 0; // s until the blocked view may search for a new swing angle again (the sweep is not per frame)
 
   constructor(private readonly camera: THREE.PerspectiveCamera) {
     try {
@@ -132,6 +143,8 @@ export class CameraRig {
     this.yawUse = this.yawHeld = 0;
     this.viewIdle = 99;
     this.free = 0;
+    this.swing = this.swingWant = 0;
+    this.swingIdle = 99;
   }
 
   private applyView(v: ViewIntent | null, dt: number): void {
@@ -309,6 +322,82 @@ export class CameraRig {
     return bestRoom;
   }
 
+  /**
+   * Round 25: swing the chase view round the drone when a wall sits right behind it in an open street. The plain view
+   * (no swing) is tested first; while it has room the swing eases back to 0 after a short hold. Otherwise the nearest
+   * yaw (either side, smallest first) with `SWING.need` m of clear room becomes the target, and the swing chases it.
+   */
+  private updateSwing(dt: number, drone: Drone, world: CollisionWorld, speedFactor: number, alt: number, target: THREE.Vector3 | null): void {
+    if (this.corW > 0.05 || this.free > 0.3 || drone.speed > SWING.maxSpeed) {
+      // corridor framing, the player's own orbit, or flying on at speed (the view stays behind the heading; the
+      // distance floor in keepRoom handles a wall there): no automatic swing (it fades out)
+      this.swingWant = 0;
+      this.swingIdle = 99;
+    } else {
+      const base = this.yawUse;
+      const len0 = this.ideal.distanceTo(this.anchor);
+      const need = Math.min(SWING.need, len0 * 0.9);
+      const room0 = this.findClear(world, this.ideal, this.cand);
+      if (room0 >= (this.swing !== 0 ? need : SWING.keep)) {
+        this.swingIdle += dt;
+        if (this.swingIdle > SWING.hold) this.swingWant = 0;
+      } else if ((this.swingSearch -= dt) <= 0) {
+        this.swingSearch = 0.1;
+        this.swingIdle = 0;
+        // keep the current side while it still works, else the nearest clear angle on either side
+        // the nearest angle with the full chase room wins; failing that, the nearest with `need` m of room
+        let found = 0, fallback = 0;
+        const pref = Math.sign(this.swing || this.swingWant) || 1;
+        outer: for (const step of YAW_STEPS) {
+          if (step > SWING.maxYaw) break;
+          for (const sg of [pref, -pref]) {
+            this.yawUse = base + sg * step;
+            this.computeIdeal(drone, speedFactor, alt, target);
+            const L = this.ideal.distanceTo(this.anchor);
+            const room = this.findClear(world, this.ideal, this.cand);
+            if (room >= L * 0.85) { found = sg * step; break outer; }
+            if (fallback === 0 && room >= Math.min(need, L * 0.9)) fallback = sg * step;
+          }
+        }
+        if (found !== 0 || fallback !== 0) this.swingWant = found || fallback;
+      } else this.swingIdle = 0;
+      this.yawUse = base;
+    }
+    const k = 1 - Math.exp(-(this.swingWant === 0 ? SWING.back : SWING.rate) * dt);
+    this.swing += (this.swingWant - this.swing) * k;
+    if (Math.abs(this.swing) < 1e-3 && this.swingWant === 0) this.swing = 0;
+    // the ideal at the swung angle (or back at the plain one after the search loop moved it)
+    const base = this.yawUse;
+    this.yawUse = base + this.swing;
+    this.computeIdeal(drone, speedFactor, alt, target);
+    this.yawUse = base;
+  }
+
+  private keepRoom(world: CollisionWorld, drone: Drone): void {
+    const cam = this.camera.position, dp = drone.group.position;
+    const rel = this.tmp.copy(cam).sub(dp);
+    const L = rel.length();
+    const want = SWING.minDist;
+    if (L >= want) return;
+    if (L > 0.05) {
+      this.cand.copy(dp).addScaledVector(rel, want / L);
+      if (world.segmentFraction(dp, this.cand, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(this.cand), 0.3)) { cam.copy(this.cand); return; }
+    }
+    // rise: mostly up, a little back along the current horizontal direction (or behind the drone's heading)
+    let hx = rel.x, hz = rel.z;
+    const hl = Math.hypot(hx, hz);
+    if (hl < 0.05) { hx = Math.sin(drone.yaw); hz = Math.cos(drone.yaw); } else { hx /= hl; hz /= hl; }
+    for (const [back, up] of [[0.9, want * 0.95], [0.4, want * 1.1], [0, want * 1.2]]) {
+      this.cand.set(dp.x + hx * back, dp.y + up, dp.z + hz * back);
+      if (world.segmentFraction(dp, this.cand, 0.2, false) >= 1 && !world.pushOutPoint(this.best.copy(this.cand), 0.3)) {
+        // blend toward it so a rise is a quick glide, not a cut (the floor below still holds next frame)
+        cam.lerp(this.cand, 0.5);
+        if (cam.distanceTo(dp) < want * 0.9) cam.copy(this.cand);
+        return;
+      }
+    }
+  }
+
   /** 0..1 weight of the final-approach framing: the target is close and below the drone. */
   private approachWeight(drone: Drone, target: THREE.Vector3 | null): number {
     if (!target) return 0;
@@ -366,6 +455,7 @@ export class CameraRig {
     else this.yawHeld = wrapA(this.yawHeld + wrapA(yawWant - this.yawHeld) * (1 - Math.exp(-(Math.abs(yawWant) < Math.abs(this.yawHeld) ? 14 : 5) * dt)));
     this.yawUse = this.yawHeld;
     this.computeIdeal(drone, speedFactor, alt, target);
+    this.updateSwing(dt, drone, world, speedFactor, alt, target);
     const cam = this.camera;
     // round 23: aim the follow at a view the walls allow (the ideal pulled in by a spherecast), so the camera glides
     // in instead of being snapped in after it has swung behind a wall
@@ -385,7 +475,9 @@ export class CameraRig {
     if (frac < 1) {
       this.tmp.copy(cam.position).sub(this.anchor);
       const len = this.tmp.length();
-      const keep = Math.max(0.9, frac * len - 0.1);
+      // round 25: in an open street the swing has found a clear angle: do not collapse onto the drone on the way there
+      const floor = this.corW < 0.05 && this.swing !== 0 ? Math.min(SWING.minDist, len) : 0.9;
+      const keep = Math.max(floor, frac * len - 0.1);
       if (len > 1e-4) cam.position.copy(this.anchor).addScaledVector(this.tmp, keep / len);
     }
     // round 23: limit how far the camera moves relative to the drone in one frame (skipped while it catches up from far,
@@ -400,6 +492,11 @@ export class CameraRig {
         cam.position.copy(dp).add(this.tmp);
       }
     }
+
+    // round 25: in an open street the camera never closes in below SWING.minDist of the drone (after a delivery beside
+    // a wall it used to dive to 1.3 m, so the drone filled the screen). It keeps its direction from the drone if that
+    // line is clear; otherwise it rises over the drone, a little behind it.
+    if (this.corW < 0.05) this.keepRoom(world, drone);
 
     this.lookSmoothed.lerp(this.look, 1 - Math.exp(-12 * dt));
     cam.lookAt(this.lookSmoothed);

@@ -23,6 +23,8 @@ interface ThreeGameDiagnostics {
   goals?: { tier: number; tierName: string; next: number; passes: number; passList: { tier: number; name: string; score: number; t: number }[]; best: number; bestTier: number; thresholds: number[] };
   slipstream?: { level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number; clockK: number; clockGain: number; budget: number; toward: number; bank: number; bankTotal: number; bankPaid: number; bankLost: number; legBanked: number; legCap: number };
   scoreLog?: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[];
+  /** Round 25: layered teaching on a new player's first run: introductions so far (run seconds) and the queue. */
+  teach?: { on: boolean; log: { k: string; t: number }[]; queue: string[] };
   /** Round 19: this leg's route hint, the alley or tunnel the drone is in, and the centre messages shown. */
   routeHint?: { kind: string; names: string[]; save: number; grid: number; route: number; kinds: string[]; at: number; shownAt: number } | null;
   routeMark?: {

@@ -1,0 +1,46 @@
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > s1-low.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > s1-high.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > s1-lazy.log 2>&1
+zsh rebuild25.sh
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > s2-low.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > s2-high.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > s2-lazy.log 2>&1
+DEV=iphone SEED=130 LOWT=70 HIGHT=20 OVSHOT=1 SHOTEVERY=15 PFX=t25- node teach-probe25.mjs > tp-m-130.log 2>&1
+DEV=desktop SEED=22 LOWT=110 HIGHT=0 SHOTEVERY=20 PFX=t25- node teach-probe25.mjs > tp-d-22-new.log 2>&1
+DEV=android SEED=317 LOWT=70 HIGHT=20 OVSHOT=1 SHOTEVERY=15 PFX=t25- node teach-probe25.mjs > tp-a-317.log 2>&1
+zsh rebuild25.sh
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=20 PFX=t25- node teach-probe25.mjs > tp-m-22.log 2>&1
+DEV=desktop SEED=22 RETURNING=1 LOWT=20 HIGHT=0 PFX=t25ret- node teach-probe25.mjs > tp-d-22-ret.log 2>&1
+zsh rebuild25.sh
+DEV=android SEED=317 LOWT=70 HIGHT=20 OVSHOT=1 SHOTEVERY=15 PFX=t25b- node teach-probe25.mjs > tp-a-317b.log 2>&1
+DEV=iphone SEED=130 LOWT=70 HIGHT=20 OVSHOT=1 SHOTEVERY=15 PFX=t25b- node teach-probe25.mjs > tp-m-130b.log 2>&1
+DEV=desktop SEED=22 LOWT=110 HIGHT=0 SHOTEVERY=20 PFX=t25b- node teach-probe25.mjs > tp-d-22-newb.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > s3-low.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > s3-high.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > s3-lazy.log 2>&1
+zsh rebuild25.sh
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > s4-high.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > s4-low.log 2>&1
+DEV=iphone SEED=130 LOWT=70 HIGHT=20 OVSHOT=1 SHOTEVERY=15 PFX=t25c- node teach-probe25.mjs > tp-m-130c.log 2>&1
+LINE=low SEEDS=34871,52417,69023,15736,88104,43390 SIMT=600 node route-play-rt-x-m-esc17.mjs > g-street.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=34871,52417,69023,15736,88104,43390 SIMT=600 node balance-probe-m-esc17.mjs > g-lazy.log 2>&1
+LINE=low SEEDS=52417 SIMT=600 node route-play-rt-x-m-esc17.mjs > g-street-52417b.log 2>&1
+zsh rebuild25.sh
+node hand-fly20.mjs > hf-desktop.log 2>&1
+MOBILE=1 node hand-fly20.mjs > hf-mobile.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 node farm-probe.mjs > farm-$s.log 2>&1; done
+SEED=22 MODE=near SIMT=600 node smart-farm.mjs > smart-near-22.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+for s in 22; do SEED=$s MODE=honest SIMT=600 node capfarm.mjs > capfarm-honest-$s.log 2>&1; SEED=$s MODE=carry SIMT=600 node capfarm.mjs > capfarm-carry-$s.log 2>&1; done
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+node street-probe.mjs > street-probe.log 2>&1
+node van-draft.mjs > van-draft.log 2>&1
+SEED=22 MODE=van FARMMAX=12 SIMT=600 node capfarm-narrow.mjs > cfn-van-12-22.log 2>&1
+NOORBIT=1 SEED=130 TOTAL=45 node cam-clip24.mjs > cam-clip-130-noorbit.log 2>&1
+node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+SEED=22 MODE=alley FARMMAX=12 SIMT=600 node capfarm-narrow.mjs > cfn-alley-12-22.log 2>&1
+for s in 58 130; do SEED=$s MODE=honest SIMT=600 node capfarm.mjs > capfarm-honest-$s.log 2>&1; SEED=$s MODE=carry SIMT=600 node capfarm.mjs > capfarm-carry-$s.log 2>&1; done
+END

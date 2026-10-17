@@ -61,8 +61,15 @@ export const RUN = {
   pickupRadius: 3.2,
   deliverRadius: 3.4,
   verticalTolerance: 3.6,
-  baseScore: 100,
-  fastBonus: 75, // points for beating the leg's par (before the combo multiplier)
+  // Round 25: delivery is the headline reward. Base 100 -> 200, 1.2 -> 2.4 points per metre of leg, and the fast drop
+  // pays a time bonus: `fastBonus` plus `fastPerSec` for every second under par (up to `fastSecCap` s), so a quick,
+  // clean leg pays visibly more than one that just scrapes in. Street bonus banking was cut a little to match
+  // (SLIPSTREAM.bankCarry/bankPickup/bankPerMetre: about 14% less), so delivery points are well over half of every bot run.
+  baseScore: 200,
+  perMetre: 2.4,
+  fastBonus: 100, // points for beating the leg's par (before the combo multiplier)...
+  fastPerSec: 15, // ...plus this per second under par (a lazy flier scrapes in 0 to 3 s under, a street pilot 4 to 9)...
+  fastSecCap: 8, // ...counted up to this many seconds (the roof line beats the street-route par by 6 to 11 s; a longer cap made it the better line)
   parSpeed: 9, // m/s: a leg's par is its street-route length at this speed (a clean street run with corners)...
   parSlack: 7, // ...plus this many seconds
   maxCombo: 5,
@@ -194,14 +201,14 @@ export const SLIPSTREAM = {
   // 14) banks 1.5 to 2.5 times. Balance bots: the lazy flier's payouts average 3, the routed street pilot's 4 to 14.
   // Round 20: 1 -> 1.15 and 0.75 -> 0.86. The street line's own edge over the roof line (low over high had slipped to
   // 0.78 in real time). Safe now that a parcel off its route banks nothing and fades (stale* below), so farms gain nothing.
-  bankCarry: 1.15,
-  bankPickup: 0.86,
+  bankCarry: 1.0, // round 25: 1.15 -> 1.0 (delivery is the headline; see RUN.baseScore)
+  bankPickup: 0.74, // round 25: 0.86 -> 0.74
   bankPaceLow: 2.5,
   bankPaceFull: 6,
   bankPaceMin: 0.2,
   bankPaceMax: 1.8, // round 17: 2.5 -> 1.8 (a fast run's street bonus no longer runs away from a steady one)
-  bankPerMetre: 5, // round 20: 7 -> 5 (honest legs bank 2 to 4 points per metre of route; a farm phase filled the rest) // round 17: unchanged (3.5 was tried: the carry farm then filled its share fast and delivered like an honest run). Honest street legs banked up to 6 points per metre of street route on the balance bots
-  bankLegMin: 150, // points: every leg can bank at least this much (very short legs)
+  bankPerMetre: 4.25, // round 25: 5 -> 4.25 (with the bank rates above). Round 20: 7 -> 5 (honest legs bank 2 to 4 points per metre of route; a farm phase filled the rest) // round 17: unchanged (3.5 was tried: the carry farm then filled its share fast and delivered like an honest run). Honest street legs banked up to 6 points per metre of street route on the balance bots
+  bankLegMin: 130, // round 25: 150 -> 130 // points: every leg can bank at least this much (very short legs)
   bankCrashKeep: 0.5,
   bankCrashTier: 1, // CRASH.tiers index from which a crash cuts the bank (1 = Hard crash)
   // Round 15: the run's first payout banks at least this many points (it used to bank about 7 after a slow intro draft,
@@ -233,7 +240,7 @@ export const RUSH = {
   everyAt: 120,
   speed: 11,
   slack: 5,
-  bonus: 150,
+  bonus: 200, // round 25: 150 -> 200 (a delivery reward)
 };
 
 /**
@@ -260,12 +267,17 @@ export const RUSH = {
  * See progress/round-17/builder.md.
  * Round 18: Ace 9000 -> 10000. Shortcuts (boulevards, alleys, tunnels) make a skilled line faster: the shortcut-taking
  * street bot reached 9,155 on one of 12 fresh cities (plain street bot 7,359 there). See progress/round-18/builder.md.
+ * Round 25: delivery pays about twice as much (RUN.baseScore, perMetre, the fast-drop time bonus) and the street bonus
+ * banks a little less. Balance bots on 22, 58, 130: street line 4,861 to 5,628, roof line 3,472 to 5,309, lazy flier
+ * 1,249 to 1,713. On 6 fresh cities the lazy flier's best is 2,449 (three drops), the street bot's 3,592 to 6,366 (one city
+ * 1,959 with two drops). Bronze 1000 -> 1200, Silver 2000 -> 2800, Gold 4500 -> 6000, Ace 10000 -> 15000.
+ * See progress/round-25/builder.md.
  */
 export const GOALS = {
   tiers: [
-    { name: 'Bronze', score: 1000 },
-    { name: 'Silver', score: 2000 },
-    { name: 'Gold', score: 4500 },
-    { name: 'Ace', score: 10000 },
+    { name: 'Bronze', score: 1200 },
+    { name: 'Silver', score: 2800 },
+    { name: 'Gold', score: 6000 },
+    { name: 'Ace', score: 15000 },
   ],
 };

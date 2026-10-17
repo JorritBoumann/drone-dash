@@ -50,7 +50,7 @@ export function jobSpec(phase: 'pickup' | 'drop', n: number, roofSlot: boolean, 
 export type DeliveryPhase = 'pickup' | 'deliver';
 export type DeliveryEvent =
   | { type: 'picked'; site: Site }
-  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number; final: boolean }
+  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number; final: boolean; plain: number; fastPts: number }
   | null;
 
 export type Tally = {
@@ -306,9 +306,11 @@ export class DeliverySystem {
     const final = this.overtime;
     // Round 17: a last-call drop is short and adds no clock either, so short late legs cannot keep a run alive forever
     const timeBonus = final || this.lastCall ? 0 : Math.round(Math.max(RUN.minTimeBonus, Math.min(20, 5 + this.legDistance / 11)) * decay);
-    const plain = Math.round(RUN.baseScore + this.legDistance * 1.2);
-    const fastPts = fast ? RUN.fastBonus : 0;
-    const points = Math.round((RUN.baseScore + this.legDistance * 1.2 + fastPts) * this.multiplier);
+    const plain = Math.round(RUN.baseScore + this.legDistance * RUN.perMetre);
+    // round 25: the fast drop pays a time bonus, more the further under par
+    const under = Math.max(0, Math.min(RUN.fastSecCap, this.legPar - this.legTime));
+    const fastPts = fast ? Math.round(RUN.fastBonus + under * RUN.fastPerSec) : 0;
+    const points = Math.round((plain + fastPts) * this.multiplier);
     this.score += points;
     const T = this.tally;
     T.drops += plain;
@@ -324,7 +326,7 @@ export class DeliverySystem {
     if (final) {
       this.finished = true;
       T.overtimeDrop = 1;
-      return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final };
+      return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts };
     }
     // next pickup reasonably close so the loop keeps moving (round 16: a street-distance band, low pads only).
     // Round 17: never further than the clock left can reach (at last-call pace), so the last pickup is a real chance.
@@ -333,6 +335,6 @@ export class DeliverySystem {
     if (preach < pspec.streetMax) Object.assign(pspec, { streetMax: preach, streetMin: Math.min(pspec.streetMin, preach * 0.6) });
     this.target = this.pickLeg(rng, t.pos, pspec, this.approachable(t.pos));
     this.legTime = 0;
-    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final };
+    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts };
   }
 }

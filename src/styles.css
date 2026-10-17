@@ -1418,3 +1418,21 @@ kbd {
   70% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -72%) scale(1); }
 }
+
+/* Round 25: layered teaching. A new player's first run starts with the score, clock, objective pill and pad marker;
+   each system's HUD parts appear when the game introduces it (Game.teach, Hud.learn). */
+#app.teach:not(.l-slip) #slip,
+#app.teach:not(.l-slip) #slip-pop,
+#app.teach:not(.l-slip) #objective-bank,
+#app.teach:not(.l-slip) #score-pending,
+#app.teach:not(.l-clock) #timer-slow,
+#app.teach:not(.l-route) #route-hint,
+#app.teach:not(.l-route) #gate-tag,
+#app.teach:not(.l-combo) #combo-chip,
+#app.teach:not(.l-medal) #goal,
+#app.teach:not(.l-medal) #medal-pop,
+#app.teach:not(.l-wind) #wind,
+#app.teach:not(.l-rush) #objective-rush,
+#app.teach:not(.l-view) #view-hint {
+  display: none !important;
+}

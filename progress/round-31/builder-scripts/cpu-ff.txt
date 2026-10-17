@@ -1,0 +1,3 @@
+ %CPU COMM
+100.0 /usr/sbin/BTLEServer
+ 13.1 /Library/PrivilegedHelperTools/com.nordvpn.macos.helper

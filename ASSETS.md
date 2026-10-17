@@ -38,6 +38,25 @@ Round 29: no new files. The car GLBs are unchanged on disk. At load the game dro
 | Concrete Pavement 02 | https://polyhaven.com/a/concrete_pavement_02 | Charlotte Baglioni | Blender MCP, cwebp | sidewalk slabs near the camera (albedo plus normal) | `paving_albedo.webp` (196 KB), `paving_normal.webp` (304 KB) |
 | Asphalt 02 | https://polyhaven.com/a/asphalt_02 | Rob Tuytel | Blender MCP, cwebp | road surface (albedo plus normal, 3 m tile) | `asphalt_albedo.webp` (297 KB), `asphalt_normal.webp` (253 KB) |
 
+## Round 31: boats, marina docks and the water
+
+Tool: Blender 5.2.2 through the Blender MCP (`search_assets` with licence "CC0" and `import_asset`, Poly Pizza), round 31. No paid or free-tier generation.
+Pipeline: the round 28 `flatten()` from `progress/round-28/builder-scripts/blender_pipeline.py` (one sRGB colour per face from the kit's palette texture), then per model: centred, keel at z = 0, bow on -Y (glTF +Z), scaled to the game length, colours written as a linear corner colour attribute, one role (`<model>__all`), exported as one GLB with no materials or UVs (`progress/round-31/builder-scripts/blender_boats.py`).
+
+| Asset | Source | Author | Licence | Tool | Used for | Game file |
+|---|---|---|---|---|---|---|
+| Sail Boat | https://poly.pizza/m/BgSZXwmm7k | Quaternius | CC0 1.0 | Blender MCP | sailboat (7 m), 3 sailing and 1 moored | in `public/assets/models/boats.glb` |
+| Lifeboat | https://poly.pizza/m/Bkd4KKQA4O | Quaternius | CC0 1.0 | Blender MCP | rigid inflatable speedboat (5.2 m), 2 fast and 1 moored | in `boats.glb` |
+| Cruise Ship | https://poly.pizza/m/yq9EKmEmfC | Quaternius | CC0 1.0 | Blender MCP | harbour ferry (scaled to 20 m), 1 sailing | in `boats.glb` |
+| Boat | https://poly.pizza/m/5UEl54KsuC | Quaternius | CC0 1.0 | Blender MCP | rowing / fishing boat (4.6 m), 2 moored | in `boats.glb` |
+| Dock | https://poly.pizza/m/XViKoBh2UN | Quaternius | CC0 1.0 | Blender MCP | marina docks (8 m pieces, two per dock, two docks) | in `boats.glb` |
+
+`boats.glb`: 240 KB, 3,116 tris for all five models (sail 1,020, lifeboat 626, ferry 858, rowing boat 224, dock 388). Loaded after the first frame with the street assets.
+Imported but not used: "Small Ship" (https://poly.pizza/m/W2vMzztgIi, CC0, a wooden period ship that does not fit the modern city) and "Boat" (https://poly.pizza/m/OknDJkGeJ8, CC0, a second rowing boat).
+
+Water: procedural, no file. The detail normal map (and its foam noise channel) is made in code at start (`src/world/Water.ts`, 18 tileable sine waves, 256 px, 128 px on phones). No third-party texture.
+
 ## Totals
 
 - Models: 385 KB. Textures: 1,182 KB. All round 28 assets: about 1.5 MB, loaded after the first frame.
+- Round 31: boats.glb 240 KB. All lazy assets now about 1.8 MB.

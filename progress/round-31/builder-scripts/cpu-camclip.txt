@@ -1,0 +1,3 @@
+ %CPU COMM
+ 99.1 /usr/sbin/BTLEServer
+ 12.4 /Users/jorritboumann/Library/Application Support/Claude/claude-code/2.1.299/4fa9694b7975/claude.app/Contents/MacOS/claude

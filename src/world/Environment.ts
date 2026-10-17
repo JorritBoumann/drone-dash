@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createSeededRandom } from '../core/random';
 import type { CityLayout } from './CityGenerator';
-import { asphaltTexture, waterNormalTexture } from './Textures';
+import { asphaltTexture } from './Textures';
+import { Water } from './Water';
+import { Boats } from './Boats';
+import type { ModelParts } from './StreetAssets';
 import { Traffic } from './Traffic';
 import { Pedestrians } from './Pedestrians';
 import { lotHash } from './BuildingDetail';
@@ -194,8 +197,11 @@ type TreeSpecLike = CityLayout['trees'][number];
  */
 export class Environment {
   readonly group = new THREE.Group();
-  private readonly water: THREE.Mesh;
-  private readonly waterNormal: THREE.Texture;
+  /** Round 31: the bay water (shader water with swell, sky reflection, shore foam and boat wakes). */
+  readonly water: Water;
+  /** Round 31: boats round the island (after the assets load). */
+  boats: Boats | null = null;
+  private readonly seed: number;
   /** Round 22: street life (traffic with the rush-hour hover-vans, and people). */
   readonly traffic: Traffic;
   readonly people: Pedestrians;
@@ -229,6 +235,7 @@ export class Environment {
 
   constructor(private readonly layout: CityLayout, seed: number, mood = 0, mobile = false) {
     this.mobile = mobile;
+    this.seed = seed;
     this.treeRange = mobile ? 62 : 80;
     const rng = createSeededRandom(seed * 31 + 7);
     const e = layout.half + 2;
@@ -246,21 +253,9 @@ export class Environment {
     ground.name = 'asphalt';
     this.group.add(ground);
 
-    // Bay water
-    this.waterNormal = waterNormalTexture();
-    this.waterNormal.repeat.set(60, 60);
-    this.water = new THREE.Mesh(
-      new THREE.PlaneGeometry(2400, 2400),
-      new THREE.MeshStandardMaterial({
-        color: '#2f6f86', roughness: 0.3, metalness: 0.1, normalMap: this.waterNormal,
-        normalScale: new THREE.Vector2(0.35, 0.35), envMapIntensity: 1.1,
-      }),
-    );
-    this.water.rotation.x = -Math.PI / 2;
-    this.water.position.y = -0.7;
-    this.water.receiveShadow = true;
-    this.water.name = 'water';
-    this.group.add(this.water);
+    // Bay water (round 31: shader water, see Water.ts)
+    this.water = new Water(mood, mobile);
+    this.group.add(this.water.mesh);
 
     this.group.add(this.createMarkings());
     this.group.add(...this.createLamps());
@@ -580,6 +575,13 @@ export class Environment {
     return added;
   }
 
+  /** Round 31: build the boats and the marina from boats.glb (lazy, with the street assets). */
+  applyBoats(parts: ModelParts): THREE.Object3D {
+    this.boats = new Boats(parts, this.water, this.seed);
+    this.boats.update(0, 0, this.focusCam);
+    return this.boats.group;
+  }
+
   private pendingTreeLod: typeof this.treeLod = [];
   /** Round 28: switch the trees over once their models are compiled and in the scene. */
   commitAssets(): void {
@@ -793,7 +795,8 @@ export class Environment {
       // lit lanes pulse gently once rush hour is on
       this.laneMat.emissiveIntensity = this.rushLevel * (0.85 + 0.25 * Math.sin(time * 3.2));
     }
-    this.waterNormal.offset.set(time * 0.004, time * 0.0025);
+    this.water.update(time);
+    this.boats?.update(dt, time, this.focusCam);
     this.updateTreeLod(this.focusCam);
     this.streetProps?.update(this.focusCam);
     for (const m of this.treeMaterials) {

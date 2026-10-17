@@ -136,6 +136,12 @@ interface DroneDashApi {
   people?(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }>;
   /** Round 24: the drone's screen box in CSS px (visible vertices through the render camera) and the touch framing shift. */
   camSmooth?(): Record<string, number | boolean>;
+  /** Round 31: boats, their hull footprints and the swell height at a point. */
+  boats?(): Array<Record<string, number | string | boolean>>;
+  boatFootprints?(): unknown;
+  waterAt?(x: number, z: number): number;
+  waterOn?(on: boolean): void;
+  boatsOn?(on: boolean): void;
   droneBox?(): { x: number; y: number; w: number; h: number; behind: boolean; shift: number };
   renderStats?(): { tris: number; calls: number };
   programs?(): string[];

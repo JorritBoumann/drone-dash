@@ -67,6 +67,14 @@ const FLOOR_RATE = 9;
  */
 /** Round 30: steps (m) tried round a wall when the camera's glide runs into one. */
 const NUDGE: Array<[number, number, number]> = [[0, 0, 0], [0, 0.4, 0], [0, 0.8, 0], [0, -0.4, 0], [0.45, 0, 0], [-0.45, 0, 0], [0, 0, 0.45], [0, 0, -0.45], [0.4, 0.4, 0], [-0.4, 0.4, 0], [0, 0.4, 0.4], [0, 0.4, -0.4]];
+/** Round 31: directions and radii (m, under SMOOTH.jump) searched round the last camera when the glide loses sight of the drone. */
+const SEEK_DIRS: Array<[number, number, number]> = [];
+for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+  if (x || y || z) { const l = Math.hypot(x, y, z); SEEK_DIRS.push([x / l, y / l, z / l]); }
+}
+const SEEK_R = [0.9, 0.6, 0.3];
+/** Round 31: the longest the glide may leave the drone hidden behind a wall before it cuts to a clear view (s). */
+const HIDE_MAX = 0.045;
 const SMOOTH = { time: 0.09, maxSpeed: 20, outSpeed: 45, gap: 2.15, jump: 0.92 };
 /** Round 26: the drone's centre is kept inside these normalised screen bounds (y up; -1 is the bottom edge). */
 const FRAME = { bottom: -0.45, top: 0.6, side: 0.8 };
@@ -537,7 +545,7 @@ export class CameraRig {
   private readonly lastLocal = new THREE.Vector3();
   private readonly relVel = new THREE.Vector3();
   private localValid = false;
-  /** Round 30: last glide check, for probes (use: -1 target taken, 0 the glide itself, 0..1 moved toward the target, 5 a step round a wall). */
+  /** Round 30: last glide check, for probes (use: -1 target taken, 0 the glide itself, 0..1 moved toward the target, 5 a step round a wall; round 31: 6 a step that finds the drone again, 7 the step that sees most of the way). */
   readonly dbgSmooth = { use: 0, rawIn: false, rawSight: true, rawL: 0 };
   private readonly sRaw = new THREE.Vector3();
   private readonly sOut = new THREE.Vector3();
@@ -548,6 +556,9 @@ export class CameraRig {
   private readonly sRawW = new THREE.Vector3();
   private readonly sPrevW = new THREE.Vector3();
   private readonly sNudge = new THREE.Vector3();
+  private readonly sSeek = new THREE.Vector3();
+  private readonly sSight = new THREE.Vector3();
+  private hiddenT = 0;
   private lastFy = 0;
   private readonly lastDp = new THREE.Vector3();
 
@@ -602,10 +613,23 @@ export class CameraRig {
     };
     const rawW = this.sRawW.copy(cam); // the target in world space
     const rawGap = Math.min(rawW.distanceTo(A), rawW.distanceTo(dp));
-    const rawIn = world.pushOutPoint(this.best.copy(rawW), 0.3);
-    const rawSight = world.segmentFraction(A, rawW, 0.1, false) >= 1;
+    let rawIn = world.pushOutPoint(this.best.copy(rawW), 0.3);
+    let rawSight = world.segmentFraction(A, rawW, 0.1, false) >= 1;
     const gapNeed = Math.min(SMOOTH.gap, rawGap - 0.02);
     const hard = (q: THREE.Vector3) => q.y >= 0.8 && Math.min(q.distanceTo(A), q.distanceTo(dp)) >= gapNeed && (rawIn || !world.pushOutPoint(this.best.copy(q), 0.3));
+    // round 31: the target itself can be hidden (the per-frame cap upstream keeps it near a camera that slid behind an
+    // alley corner). Then aim at the clear part of the line from the drone to the target, or to the ideal chase point,
+    // so the glide (and the hidden-time cut below) heads for a view of the drone.
+    if (!rawSight) {
+      for (const c of [rawW, this.ideal]) {
+        const f = world.segmentFraction(A, c, 0.1, false);
+        const p = this.sSight.copy(c).sub(A).multiplyScalar(Math.max(0, f - 0.04)).add(A);
+        if (p.distanceTo(A) < Math.max(gapNeed, SMOOTH.gap) + 0.2 || p.y < 0.8 || world.pushOutPoint(this.best.copy(p), 0.3)) continue;
+        if (world.segmentFraction(A, p, 0.1, false) < 1) continue;
+        rawW.copy(p); rawSight = true; rawIn = false;
+        break;
+      }
+    }
     const sight = (q: THREE.Vector3, pad: number) => !rawSight || world.segmentFraction(A, q, pad, false) >= 1;
     // candidates: the glide in the turning frame (g1); the same glide with this frame's turn held back (g0: the heading
     // swings the view round the drone into a wall); each moved toward the target by t. Tiers, best first: a clear view
@@ -640,7 +664,39 @@ export class CameraRig {
       }
       return false;
     };
-    if (!tier((v) => hard(v) && sight(v, 0.1), true) && !tier((v) => hard(v) && sight(v, 0), true) && !tier(hard, true) && !tier((v) => hard(v) && sight(v, 0.1), false)) q.copy(rawW);
+    // round 31: when no step along the glide (or the small nudges) keeps the drone in sight, look all round the last
+    // camera, within one smooth step, for a wall-free point that sees the drone (nearest the target). If there is none,
+    // the drone may stay hidden for at most HIDE_MAX s (a step that sees most of the way, or any wall-free step); after
+    // that the camera cuts to the nearest clear view further out. Round 30 took any wall-free step here, and behind an
+    // alley corner (Quill Row, seed 22) the drone stayed hidden for up to 0.57 s while the glide crept round it.
+    const seek = (fallback: boolean): boolean => {
+      if (!rawSight) return false;
+      let bestD = Infinity, bestF = -1, bestFD = Infinity, found = false;
+      const nb = this.sNudge;
+      for (const r of SEEK_R) for (const [dx, dy, dz] of SEEK_DIRS) {
+        q.set(prevW.x + dx * r, prevW.y + dy * r, prevW.z + dz * r);
+        if (!hard(q) || world.pushOutPoint(this.best.copy(q), 0.3)) continue;
+        const f = world.segmentFraction(A, q, 0, false);
+        const d = q.distanceTo(rawW);
+        if (f >= 1) {
+          if (!found || d < bestD) { found = true; bestD = d; nb.copy(q); }
+        } else if (fallback && !found && (f > bestF + 0.02 || (f > bestF - 0.02 && d < bestFD))) {
+          bestF = f; bestFD = d; this.sSeek.copy(q);
+        }
+      }
+      if (found) { q.copy(nb); use = 6; return true; }
+      if (fallback && bestF >= 0) { q.copy(this.sSeek); use = 7; return true; }
+      return false;
+    };
+    const clear1 = (v: THREE.Vector3) => hard(v) && sight(v, 0.1);
+    const seen = tier(clear1, true) || tier((v) => hard(v) && sight(v, 0), true) || seek(false);
+    if (!seen) {
+      const cut = rawSight && this.hiddenT >= HIDE_MAX && tier(clear1, false);
+      if (!cut && !seek(true) && !tier(hard, true) && !tier(clear1, false)) q.copy(rawW);
+    }
+    // how long the drone has been out of the camera's sight (only counts when the target itself sees it)
+    if (rawSight && world.segmentFraction(A, q, 0, false) < 1) this.hiddenT += dt;
+    else this.hiddenT = 0;
     const D = this.dbgSmooth;
     D.use = use; D.rawIn = rawIn; D.rawSight = rawSight; D.rawL = rawW.distanceTo(dp);
     const moved = use !== 0 || q.distanceToSquared(g1) > 1e-8;

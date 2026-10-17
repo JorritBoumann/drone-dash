@@ -1,0 +1,3 @@
+ %CPU COMM
+150.8 /Applications/Claude.app/Contents/Frameworks/Claude Helper (Renderer).app/Contents/MacOS/Claude Helper (Renderer)
+ 99.7 /usr/sbin/BTLEServer

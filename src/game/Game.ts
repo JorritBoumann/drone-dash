@@ -18,6 +18,7 @@ import { createCityMaterial, setCityDetailTextures, type CityMaterial } from '..
 import { propAudit, propPlacementAudit } from '../world/StreetProps';
 import { BuildingDetail } from '../world/BuildingDetail';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
+import { waveHeight as waveHeightAt } from '../world/Water';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
 import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
@@ -396,9 +397,11 @@ export class Game {
     const t0 = performance.now();
     try {
       // the loader (GLTFLoader) is its own chunk, fetched after the first frame
-      const { loadStreetAssets } = await import('../world/StreetAssets');
-      const a = await loadStreetAssets();
+      const { loadStreetAssets, loadModelParts } = await import('../world/StreetAssets');
+      // round 31: the boats and marina docks load with the street assets
+      const [a, boatParts] = await Promise.all([loadStreetAssets(), loadModelParts('boats.glb').catch(() => null)]);
       const added = this.env.applyAssets(a);
+      if (boatParts) added.push(this.env.applyBoats(boatParts));
       this.assetGroup.name = 'street-assets';
       for (const o of added) this.assetGroup.add(o);
       for (const t of Object.values(a.tex)) this.renderer.initTexture(t);
@@ -2107,6 +2110,13 @@ export class Game {
       },
       archetypesInView: (range = 70) => this.detail.archetypesInView(this.layout, this.camera, range),
       traffic: () => this.env.traffic.snapshot(),
+      // round 31 test hooks: boats (pose, water height under them, hull distance to the wall), hull footprints, and
+      // the swell height the boats sample at a point (the vertex shader runs the same sum)
+      boats: () => this.env.boats?.snapshot() ?? [],
+      boatFootprints: () => this.env.boats?.footprints() ?? null,
+      waterAt: (x: number, z: number) => waveHeightAt(x, z, this.time),
+      waterOn: (on: boolean) => { this.env.water.mesh.visible = on; }, // round 31 perf switches
+      boatsOn: (on: boolean) => { if (this.env.boats) this.env.boats.group.visible = on; },
       people: () => this.env.people.snapshot(),
       rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),
       // round 24 test hook: the drone's screen box (CSS px) through the real render camera

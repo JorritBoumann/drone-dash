@@ -23,6 +23,12 @@ export function createCityMaterial(): CityMaterial {
     uSkyTop: { value: new THREE.Color('#6f9fd8') },
     uSkyHorizon: { value: new THREE.Color('#ffc890') },
     uTime: { value: 0 },
+    // round 28: Poly Haven CC0 detail textures near the camera (plaster wall, concrete paving), swapped in once loaded
+    uWallTex: { value: flatTexture(128, 128, 128) },
+    uWallNor: { value: flatTexture(128, 128, 255) },
+    uPaveTex: { value: flatTexture(128, 128, 128) },
+    uPaveNor: { value: flatTexture(128, 128, 255) },
+    uDetail: { value: 0 },
   };
 
   material.onBeforeCompile = (shader) => {
@@ -56,6 +62,12 @@ export function createCityMaterial(): CityMaterial {
       uniform vec3 uSkyTop;
       uniform vec3 uSkyHorizon;
       uniform float uTime;
+      uniform sampler2D uWallTex;
+      uniform sampler2D uWallNor;
+      uniform sampler2D uPaveTex;
+      uniform sampler2D uPaveNor;
+      uniform float uDetail;
+      float texLum(vec3 c){ return dot(c, vec3(0.3, 0.59, 0.11)); }
       varying vec2 vFacadeUv;
       varying float vStyle;
       varying float vSeed;
@@ -84,6 +96,9 @@ export function createCityMaterial(): CityMaterial {
           vec3 gEmissive = vec3(0.0);
           float gRough = -1.0;
           float gH = 0.0;         // round 27: relief height for the bump (mortar, reveals, panel joints)
+          vec2 gTexN = vec2(0.0); // round 28: tangent-space normal from the detail textures, and its world tangent / bitangent
+          vec3 gTexT = vec3(1.0, 0.0, 0.0), gTexB = vec3(0.0, 1.0, 0.0);
+          float dNear = (1.0 - smoothstep(20.0, 52.0, length(vViewPosition))) * uDetail;
           float s = floor(vStyle + 0.5);
           // round 27: the seed carries the wall material in its high bits (seed + 256 * material)
           float sRaw = floor(vSeed + 0.5);
@@ -164,6 +179,18 @@ export function createCityMaterial(): CityMaterial {
               wall *= 0.94 + weather;
               float grime = 1.0 - smoothstep(0.25, 1.6, vCityPos.y);
               wall *= 1.0 - grime * 0.22 * (0.7 + 0.6 * cNoise(m * vec2(2.3, 6.0)));
+              // round 28: real plaster texture near the camera (albedo detail relative to its own mean, plus its normal map)
+              if (dNear > 0.001) {
+                float along = abs(wn.x) > 0.5 ? vCityPos.z : vCityPos.x;
+                vec2 wuv = vec2(along, vCityPos.y) / 2.23;
+                float tl = texLum(texture2D(uWallTex, wuv).rgb);
+                float tm = texLum(textureLod(uWallTex, wuv, 9.0).rgb);
+                float amp = mt > 0.5 && mt < 1.5 ? 0.45 : 0.85;
+                wall *= mix(1.0, clamp(0.35 + 0.65 * tl / max(tm, 0.04), 0.7, 1.3), amp * dNear);
+                gTexN = (texture2D(uWallNor, wuv).xy * 2.0 - 1.0) * dNear * amp;
+                gTexT = abs(wn.x) > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+                gTexB = vec3(0.0, 1.0, 0.0);
+              }
               // storey ledge (string course) at each floor line
               float ledge = (1.0 - smoothstep(0.0, 0.05, f.y)) * (1.0 - shop);
               wall = mix(wall, wall * 0.8, ledge * 0.6);
@@ -174,24 +201,38 @@ export function createCityMaterial(): CityMaterial {
                 // ---- ground floor shop front: fascia sign, big glazing with a mullion, a door in some bays, kick plate
                 float bay = floor(id.x / 2.0);
                 float bh = cHash(vec2(bay, sd) * 0.913);
+                // round 28: sign and door colour step per bay (the generator steps each building's seed so the bays
+                // either side of a party wall differ too): sign = (seed + bay) mod 8, 7 = a home entrance
+                float sk = mod(sd + bay, 8.0);
+                float dk = mod(sd * 3.0 + bay * 3.0, 7.0);
+                float home = step(6.5, sk);
                 float pier = 1.0 - step(0.07, f.x) * step(f.x, 0.93);
-                float fascia = step(0.76, f.y) * step(f.y, 0.94) * (1.0 - pier) * step(0.22, bh);
+                float fascia = step(0.76, f.y) * step(f.y, 0.94) * (1.0 - pier) * (1.0 - home);
                 float kick = step(f.y, 0.08) * (1.0 - pier);
-                float door = step(0.6, bh) * step(0.5, cHash(id + sd)) ;
+                float door = step(0.35, bh) * step(0.4, cHash(id + sd)) ;
                 vec2 dc = vec2(0.5, 0.36);
                 float doorM = door * boxMask(f, dc, vec2(0.15, 0.36));
                 float glz = boxMask(f, vec2(0.5, 0.42), vec2(0.42, 0.32)) * (1.0 - doorM);
                 float mull = (1.0 - smoothstep(0.008, 0.016, abs(f.x - 0.5))) * (1.0 - door);
                 glz *= 1.0 - mull;
-                vec3 signCol = bh < 0.2 ? vec3(0.06, 0.12, 0.1) : bh < 0.4 ? vec3(0.42, 0.06, 0.04) : bh < 0.6 ? vec3(0.05, 0.08, 0.2) : bh < 0.8 ? vec3(0.55, 0.36, 0.06) : vec3(0.03, 0.03, 0.035);
+                vec3 signCol = sk < 0.5 ? vec3(0.06, 0.12, 0.1) : sk < 1.5 ? vec3(0.42, 0.06, 0.04) : sk < 2.5 ? vec3(0.05, 0.08, 0.2)
+                  : sk < 3.5 ? vec3(0.55, 0.36, 0.06) : sk < 4.5 ? vec3(0.03, 0.03, 0.035) : sk < 5.5 ? vec3(0.62, 0.6, 0.55) : vec3(0.3, 0.07, 0.2);
+                vec3 letterCol = sk < 4.5 ? (mod(sk, 2.0) < 0.5 ? vec3(0.92, 0.86, 0.72) : vec3(0.85, 0.66, 0.25)) : vec3(0.08, 0.07, 0.06);
+                vec3 doorCol = dk < 0.5 ? vec3(0.04, 0.16, 0.09) : dk < 1.5 ? vec3(0.3, 0.04, 0.04) : dk < 2.5 ? vec3(0.04, 0.07, 0.18)
+                  : dk < 3.5 ? vec3(0.025, 0.025, 0.028) : dk < 4.5 ? vec3(0.03, 0.2, 0.2) : dk < 5.5 ? vec3(0.5, 0.36, 0.06) : vec3(0.3, 0.17, 0.08);
                 // letters: blocky glyph marks centred on the fascia
                 float lx = f.x * 9.0 + mod(id.x, 2.0) * 9.0;
                 float letter = step(0.35, cHash(vec2(floor(lx * 1.0), bay + sd))) * step(0.15, fract(lx)) * step(fract(lx), 0.85)
                   * step(0.805, f.y) * step(f.y, 0.905) * step(1.5, lx) * step(lx, 16.5) * (1.0 - far);
                 wall = mix(wall, signCol, fascia);
-                wall = mix(wall, vec3(0.92, 0.86, 0.72), fascia * letter);
+                wall = mix(wall, letterCol, fascia * letter);
                 wall = mix(wall, wall * 0.5 + vec3(0.03), kick);
-                wall = mix(wall, vec3(0.08, 0.06, 0.05), doorM);
+                // round 28: coloured door with a glazed upper panel and a brass handle
+                float dpanel = door * boxMask(f, vec2(0.5, 0.52), vec2(0.1, 0.14));
+                float dknob = door * boxMask(f, vec2(0.6, 0.33), vec2(0.012, 0.02));
+                wall = mix(wall, doorCol, doorM);
+                wall = mix(wall, vec3(0.1, 0.12, 0.13), dpanel);
+                wall = mix(wall, vec3(0.75, 0.6, 0.3), dknob);
                 gEmissive += fascia * letter * vec3(1.0, 0.8, 0.5) * (uLitAmount * 2.2) * step(0.45, bh);
                 gH += fascia * 0.6 - glz * 0.6 + pier * 0.4;
                 win = glz;
@@ -211,10 +252,10 @@ export function createCityMaterial(): CityMaterial {
                 gLitCol = mix(vec3(1.0, 0.78, 0.5), vec3(0.95, 0.9, 0.78), hue) * mix(vec3(0.3), goods * 1.4 + 0.15, item);
                 gLit = lit * glz * (0.35 + 0.65 * smoothstep(0.0, 1.0, lp.y)) * (0.45 + uLitAmount * 1.5);
                 // some bays are a residential entrance: wall, a panelled door and a transom, no shop window
-                if (bh < 0.22) {
+                if (home > 0.5) {
                   float rdoor = boxMask(f, vec2(0.5, 0.33), vec2(0.13, 0.33));
                   float transom = boxMask(f, vec2(0.5, 0.72), vec2(0.13, 0.04));
-                  wall = mix(wall, vec3(0.12, 0.07, 0.05) * (0.85 + 0.15 * step(0.5, fract(f.y * 6.0))), rdoor);
+                  wall = mix(wall, doorCol * (0.85 + 0.15 * step(0.5, fract(f.y * 6.0))) + vec3(0.02), rdoor);
                   win = transom; glass = vec3(0.1, 0.12, 0.14);
                   gLit = transom * lit * 0.6; gLitCol = vec3(1.0, 0.75, 0.45);
                 }
@@ -290,7 +331,18 @@ export function createCityMaterial(): CityMaterial {
               vec2 ft = abs(fract(t) - 0.5);
               float line = smoothstep(0.47, 0.5, max(ft.x, ft.y));
               float n = cNoise(floor(t) * 1.7);
-              diffuseColor.rgb *= (0.92 + n * 0.12) * (1.0 - line * 0.18);
+              // round 28: near the camera the procedural grid gives way to real concrete slabs (Poly Haven)
+              line *= 1.0 - dNear;
+              diffuseColor.rgb *= (0.92 + n * 0.12 * (1.0 - dNear * 0.6)) * (1.0 - line * 0.18);
+              if (dNear > 0.001) {
+                vec2 puv = vCityPos.xz / 1.8;
+                vec3 pa = texture2D(uPaveTex, puv).rgb;
+                float pl = texLum(pa), pm = texLum(textureLod(uPaveTex, puv, 9.0).rgb);
+                diffuseColor.rgb *= mix(vec3(1.0), clamp(pa / max(vec3(pm), vec3(0.04)), 0.45, 1.5), 0.9 * dNear);
+                gTexN = (texture2D(uPaveNor, puv).xy * 2.0 - 1.0) * dNear;
+                gTexT = vec3(1.0, 0.0, 0.0);
+                gTexB = vec3(0.0, 0.0, -1.0);
+              }
             } else {
               diffuseColor.rgb = vec3(0.68, 0.66, 0.63);
             }
@@ -345,6 +397,9 @@ export function createCityMaterial(): CityMaterial {
             float det = dot(dpx, r1);
             vec3 grad = sign(det) * (hx * r1 + hy * r2);
             normal = normalize(abs(det) * normal - grad);
+            // round 28: the detail textures' normal maps (world-aligned tangent frame), not on glass
+            vec3 tv = normalize((viewMatrix * vec4(gTexT, 0.0)).xyz), bv = normalize((viewMatrix * vec4(gTexB, 0.0)).xyz);
+            normal = normalize(normal + (gTexN.x * tv + gTexN.y * bv) * (1.0 - gWin));
           }`,
         )
         .replace(
@@ -361,6 +416,23 @@ export function createCityMaterial(): CityMaterial {
         );
   };
   material.userData.uniforms = uniforms;
-  material.customProgramCacheKey = () => 'drone-dash-city-v2';
+  material.customProgramCacheKey = () => 'drone-dash-city-v3';
   return material;
+}
+
+function flatTexture(r: number, g: number, b: number): THREE.DataTexture {
+  const t = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1);
+  t.needsUpdate = true;
+  return t;
+}
+
+/** Round 28: swap in the Poly Haven detail textures (wall plaster and concrete paving, albedo and normal). */
+export function setCityDetailTextures(material: CityMaterial, tex: { wall: THREE.Texture; wallN: THREE.Texture; pave: THREE.Texture; paveN: THREE.Texture }): void {
+  const u = material.userData.uniforms!;
+  for (const [k, t] of [['uWallTex', tex.wall], ['uWallNor', tex.wallN], ['uPaveTex', tex.pave], ['uPaveNor', tex.paveN]] as const) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 4;
+    u[k].value = t;
+  }
+  u.uDetail.value = 1;
 }

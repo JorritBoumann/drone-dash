@@ -5,6 +5,9 @@ import type { CityLayout } from './CityGenerator';
 import { asphaltTexture, waterNormalTexture } from './Textures';
 import { Traffic } from './Traffic';
 import { Pedestrians } from './Pedestrians';
+import { lotHash } from './BuildingDetail';
+import { StreetProps } from './StreetProps';
+import type { StreetAssetSet } from './StreetAssets';
 
 export const PALETTE = {
   skyTop: new THREE.Color('#3f6fb8'),
@@ -198,6 +201,15 @@ export class Environment {
   private focusVx = 0;
   private focusVz = 0;
   private readonly treeMaterials: THREE.MeshStandardMaterial[] = [];
+  private readonly groundMat: THREE.MeshStandardMaterial;
+  /** Round 28: CC0 street furniture (after the assets load) and the near-tree models (two species, distance LOD). */
+  streetProps: StreetProps | null = null;
+  private treeLod: Array<{ rec: PropRec; species: number; matrix: THREE.Matrix4; color: THREE.Color; blob: PropRec['parts']; state: number }> = [];
+  private treeNear: Array<{ trunk: THREE.InstancedMesh; canopy: THREE.InstancedMesh }> = [];
+  private treeRange = 95;
+  treesNear = [0, 0];
+  readonly mobile: boolean;
+  assetsOn = false;
   private readonly dummy = new THREE.Object3D();
   readonly props: PropRec[] = [];
   // round 18: rush lanes (two streets that light up at rush hour) and the hover-vans that stream along them
@@ -206,16 +218,19 @@ export class Environment {
   private laneMat: THREE.MeshStandardMaterial | null = null;
 
   constructor(private readonly layout: CityLayout, seed: number, mood = 0, mobile = false) {
+    this.mobile = mobile;
+    this.treeRange = mobile ? 62 : 80;
     const rng = createSeededRandom(seed * 31 + 7);
     const e = layout.half + 2;
 
     // Asphalt base
     const asphalt = asphaltTexture();
     asphalt.repeat.set((e * 2) / 14, (e * 2) / 14);
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(e * 2, e * 2),
-      new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.92, metalness: 0, envMapIntensity: 0.4 }),
-    );
+    // round 28: a flat normal map from the start, so swapping in the Poly Haven asphalt later needs no shader recompile
+    const flatN = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1);
+    flatN.needsUpdate = true;
+    this.groundMat = new THREE.MeshStandardMaterial({ map: asphalt, normalMap: flatN, roughness: 0.92, metalness: 0, envMapIntensity: 0.4 });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(e * 2, e * 2), this.groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     ground.name = 'asphalt';
@@ -439,6 +454,7 @@ export class Environment {
         parts: [{ mesh: trunk, index: i, matrix: this.dummy.matrix.clone() }],
       };
       recs.set(t, rec);
+      this.treeRecs.push({ t, rec, rot: this.dummy.rotation.y });
       this.props.push(rec);
     });
     round.forEach((t, i) => {
@@ -464,10 +480,124 @@ export class Environment {
       m.castShadow = true;
       m.receiveShadow = true;
     }
+    this.blobCanopy = canopy;
     trunk.name = 'tree-trunks';
     canopy.name = 'tree-canopies';
     pine.name = 'tree-pines';
     return [trunk, canopy, pine];
+  }
+
+  private readonly treeRecs: Array<{ t: TreeSpecLike; rec: PropRec; rot: number }> = [];
+  private blobCanopy: THREE.InstancedMesh | null = null;
+
+  /**
+   * Round 28: swap in the CC0 assets (once loaded): car models, street furniture, two tree species near the camera, and
+   * the Poly Haven asphalt. Called by the game after the first frames, so nothing here delays the start.
+   */
+  applyAssets(a: StreetAssetSet): THREE.Object3D[] {
+    const added: THREE.Object3D[] = [];
+    this.traffic.setCarModels(a.cars);
+    // asphalt: albedo and normal at life size (3 m tile)
+    const e = this.layout.half + 2;
+    a.tex.asphalt.repeat.set((e * 2) / 3, (e * 2) / 3);
+    a.tex.asphaltN.repeat.copy(a.tex.asphalt.repeat);
+    a.tex.asphalt.anisotropy = a.tex.asphaltN.anisotropy = 8;
+    this.groundMat.map = a.tex.asphalt;
+    this.groundMat.normalMap = a.tex.asphaltN;
+    this.groundMat.normalScale.set(0.8, 0.8);
+    this.groundMat.color.set('#c9c2ba');
+    this.groundMat.needsUpdate = false;
+    // street furniture
+    this.streetProps = new StreetProps(this.layout.props, a.props, this.mobile ? 60 : 80);
+    added.push(this.streetProps.mesh);
+    // trees: round street trees and park trees become one of two species near the camera; pines stay
+    const species = ['tree_round', 'tree_oak'];
+    const counts = [0, 0];
+    const list: typeof this.treeLod = [];
+    for (const { t, rec, rot } of this.treeRecs) {
+      if (t.pine) continue;
+      const sp = lotHash(t.x, t.z, 3) < 0.55 ? 0 : 1;
+      counts[sp]++;
+      this.dummy.position.set(t.x, t.y, t.z);
+      this.dummy.rotation.set(0, rot, 0);
+      this.dummy.scale.set(t.scale * 1.05, t.scale * 0.96, t.scale * 1.05);
+      this.dummy.updateMatrix();
+      list.push({ rec, species: sp, matrix: this.dummy.matrix.clone(), color: t.color, blob: rec.parts, state: -1 });
+    }
+    for (let sp = 0; sp < 2; sp++) {
+      const parts = a.trees.get(species[sp]);
+      const trunkG = parts?.get('trunk'), canopyG = parts?.get('canopy');
+      if (!trunkG || !canopyG) return added;
+      const trunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+      const canopyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true });
+      this.addSway(canopyMat, -2.2);
+      const cap = Math.max(1, counts[sp]);
+      const trunk = new THREE.InstancedMesh(trunkG, trunkMat, cap);
+      const canopy = new THREE.InstancedMesh(canopyG, canopyMat, cap);
+      canopy.setColorAt(0, new THREE.Color());
+      for (const m of [trunk, canopy]) { m.count = 0; m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; }
+      trunk.name = `tree-${species[sp]}-trunks`;
+      canopy.name = `tree-${species[sp]}-canopies`;
+      this.treeNear.push({ trunk, canopy });
+      added.push(trunk, canopy);
+    }
+    this.pendingTreeLod = list;
+    return added;
+  }
+
+  private pendingTreeLod: typeof this.treeLod = [];
+  /** Round 28: switch the trees over once their models are compiled and in the scene. */
+  commitAssets(): void {
+    this.treeLod = this.pendingTreeLod;
+    for (const t of this.treeLod) t.rec.parts = []; // the occlusion pass only sets `hidden` now; updateTreeLod writes the matrices
+    this.assetsOn = true;
+    this.updateTreeLod(this.focusCam, true);
+  }
+
+  /** Round 28: trees within range of the camera use the CC0 models, the rest keep the light blob; hidden ones neither. */
+  private lodCam = new THREE.Vector3(1e9, 0, 0);
+  updateTreeLod(cam: THREE.Vector3, force = false): void {
+    if (!this.treeLod.length) return;
+    // the model range shrinks with camera height (from 25 m up), where a tree is a few pixels wide
+    const tr = this.treeRange * (cam.y > 25 ? Math.max(0.55, 1 - (cam.y - 25) / 60) : 1);
+    const r2 = tr * tr;
+    let changed = force;
+    for (const t of this.treeLod) {
+      const dx = t.rec.x - cam.x, dz = t.rec.z - cam.z;
+      const st = t.rec.hidden ? 2 : dx * dx + dz * dz < r2 ? 1 : 0;
+      if (st !== t.state) { t.state = st; changed = true; }
+    }
+    if (!changed) return;
+    this.lodCam.copy(cam);
+    const n = [0, 0];
+    const dirty = new Set<THREE.InstancedMesh>();
+    // the blob canopies are compacted (only far trees drawn); trunks share one mesh with the pines, so they are zeroed
+    let nb = 0;
+    const bc = this.blobCanopy;
+    for (const t of this.treeLod) {
+      for (const p of t.blob) {
+        if (p.mesh === bc) {
+          if (t.state === 0) { bc.setMatrixAt(nb, p.matrix); bc.setColorAt(nb, t.color); nb++; }
+          continue;
+        }
+        p.mesh.setMatrixAt(p.index, t.state === 0 ? p.matrix : ZERO); dirty.add(p.mesh);
+      }
+      if (t.state !== 1) continue;
+      const near = this.treeNear[t.species];
+      if (!near) continue;
+      const k = n[t.species]++;
+      near.trunk.setMatrixAt(k, t.matrix);
+      near.canopy.setMatrixAt(k, t.matrix);
+      near.canopy.setColorAt(k, t.color);
+    }
+    this.treeNear.forEach((m, sp) => {
+      m.trunk.count = m.canopy.count = n[sp];
+      m.trunk.instanceMatrix.needsUpdate = m.canopy.instanceMatrix.needsUpdate = true;
+      if (m.canopy.instanceColor) m.canopy.instanceColor.needsUpdate = true;
+    });
+    for (const m of dirty) m.instanceMatrix.needsUpdate = true;
+    if (bc) { bc.count = nb; bc.instanceMatrix.needsUpdate = true; if (bc.instanceColor) bc.instanceColor.needsUpdate = true; }
+    this.treesNear = n;
   }
 
   private addSway(material: THREE.MeshStandardMaterial, base: number): void {
@@ -594,6 +724,7 @@ export class Environment {
     }
     for (const m of dirty) m.instanceMatrix.needsUpdate = true;
     this.hiddenProps = this.props.reduce((n, p) => n + (p.hidden ? 1 : 0), 0);
+    this.updateTreeLod(cam);
   }
 
   /** Round 22: CPU ms per frame of the traffic and people updates (smoothed), and switches for perf comparisons. */
@@ -621,6 +752,8 @@ export class Environment {
       this.laneMat.emissiveIntensity = this.rushLevel * (0.85 + 0.25 * Math.sin(time * 3.2));
     }
     this.waterNormal.offset.set(time * 0.004, time * 0.0025);
+    this.updateTreeLod(this.focusCam);
+    this.streetProps?.update(this.focusCam);
     for (const m of this.treeMaterials) {
       const shader = m.userData.shader as { uniforms: Record<string, THREE.IUniform> } | undefined;
       if (shader) shader.uniforms.uTime.value = time;

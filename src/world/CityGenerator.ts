@@ -15,6 +15,12 @@ export type SiteKind = 'rooftop' | 'doorstep' | 'depot' | 'park';
 export type Site = { id: number; pos: THREE.Vector3; kind: SiteKind; name: string; radius: number };
 export type TreeSpec = { x: number; y: number; z: number; scale: number; color: THREE.Color; pine: boolean };
 export type LampSpec = { x: number; z: number; rot: number };
+/** Round 28: street furniture kinds (CC0 models plus a few procedural ones, see StreetProps.ts). */
+export const PROP = { bench: 0, bin: 1, hydrant: 2, bollard: 3, planter: 4, table: 5, chair: 6, aboard: 7, bikerack: 8, busstop: 9 } as const;
+export const PROP_NAMES = ['bench', 'bin', 'hydrant', 'bollard', 'planter', 'table', 'chair', 'aboard', 'bikerack', 'busstop'];
+export type PropSpec = { kind: number; x: number; y: number; z: number; rot: number };
+/** Round 28: one shop bay on a street face (for the shop-front audit): sign variant (7 = home entrance), door colour, awning colour (-1 none). */
+export type ShopBay = { axis: 'x' | 'z'; n: number; line: number; lo: number; hi: number; k: number; sign: number; door: number; awn: number };
 
 export type CityLayout = {
   blocks: number;
@@ -39,6 +45,10 @@ export type CityLayout = {
   gridGraph: StreetGraph;
   /** Round 27: every regular building's footprint, height, style and archetype (the facade detail kit reads these). */
   buildings: BuildingSpec[];
+  /** Round 28: street furniture on the sidewalks (drawn only, no colliders). */
+  props: PropSpec[];
+  /** Round 28: every shop bay on a street face. */
+  shopFronts: ShopBay[];
 };
 
 const FLOOR_H = 3.2;
@@ -94,6 +104,7 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
   let towerNameIdx = randInt(rng, 0, TOWERS.length - 1);
   // round 27: buildings for the detail kit (collected without drawing from rng, so the city layout is unchanged)
   SPECS = [];
+  SHOP_BAYS = [];
 
   const addSite = (pos: THREE.Vector3, kind: SiteKind, name: string, radius: number) => {
     sites.push({ id: sites.length, pos, kind, name, radius });
@@ -470,6 +481,8 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
   const keepTrees = trees.filter((t) => !blockedXZ(t.x, t.z));
   const keepLamps = lamps.filter((l) => !blockedXZ(l.x, l.z));
   const keepColliders = colliders.filter((b) => !b.soft || !blockedXZ((b.minX + b.maxX) / 2, (b.minZ + b.maxZ) / 2));
+  // round 28: street furniture along the curbs (no rng draws, so the rest of the city is unchanged)
+  const props = placeStreetProps(blocks, B, R, half, special, sites, keepLamps, keepTrees, blockedXZ);
 
   const features: CityFeature[] = [];
   for (const b of boulevards) {
@@ -514,6 +527,8 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
     geometry: gb.build(),
     buildingCount,
     buildings: SPECS,
+    props,
+    shopFronts: SHOP_BAYS,
   };
 }
 
@@ -544,7 +559,7 @@ function addBuilding(
   if (chance(rng, 0.08)) floors += randInt(rng, 2, 6);
   const tall = floors >= 11;
   const y0 = SIDEWALK_H;
-  const seed = Math.floor(rng() * 256);
+  let seed = Math.floor(rng() * 256);
 
   let style: number;
   if (tall) style = pick(rng, [Style.ribbon, Style.curtain, Style.ribbon, Style.punched]);
@@ -555,6 +570,10 @@ function addBuilding(
   const trim = color(pick(rng, TRIM), 0.2, rng);
   const inset = tall ? 0.6 : range(rng, 0.0, 0.5);
   const bx0 = x0 + inset, bz0 = z0 + inset, bx1 = x1 - inset, bz1 = z1 - inset;
+  // round 28: the seed also picks the shop fronts' signs and door colours (per bay, in the shader). Step it (no rng draw)
+  // until no bay on a street face matches its neighbour bay on the next building in sign or door colour.
+  const shopFaces = style <= Style.tall ? shopFacesOf(bx0, bz0, bx1, bz1, edges) : [];
+  if (shopFaces.length) seed = pickShopSeed(seed, shopFaces);
 
   const gabled = floors <= 4 && chance(rng, 0.6);
   let top = y0 + floors * FLOOR_H;
@@ -579,8 +598,9 @@ function addBuilding(
   gb.box(bx0 - 0.08, y0 + FLOOR_H - 0.25, bz0 - 0.08, bx1 + 0.08, y0 + FLOOR_H + 0.1, bz1 + 0.08, trim, Style.plain);
 
   // awnings on street faces
+  let awnOff = -1;
   if (!tall && chance(rng, 0.65)) {
-    const aw = color(pick(rng, AWNINGS), 0.3, rng);
+    void color(pick(rng, AWNINGS), 0.3, rng); // round 28: the old single colour draw, kept so the city's random stream is unchanged
     const ay = y0 + 2.5;
     // round 15: awnings reach 0.5 m (was 1.1 m) so they never hang over a doorstep pad 1.5 m out from the lot edge
     const ad = AWNING_DEPTH;
@@ -589,12 +609,27 @@ function addBuilding(
     if (edges.edgeS) boxes.push({ minX: bx0 + 0.8, minY: ay, minZ: bz1, maxX: bx1 - 0.8, maxY: ay + 0.35, maxZ: bz1 + ad });
     if (edges.edgeW) boxes.push({ minX: bx0 - ad, minY: ay, minZ: bz0 + 0.8, maxX: bx0, maxY: ay + 0.35, maxZ: bz1 - 0.8 });
     if (edges.edgeE) boxes.push({ minX: bx1, minY: ay, minZ: bz0 + 0.8, maxX: bx1 + ad, maxY: ay + 0.35, maxZ: bz1 - 0.8 });
+    // round 28: one awning colour per shop bay, stepping through the palette so neighbours never match
+    awnOff = pickAwningOffset(shopFaces, lotHash(bx0, bz0, 5));
     for (const b of boxes) {
       // round 27: a sloped, striped awning with a valance, inside the same box (the pad audit keeps the box)
-      awningShape(gb, b, edges, bx0, bz0, bx1, bz1, aw);
+      const face = shopFaces.find((f) => boxOnFace(b, f));
+      if (face && style <= Style.tall) {
+        for (const bay of face.bays) {
+          const lo = Math.max(bay.lo, face.axis === 'x' ? b.minX : b.minZ), hi = Math.min(bay.hi, face.axis === 'x' ? b.maxX : b.maxZ);
+          if (hi - lo < 0.3) continue;
+          const seg: Box = face.axis === 'x' ? { ...b, minX: lo, maxX: hi } : { ...b, minZ: lo, maxZ: hi };
+          const k = awningIndex(awnOff, bay.k);
+          awningShape(gb, seg, edges, bx0, bz0, bx1, bz1, color(AWNINGS[k]), k);
+        }
+      } else {
+        const k = awningIndex(Math.max(0, awnOff), 0);
+        awningShape(gb, b, edges, bx0, bz0, bx1, bz1, color(AWNINGS[k]), k);
+      }
       awnings.push(b);
     }
   }
+  if (shopFaces.length) registerShopFaces(shopFaces, seed, awnOff);
 
   let roofX0 = bx0, roofZ0 = bz0, roofX1 = bx1, roofZ1 = bz1;
 
@@ -748,6 +783,137 @@ function cornice(gb: GeometryBuilder, x0: number, z0: number, x1: number, z1: nu
 
 /** Round 27: the detail kit's building list for the city being generated (null outside generateCity). */
 let SPECS: BuildingSpec[] | null = null;
+let SHOP_BAYS: ShopBay[] = [];
+
+// ------------------------------------------------------------------------------------------------------------------
+// Round 28: shop-front variety. The facade shader draws one sign and one door per bay (two window columns) of a ground
+// floor shop front: sign = (seed + bay) mod 8 (7 is a home entrance), door colour = (3 seed + 3 bay) mod 7. Within a
+// building neighbouring bays always differ; across buildings the seed is stepped until the touching bays differ too.
+// ------------------------------------------------------------------------------------------------------------------
+type ShopFace = { axis: 'x' | 'z'; n: number; line: number; bays: Array<{ k: number; lo: number; hi: number }> };
+export const shopSign = (sd: number, k: number) => (sd + k) % 8;
+export const shopDoor = (sd: number, k: number) => (sd * 3 + k * 3) % 7;
+const awningIndex = (off: number, k: number) => (off + 2 * k) % 7;
+
+function shopFacesOf(bx0: number, bz0: number, bx1: number, bz1: number, edges: Edges): ShopFace[] {
+  const out: ShopFace[] = [];
+  const face = (axis: 'x' | 'z', n: number, line: number, a: number, b: number, fromHigh: boolean) => {
+    const w = b - a, cols = Math.max(1, Math.round(w / 2.7)), cw = w / cols;
+    const bays: ShopFace['bays'] = [];
+    for (let k = 0; k * 2 < cols; k++) {
+      const s0 = 2 * k * cw, s1 = Math.min(w, (2 * k + 2) * cw);
+      bays.push(fromHigh ? { k, lo: b - s1, hi: b - s0 } : { k, lo: a + s0, hi: a + s1 });
+    }
+    out.push({ axis, n, line, bays });
+  };
+  // the facade u runs from maxX on north faces, from minX on south faces, from minZ on west faces, from maxZ on east faces
+  if (edges.edgeN) face('x', -1, bz0, bx0, bx1, true);
+  if (edges.edgeS) face('x', 1, bz1, bx0, bx1, false);
+  if (edges.edgeW) face('z', -1, bx0, bz0, bz1, false);
+  if (edges.edgeE) face('z', 1, bx1, bz0, bz1, true);
+  return out;
+}
+function neighbours(f: ShopFace, bay: { lo: number; hi: number }): ShopBay[] {
+  return SHOP_BAYS.filter((o) => o.axis === f.axis && o.n === f.n && Math.abs(o.line - f.line) < 2.5
+    && Math.max(o.lo, bay.lo) - Math.min(o.hi, bay.hi) > -0.5 && Math.max(o.lo, bay.lo) - Math.min(o.hi, bay.hi) < 4);
+}
+function pickShopSeed(seed: number, faces: ShopFace[]): number {
+  for (let i = 0; i < 256; i++) {
+    const sd = (seed + i) % 256;
+    const ok = faces.every((f) => f.bays.every((b) => neighbours(f, b).every((o) => o.sign !== shopSign(sd, b.k) && o.door !== shopDoor(sd, b.k))));
+    if (ok) return sd;
+  }
+  return seed;
+}
+function pickAwningOffset(faces: ShopFace[], h: number): number {
+  const base = Math.floor(h * 7);
+  for (let i = 0; i < 7; i++) {
+    const off = (base + i) % 7;
+    if (faces.every((f) => f.bays.every((b) => neighbours(f, b).every((o) => o.awn !== awningIndex(off, b.k))))) return off;
+  }
+  return base;
+}
+function registerShopFaces(faces: ShopFace[], sd: number, awnOff: number): void {
+  for (const f of faces) for (const b of f.bays) {
+    SHOP_BAYS.push({ axis: f.axis, n: f.n, line: f.line, lo: b.lo, hi: b.hi, k: b.k, sign: shopSign(sd, b.k), door: shopDoor(sd, b.k), awn: awnOff < 0 ? -1 : awningIndex(awnOff, b.k) });
+  }
+}
+function boxOnFace(b: Box, f: ShopFace): boolean {
+  if (f.axis === 'x') return Math.abs((f.n < 0 ? b.maxZ : b.minZ) - f.line) < 1e-3;
+  return Math.abs((f.n < 0 ? b.maxX : b.minX) - f.line) < 1e-3;
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// Round 28: street furniture. Slots every 3.4 m along each curb (0.45 to 1.0 m in from it, the strip the lamps and
+// trees use), kinds picked by a position hash. Never on pads (any ground site, plus 1.8 m), alley mouths, tunnel
+// arches or the diagonal (the same clear zones as the trees), never on a road, and clear of lamps and trunks.
+// ------------------------------------------------------------------------------------------------------------------
+function placeStreetProps(
+  blocks: number, B: number, R: number, half: number, special: Map<string, 'park' | 'depot'>, sites: Site[],
+  lamps: LampSpec[], trees: TreeSpec[], blockedXZ: (x: number, z: number) => boolean,
+): PropSpec[] {
+  const out: PropSpec[] = [];
+  const pads = sites.filter((s) => s.pos.y < 4);
+  const clear = (x: number, z: number, r: number) =>
+    !blockedXZ(x, z)
+    && pads.every((p) => Math.hypot(p.pos.x - x, p.pos.z - z) > p.radius + 1.8 + r)
+    && lamps.every((l) => Math.hypot(l.x - x, l.z - z) > 1.2 + r)
+    && trees.every((t) => Math.hypot(t.x - x, t.z - z) > 1.5 + r);
+  const y = SIDEWALK_H;
+  for (let bi = 0; bi < blocks; bi++) for (let bj = 0; bj < blocks; bj++) {
+    const x0 = -half + R + bi * (B + R), z0 = -half + R + bj * (B + R), x1 = x0 + B, z1 = z0 + B;
+    const type = special.get(`${bi},${bj}`);
+    // edges: start point, direction along the curb, inward normal, rotation of an object lying along the curb
+    const edges: Array<{ ax: number; az: number; dx: number; dz: number; nx: number; nz: number; rot: number; skip: boolean }> = [
+      { ax: x0, az: z0, dx: 1, dz: 0, nx: 0, nz: 1, rot: 0, skip: type === 'depot' },
+      { ax: x0, az: z1, dx: 1, dz: 0, nx: 0, nz: -1, rot: Math.PI, skip: false },
+      { ax: x0, az: z0, dx: 0, dz: 1, nx: 1, nz: 0, rot: -Math.PI / 2, skip: false },
+      { ax: x1, az: z0, dx: 0, dz: 1, nx: -1, nz: 0, rot: Math.PI / 2, skip: false },
+    ];
+    const busEdge = Math.floor(lotHash(x0, z0, 31) * 6); // 0..3: this edge has a bus stop; 4, 5: none
+    edges.forEach((e, ei) => {
+      if (e.skip) return;
+      const at = (t: number, d: number) => ({ x: e.ax + e.dx * t + e.nx * d, z: e.az + e.dz * t + e.nz * d });
+      // bollards at both corners, just inside the crossing
+      for (const t of [2.3, 3.2, B - 3.2, B - 2.3]) {
+        const p = at(t, 0.42);
+        if (clear(p.x, p.z, 0.15)) out.push({ kind: PROP.bollard, x: p.x, y, z: p.z, rot: e.rot });
+      }
+      let hydrants = 0;
+      for (let t = 4.8, slot = 0; t <= B - 4.8; t += 2.8, slot++) {
+        const h = lotHash(e.ax + e.dx * t, e.az + e.dz * t, 17 + ei);
+        if (ei === busEdge && slot === 3) {
+          const p = at(t, 0.55), q = at(t + 1.4, 0.95);
+          if (clear(p.x, p.z, 0.3) && clear(q.x, q.z, 0.9)) {
+            out.push({ kind: PROP.busstop, x: p.x, y, z: p.z, rot: e.rot });
+            out.push({ kind: PROP.bench, x: q.x, y, z: q.z, rot: e.rot });
+            continue;
+          }
+        }
+        if (h < 0.15) { const p = at(t, 0.95); if (clear(p.x, p.z, 0.9)) out.push({ kind: PROP.bench, x: p.x, y, z: p.z, rot: e.rot }); }
+        else if (h < 0.33) { const p = at(t, 0.6); if (clear(p.x, p.z, 0.3)) out.push({ kind: PROP.bin, x: p.x, y, z: p.z, rot: e.rot + h * 9 }); }
+        else if (h < 0.43) {
+          const p = at(t, 0.5);
+          if (hydrants < 1 && clear(p.x, p.z, 0.25)) { out.push({ kind: PROP.hydrant, x: p.x, y, z: p.z, rot: e.rot + h * 20 }); hydrants++; }
+        } else if (h < 0.57) { const p = at(t, 0.8); if (clear(p.x, p.z, 0.45)) out.push({ kind: PROP.planter, x: p.x, y, z: p.z, rot: h * 30 }); }
+        else if (h < 0.68) { const p = at(t, 0.62); if (clear(p.x, p.z, 0.9)) out.push({ kind: PROP.bikerack, x: p.x, y, z: p.z, rot: e.rot }); }
+        else if (h < 0.8 && type !== 'park') {
+          // a cafe table with a chair either side (along the curb, so the walkers' strip stays clear)
+          const p = at(t, 1.0);
+          if (clear(p.x, p.z, 1.0)) {
+            out.push({ kind: PROP.table, x: p.x, y, z: p.z, rot: h * 40 });
+            for (const sgn of [-1, 1]) {
+              const c = at(t + sgn * 0.75, 1.0);
+              out.push({ kind: PROP.chair, x: c.x, y, z: c.z, rot: e.rot + (sgn < 0 ? Math.PI / 2 : -Math.PI / 2) });
+            }
+          }
+        } else if (h < 0.9 && type !== 'park') { const p = at(t, 0.9); if (clear(p.x, p.z, 0.4)) out.push({ kind: PROP.aboard, x: p.x, y, z: p.z, rot: e.rot + Math.PI / 2 }); }
+        else { const p = at(t, 0.6); if (clear(p.x, p.z, 0.3)) out.push({ kind: PROP.bin, x: p.x, y, z: p.z, rot: e.rot + h * 9 }); }
+      }
+    });
+  }
+  return out;
+}
 
 /** Round 27: wall material per archetype, read by the city shader (0 plaster, 1 brick, 2 concrete, 3 stone, 4 metal and glass). */
 const MATERIAL: Record<Archetype, number> = { townhouse: 0, walkup: 1, apartments: 2, classic: 3, office: 4, glass: 4 };
@@ -765,7 +931,7 @@ function archetypeOf(style: number, floors: number, tall: boolean, gabled: boole
 }
 
 /** Round 27: a sloped awning with a striped canopy and a valance, filling the given box (wall side high, street side low). */
-function awningShape(gb: GeometryBuilder, b: Box, edges: Edges, bx0: number, bz0: number, bx1: number, bz1: number, c: THREE.Color): void {
+function awningShape(gb: GeometryBuilder, b: Box, edges: Edges, bx0: number, bz0: number, bx1: number, bz1: number, c: THREE.Color, sd = 0): void {
   const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
   const val = 0.16;
   // outward axis: which face the box sits on
@@ -782,14 +948,14 @@ function awningShape(gb: GeometryBuilder, b: Box, edges: Edges, bx0: number, bz0
   }
   const st = len / 0.5;
   // canopy (both windings so it shows from above and below)
-  gb.tri(wallA, outA, outB, c, Style.awning, 0, [[0, 0], [0, 0], [st, 0]]);
-  gb.tri(wallA, outB, wallB, c, Style.awning, 0, [[0, 0], [st, 0], [st, 0]]);
-  gb.tri(wallA, outB, outA, c, Style.awning, 0, [[0, 0], [st, 0], [0, 0]]);
-  gb.tri(wallA, wallB, outB, c, Style.awning, 0, [[0, 0], [st, 0], [st, 0]]);
+  gb.tri(wallA, outA, outB, c, Style.awning, sd, [[0, 0], [0, 0], [st, 0]]);
+  gb.tri(wallA, outB, wallB, c, Style.awning, sd, [[0, 0], [st, 0], [st, 0]]);
+  gb.tri(wallA, outB, outA, c, Style.awning, sd, [[0, 0], [st, 0], [0, 0]]);
+  gb.tri(wallA, wallB, outB, c, Style.awning, sd, [[0, 0], [st, 0], [st, 0]]);
   // valance
   const dA = outA.clone().setY(b.minY), dB = outB.clone().setY(b.minY);
-  gb.tri(outA, dA, dB, c, Style.awning, 0, [[0, 1], [0, 1], [st, 1]]);
-  gb.tri(outA, dB, outB, c, Style.awning, 0, [[0, 1], [st, 1], [st, 1]]);
-  gb.tri(outA, dB, dA, c, Style.awning, 0, [[0, 1], [st, 1], [0, 1]]);
-  gb.tri(outA, outB, dB, c, Style.awning, 0, [[0, 1], [st, 1], [st, 1]]);
+  gb.tri(outA, dA, dB, c, Style.awning, sd, [[0, 1], [0, 1], [st, 1]]);
+  gb.tri(outA, dB, outB, c, Style.awning, sd, [[0, 1], [st, 1], [st, 1]]);
+  gb.tri(outA, dB, dA, c, Style.awning, sd, [[0, 1], [st, 1], [0, 1]]);
+  gb.tri(outA, outB, dB, c, Style.awning, sd, [[0, 1], [st, 1], [st, 1]]);
 }

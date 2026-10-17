@@ -15,3 +15,6 @@ progress/**/*.jpg
 progress/**/*.jpeg
 progress/**/*.wav
 progress/**/*.webm
+
+# Round 28: downloaded CC0 originals (Poly Pizza GLBs, Poly Haven 1k JPEGs) stay local; only the optimised files in public/assets are committed
+asset-src/

@@ -1,0 +1,24 @@
+01 B near tie; B trees have real shape (bottom left), ground slightly richer; A trees are pale blobs
+02 B taxi and tree have real shape, paving slabs read as stone, people less blocky; A has box cars and blob trees
+03 B bike racks and bollards on the right pavement, estate car has real shape, asphalt has grain; A ground is spotless
+04 B near tie; buildings identical; B pavement shows furniture specks and slightly darker asphalt grain
+05 B bench, planter, cafe set on the corner, a green awning breaks the repeat; A has a blob tree and one red-white awning along the block
+06 A street furniture on both pavements (bench, planter, posts) and a teal awning feel lived in; B pavement shows slab texture but is empty; close call
+07 B near tie; B trees have a lobed shape and the asphalt has grain; A trees are smooth blobs
+08 tie, slight B; buildings identical; B has a little more on the pavements
+09 A posts and bins on the pavement, yellow and red doors, teal awning, lobed tree; B pavement is empty, black doors repeat, one red awning
+10 tie, slight A; near identical from this height, A road reads a touch busier
+11 A bench, planter, hydrant and posts on the corner, green awning and coloured doors; B empty pavement, blob tree, red-white awning repeat
+12 A same corner at 3 m: bench, planter, hydrant, bollard, green awning; B pavement empty and the shop row is one red-white stripe
+13 A asphalt has cracks and patches, bike rack, bins and posts on the corner, glass canopy shop front; B road and pavement are clean flat colour
+14 A cobbled paving with grain, yellow and red doors, bins and posts by the kerb; B big flat tiles, every door black, one red-white awning
+15 B hydrant, bench, planter, posts, green awning, coloured doors, grained asphalt; A empty pavement and repeated red-white awnings
+16 A cobbled paving, yellow and red doors, posts along the kerb; B flat tiles, black doors, plain pavement
+17 A bike rack, bins, posts, cobbled pavement, cracked asphalt, blue canopy and a red door; B flat pavement and road, red-white awning
+18 tie, slight A; near identical from 38 m, A pavements carry a few more specks
+19 tie, slight A; near identical, no difference I can name with confidence
+20 B bench and posts on cobbled paving, grained asphalt, lobed tree, taxi with a real shape; A box taxi, blob trees, flat pavement
+21 tie, slight B; near identical from 38 m
+22 A bike rack, hydrant and bin on the left pavement, cobbled paving, lobed trees; B plain pavement
+23 B grained asphalt, posts along the kerb, lobed trees; A smooth road and blob trees
+24 B bike racks and posts on the right pavement, grained asphalt, teal canopy, estate car with a real shape; A flat ground

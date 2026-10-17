@@ -1,0 +1,13 @@
+node prop-audit28.mjs > prop-audit-final.log 2>&1
+DUMP=1 node perf-street.mjs > perf-ab-on1.log 2>&1
+DUMP=1 QS='&assets=0' node perf-street.mjs > perf-ab-off1.log 2>&1
+DUMP=1 node perf-street.mjs > perf-ab-on2.log 2>&1
+DUMP=1 QS='&assets=0' node perf-street.mjs > perf-ab-off2.log 2>&1
+DUMP=1 MOBILE=1 node perf-street.mjs > perf-street-m-final.log 2>&1
+SEEDS=130,22 node art28.mjs > art28-final.log 2>&1
+node closeup28.mjs > closeup28-final.log 2>&1
+CASES=all,nodetail,nopeople,bare,all node perf27.mjs > perf27-d-final.log 2>&1
+MOBILE=1 CASES=all,nodetail,nopeople,bare,all node perf27.mjs > perf27-m-final.log 2>&1
+node street-probe.mjs > street-probe-final.log 2>&1
+node acceptance-probe.mjs > flat-final.log 2>&1
+END

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import type { ModelParts } from './StreetAssets';
 
 /**
  * Round 22: procedural street-life kit. Low-poly vehicles (one merged geometry holding every body type, drawn by a single
@@ -95,16 +96,50 @@ function carBody(t: number, L: number, W: number, cabin: Array<[number, number]>
   return out;
 }
 
-export function buildVehicleGeometry(): THREE.BufferGeometry {
+/**
+ * Round 28: a CC0 car model (Kay Lousberg's City Builder cars via Poly Pizza, flattened to vertex colours in Blender and
+ * scaled to the type's box) as vehicle parts: `paint` takes the instance colour, `glass` is glossy, `trim` keeps its own
+ * colours. Head and tail lamps are added as small glowing boxes so dusk and braking still read.
+ */
+function modelBody(t: number, parts: Map<string, THREE.BufferGeometry>): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [];
+  for (const [role, g] of parts) {
+    let n = g.index ? g.toNonIndexed() : g.clone();
+    for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'color') n.deleteAttribute(k);
+    n.computeVertexNormals();
+    const count = n.getAttribute('position').count;
+    const info = new Float32Array(count * 4);
+    const paint = role === 'paint', glass = role === 'glass';
+    for (let i = 0; i < count; i++) { info[i * 4] = t; info[i * 4 + 1] = paint ? 1 : 0; info[i * 4 + 2] = 0; info[i * 4 + 3] = glass ? 1 : 0; }
+    n.setAttribute('vinfo', new THREE.BufferAttribute(info, 4));
+    n.userData = { t, far: paint || glass };
+    out.push(n);
+    n = null as unknown as THREE.BufferGeometry;
+  }
+  const d = VDIM[t];
+  lights(t, out, d.wid / 2 - 0.32, 0.58, d.len / 2 + 0.012, 0.66, -d.len / 2 - 0.012, 0.3, 0.12);
+  return out;
+}
+
+export function buildVehicleGeometry(models?: ModelParts): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
+  const car = (name: string) => models?.get(name);
   // 0 compact hatchback
-  parts.push(...carBody(0, 3.8, 1.72, [[-1.75, 0.8], [0.8, 0.8], [0.12, 1.36], [-1.55, 1.38]], [-1.55, 0.14, 1.4], [-0.62], [-1.22, 1.22], 0.32));
-  // 1 sedan (three-box: bonnet, glass house, boot)
-  parts.push(...carBody(1, 4.5, 1.82, [[-1.45, 0.8], [0.95, 0.8], [0.28, 1.36], [-0.98, 1.36]], [-1.0, 0.3, 1.39], [-0.35], [-1.45, 1.45], 0.33));
+  const m0 = car('car_compact'), m1 = car('car_wagon'), m2 = car('car_taxi');
+  if (m0) parts.push(...modelBody(0, m0));
+  else parts.push(...carBody(0, 3.8, 1.72, [[-1.75, 0.8], [0.8, 0.8], [0.12, 1.36], [-1.55, 1.38]], [-1.55, 0.14, 1.4], [-0.62], [-1.22, 1.22], 0.32));
+  // 1 sedan (three-box: bonnet, glass house, boot); round 28: an estate car model when loaded
+  if (m1) parts.push(...modelBody(1, m1));
+  else parts.push(...carBody(1, 4.5, 1.82, [[-1.45, 0.8], [0.95, 0.8], [0.28, 1.36], [-0.98, 1.36]], [-1.0, 0.3, 1.39], [-0.35], [-1.45, 1.45], 0.33));
   // 2 taxi: the sedan with a lit roof sign and a dark check band
-  parts.push(...carBody(2, 4.5, 1.82, [[-1.45, 0.8], [0.95, 0.8], [0.28, 1.36], [-0.98, 1.36]], [-1.0, 0.3, 1.39], [-0.35], [-1.45, 1.45], 0.33));
-  parts.push(finish(box(0.74, 0.2, 0.3, 0, 1.53, -0.32), '#ffe7a0', 2, { glow: 3 }));
-  parts.push(finish(box(1.84, 0.1, 2.6, 0, 0.66, -0.1), '#22262b', 2));
+  if (m2) {
+    parts.push(...modelBody(2, m2));
+    parts.push(finish(box(0.5, 0.06, 0.2, 0, 1.6, -0.05), '#ffe7a0', 2, { glow: 3 }));
+  } else {
+    parts.push(...carBody(2, 4.5, 1.82, [[-1.45, 0.8], [0.95, 0.8], [0.28, 1.36], [-0.98, 1.36]], [-1.0, 0.3, 1.39], [-0.35], [-1.45, 1.45], 0.33));
+    parts.push(finish(box(0.74, 0.2, 0.3, 0, 1.53, -0.32), '#ffe7a0', 2, { glow: 3 }));
+    parts.push(finish(box(1.84, 0.1, 2.6, 0, 0.66, -0.1), '#22262b', 2));
+  }
   // 3 delivery van: tall box, sloped nose, orange depot stripe
   {
     const t = 3, L = 5.0, W = 1.96, h = L / 2;
@@ -240,32 +275,41 @@ const HIP = 0.9, KNEE = 0.5, SHOULDER = 1.47, ELBOW = 1.2, NECK = 1.55;
 /** Round 27: the near figure (far = false, ~330 triangles) or the far figure (~110 triangles). */
 export function buildPedGeometry(far = false): THREE.BufferGeometry {
   const P: THREE.BufferGeometry[] = [];
+  // round 28: near figures get tapered round limbs, rounded hands and a smooth head (no boxes left but the shoes)
+  const limb = (rt: number, rb: number, h: number, x: number, y: number, z: number, sz = 1) =>
+    new THREE.CylinderGeometry(rt, rb, h, 6, 1).scale(1, 1, sz).translate(x, y, z);
   for (const s of [-1, 1]) {
     const L = s < 0 ? 0 : 1;
-    P.push(pedPart(box(0.15, 0.42, 0.17, s * 0.092, 0.69, 0), 2, 1 + L, HIP)); // thigh
-    P.push(pedPart(box(0.125, 0.44, 0.14, s * 0.092, 0.29, -0.005), 6, 6 + L, KNEE)); // shin
-    P.push(pedPart(box(0.1, 0.31, 0.115, s * 0.245, 1.33, 0), 9, 3 + L, SHOULDER)); // upper arm (sleeve)
-    P.push(pedPart(box(0.088, 0.27, 0.1, s * 0.245, 1.065, 0), 10, 8 + L, ELBOW)); // forearm
-    if (!far) {
-      P.push(pedPart(box(0.115, 0.08, 0.27, s * 0.092, 0.04, 0.045), 4, 6 + L, KNEE)); // shoe
-      P.push(pedPart(box(0.075, 0.1, 0.09, s * 0.245, 0.88, 0.005), 0, 8 + L, ELBOW)); // hand
+    if (far) {
+      P.push(pedPart(box(0.15, 0.42, 0.17, s * 0.092, 0.69, 0), 2, 1 + L, HIP)); // thigh
+      P.push(pedPart(box(0.125, 0.44, 0.14, s * 0.092, 0.29, -0.005), 6, 6 + L, KNEE)); // shin
+      P.push(pedPart(box(0.1, 0.31, 0.115, s * 0.245, 1.33, 0), 9, 3 + L, SHOULDER)); // upper arm (sleeve)
+      P.push(pedPart(box(0.088, 0.27, 0.1, s * 0.245, 1.065, 0), 10, 8 + L, ELBOW)); // forearm
+    } else {
+      P.push(pedPart(limb(0.083, 0.064, 0.44, s * 0.092, 0.69, 0), 2, 1 + L, HIP)); // thigh
+      P.push(pedPart(limb(0.062, 0.047, 0.45, s * 0.092, 0.29, -0.005), 6, 6 + L, KNEE)); // shin
+      P.push(pedPart(limb(0.056, 0.05, 0.32, s * 0.245, 1.33, 0), 9, 3 + L, SHOULDER)); // upper arm (sleeve)
+      P.push(pedPart(limb(0.048, 0.04, 0.28, s * 0.245, 1.065, 0), 10, 8 + L, ELBOW)); // forearm
+      P.push(pedPart(box(0.1, 0.075, 0.25, s * 0.092, 0.04, 0.045), 4, 6 + L, KNEE)); // shoe
+      P.push(pedPart(new THREE.IcosahedronGeometry(0.048, 0).scale(0.8, 1.15, 0.95).translate(s * 0.245, 0.885, 0.005), 0, 8 + L, ELBOW)); // hand
     }
   }
   // torso: shoulders wider than the waist
   P.push(pedPart(new THREE.CylinderGeometry(0.205, 0.165, 0.58, far ? 6 : 8).scale(1, 1, 0.6).translate(0, 1.25, 0), 9, 0, 0));
-  P.push(pedPart(new THREE.IcosahedronGeometry(0.112, far ? 0 : 1).scale(0.95, 1.13, 1).translate(0, 1.68, 0.01), 0, 5, NECK)); // head
+  const ball = (r: number) => (far ? new THREE.IcosahedronGeometry(r, 0) : new THREE.SphereGeometry(r, 9, 7));
+  P.push(pedPart(ball(0.112).scale(0.93, 1.12, 1).translate(0, 1.68, 0.01), 0, 5, NECK)); // head
   P.push(pedPart(new THREE.IcosahedronGeometry(0.126, far ? 0 : 1).scale(1.0, 0.86, 1.02).translate(0, 1.718, -0.022), 3, 5, NECK, 8)); // hair cap
   P.push(pedPart(new THREE.CylinderGeometry(0.19, 0.3, 0.44, far ? 6 : 10).scale(1, 1, 0.78).translate(0, 0.76, 0), 8, 0, 0, 1)); // dress skirt
   if (!far) {
     P.push(pedPart(box(0.34, 0.17, 0.21, 0, 0.92, 0), 2, 0, 0)); // hips
-    P.push(pedPart(box(0.085, 0.09, 0.09, 0, 1.56, 0), 0, 5, NECK)); // neck
-    P.push(pedPart(box(0.03, 0.045, 0.035, 0, 1.665, 0.12), 0, 5, NECK)); // nose
+    P.push(pedPart(limb(0.042, 0.048, 0.1, 0, 1.56, 0), 0, 5, NECK)); // neck
+    P.push(pedPart(box(0.03, 0.045, 0.035, 0, 1.665, 0.11), 0, 5, NECK)); // nose
     P.push(pedPart(box(0.235, 0.3, 0.07, 0, 1.56, -0.095), 3, 5, NECK, 6)); // long hair
     P.push(pedPart(new THREE.IcosahedronGeometry(0.058, 0).translate(0, 1.79, -0.11), 3, 5, NECK, 7)); // bun
     P.push(pedPart(new THREE.CylinderGeometry(0.128, 0.132, 0.075, 10).translate(0, 1.795, -0.01), 5, 5, NECK, 2)); // cap
     P.push(pedPart(box(0.2, 0.02, 0.13, 0, 1.765, 0.12), 5, 5, NECK, 2)); // cap brim
     P.push(pedPart(box(0.07, 0.25, 0.23, 0.225, 0.98, 0.02), 5, 0, 0, 3)); // shoulder bag
-    P.push(pedPart(box(0.025, 0.5, 0.04, 0.0, 1.27, 0.115).rotateZ(0.62), 5, 0, 0, 3)); // bag strap
+    P.push(pedPart(box(0.025, 0.56, 0.04, 0, 0, 0).rotateZ(0.62).translate(0.0, 1.25, 0.115), 5, 0, 0, 3)); // bag strap (round 28: rotated about its own centre, it floated beside the person)
     P.push(pedPart(box(0.28, 0.36, 0.14, 0, 1.24, -0.17), 5, 0, 0, 4)); // backpack
     P.push(pedPart(box(0.065, 0.115, 0.016, 0.245, 0.875, 0.06), 7, 9, ELBOW, 5)); // phone in the right hand
     P.push(pedPart(new THREE.CylinderGeometry(0.2, 0.27, 0.46, 8).scale(1, 1, 0.72).translate(0, 0.77, 0), 5, 0, 0, 9)); // coat skirt

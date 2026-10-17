@@ -1,0 +1,30 @@
+node trisweep28.mjs > trisweep-d-22.log 2>&1
+SEED=130 node trisweep28.mjs > trisweep-d-130.log 2>&1
+MOBILE=1 node trisweep28.mjs > trisweep-m-22.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+ALT=12 SEEDS=11,22,33,44,7,58,91,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=11,22,33,44,7,58,91,130 node crash-classify-v.mjs > ccv20.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 node farm-probe.mjs > farm-$s.log 2>&1; done
+for m in honest carry both; do for s in 22 58 130; do SEED=$s MODE=$m SIMT=600 node capfarm.mjs > capfarm-$m-$s.log 2>&1; done; done
+node pad-people23.mjs > pad-people.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22.log 2>&1
+MOBILE=1 NOORBIT=1 SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-m-22-noorbit.log 2>&1
+node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+node perf18.mjs > perf-desktop.log 2>&1
+MOBILE=1 node perf18.mjs > perf-mobile.log 2>&1
+NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 SHOTAT=10,31,45 CAM=1 PFX=fr28- node hud-probe27.mjs > fr-d-22.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 SHOTAT=10,31,45 CAM=1 PFX=fr28- node hud-probe27.mjs > fr-m-58.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 SHOTAT=10,31,45 CAM=1 PFX=fr28- node hud-probe27.mjs > fr-m-22.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 SHOTAT=10,31,45 CAM=1 PFX=fr28- node hud-probe27.mjs > fr-m-130.log 2>&1
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud28- node hud-probe27.mjs > hud-m-22.log 2>&1
+DEV=android SEED=317 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud28- node hud-probe27.mjs > hud-a-317.log 2>&1
+DEV=iphone SEED=22 BIGSHOT=1 PFX=cam28- node hud-probe27.mjs > cam-m-22.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+(cd /private/tmp/claude-501/-Users-jorritboumann-projects-browser-game-lab/c70bfd6f-b51c-4910-b300-7e4c0c36b628/scratchpad/r27 && npx vite --host 127.0.0.1 --port 5192 --strictPort > /dev/null 2>&1 & echo $! > r27vite.pid); sleep 4; PORT=5192 LONG=1 PLAN=single SEEDS=4,4,4,22,130,58 node traffic-rt28.mjs > traffic-rt27-long.log 2>&1; pkill -f 'port 5192'
+NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 PFX=ch28- node hud-probe28.mjs > ch-d-22.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 PFX=ch28- node hud-probe28.mjs > ch-m-130.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 PFX=ch28- node hud-probe28.mjs > ch-m-22.log 2>&1
+LINE=high SEEDS=58 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-58-rerun.log 2>&1
+END

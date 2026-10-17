@@ -1,0 +1,21 @@
+node prop-audit28.mjs > prop-audit-e.log 2>&1
+DUMP=1 MOBILE=1 node perf-street.mjs > perf-street-m-e.log 2>&1
+MOBILE=1 CASES=all,noprops,all node perf27.mjs > perf27-m-e.log 2>&1
+SEEDS=130,22 node art28.mjs > art28-e.log 2>&1
+node closeup28.mjs > closeup28-e.log 2>&1
+for p in 5190; do PORT=$p node firstframe27.mjs; PORT=$p MOBILE=1 node firstframe27.mjs; done > firstframe-e.log 2>&1
+node acceptance-probe.mjs > flat-e.log 2>&1
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud28e- node hud-probe26.mjs > hud-m-22e.log 2>&1
+NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 SHOTAT=10,31,45 PFX=fr28e- node critic27/hud-probe27.mjs > fr-d-22e.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12-e.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20-e.log 2>&1
+node street-probe.mjs > street-probe-e.log 2>&1
+node pad-people23.mjs > pad-people-e.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22e.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-e.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-e.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > m-lazy-e.log 2>&1
+SEEDS=4 node street-probe.mjs > street-probe-e2.log 2>&1
+node street-probe.mjs > street-probe-e3.log 2>&1
+PORT=5191 node street-probe.mjs > street-probe-base.log 2>&1
+END

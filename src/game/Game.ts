@@ -14,7 +14,8 @@ import { DeliverySystem, JOBS } from '../systems/DeliverySystem';
 import { Slipstream } from '../systems/Slipstream';
 import { VfxSystem } from '../systems/VfxSystem';
 import { Hud, fmtX, type Box, type TouchLayout } from '../ui/Hud';
-import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
+import { createCityMaterial, setCityDetailTextures, type CityMaterial } from '../world/CityMaterial';
+import { propAudit, propPlacementAudit } from '../world/StreetProps';
 import { BuildingDetail } from '../world/BuildingDetail';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
@@ -57,6 +58,8 @@ const TEACH_HINTS: Record<string, [string, string]> = {
   wind: ['High wind', 'Up high the wind slows you'],
 };
 /** Round 25: when several systems wait for their introduction, this order wins (the street bonus first). */
+/** Round 28: the phone's wider room floor around a slow drone (x the desktop 4.2 m), see CameraRig.keepRoom. */
+const CAMERA_TOUCH_ROOM = 2.1;
 const TEACH_ORDER = ['slip', 'combo', 'medal', 'clock', 'route', 'view', 'wind'];
 const MEDAL_COLORS = [new THREE.Color('#e0955a'), new THREE.Color('#eef2f7'), new THREE.Color('#ffd166'), new THREE.Color('#5ff5d4')];
 
@@ -211,7 +214,8 @@ export class Game {
 
     const touch = window.matchMedia?.('(pointer: coarse)').matches ?? false;
     this.hud.setTouch(touch);
-    window.addEventListener('touchstart', () => this.hud.setTouch(true), { once: true, passive: true });
+    this.cameraRig.touchRoom = touch ? CAMERA_TOUCH_ROOM : 1;
+    window.addEventListener('touchstart', () => { this.hud.setTouch(true); this.cameraRig.touchRoom = CAMERA_TOUCH_ROOM; }, { once: true, passive: true });
 
     this.renderer = createRenderer(canvas);
     this.renderer.info.autoReset = false;
@@ -353,6 +357,35 @@ export class Game {
 
   boot(): void {
     this.loop.start();
+    // round 28: CC0 street assets load in the background; the city runs on its procedural stand-ins until they are in
+    // ?assets=0 keeps the procedural stand-ins (A/B perf checks)
+    if (new URLSearchParams(window.location.search).get('assets') !== '0') void this.loadAssets();
+    // round 28: the audio context is made on the title screen (it was the 240 ms first-flight hitch inside start())
+    window.setTimeout(() => { if (this.state === 'title') this.audio.prewarm(); }, 1200);
+  }
+
+  private assetMs = -1;
+  /** Round 28: payout chimes actually played (each with its pop on screen). */
+  private payoutChimes = 0;
+  private assetGroup = new THREE.Group();
+  private async loadAssets(): Promise<void> {
+    const t0 = performance.now();
+    try {
+      // the loader (GLTFLoader) is its own chunk, fetched after the first frame
+      const { loadStreetAssets } = await import('../world/StreetAssets');
+      const a = await loadStreetAssets();
+      const added = this.env.applyAssets(a);
+      this.assetGroup.name = 'street-assets';
+      for (const o of added) this.assetGroup.add(o);
+      for (const t of Object.values(a.tex)) this.renderer.initTexture(t);
+      await this.renderer.compileAsync(this.assetGroup, this.camera, this.scene);
+      setCityDetailTextures(this.cityMaterial, a.tex);
+      this.scene.add(this.assetGroup);
+      this.env.commitAssets();
+      this.assetMs = performance.now() - t0;
+    } catch (err) {
+      console.warn('street assets failed to load; keeping the procedural stand-ins', err);
+    }
   }
 
   // ---------------- state transitions ----------------
@@ -1047,7 +1080,7 @@ export class Game {
   /** Round 26: is this system running right now (its hint only shows while it is)? */
   private teachActive(key: string): boolean {
     const d = this.drone;
-    if (key === 'slip') return this.slip.drafting || this.slip.level > 0.05;
+    if (key === 'slip') return this.slip.drafting; // round 28: only while drafting (the meter alone lingers after a wall)
     if (key === 'clock') return this.slipClockGain > 0.05;
     if (key === 'wind') return d.headwind > 0.35 && d.speed > 7 && d.group.position.y > TEACH.windAlt;
     if (key === 'route') return this.gate.visible; // only while an arch marks a shortcut on this leg
@@ -1545,13 +1578,19 @@ export class Game {
       // shake or sparks either: nothing on screen would explain them; the bank is shown with the slipstream's introduction)
       if (!this.shown('slip')) { /* banked, shown with the delivery or the slipstream's introduction */ }
       else {
-      this.audio.slipPayout(ev.chain);
-      if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus');
-      else if (this.stale) this.hud.slipPop('Off route', ev.chain, 'No bonus · head for the marker');
-      else this.hud.slipPop('Bonus full', ev.chain, d.carrying ? 'Deliver to cash in' : 'Grab the parcel');
-      this.cameraRig.addShake(0.06 + 0.03 * ev.chain);
-      this.vfx.burst(d.group.position, this.slipColor, 12 + ev.chain * 6, 6 + ev.chain, 0.12, this.fxRng);
-      if (ev.chain >= 3) this.vfx.burst(d.group.position, this.slipHot, 6 + ev.chain * 3, 9 + ev.chain, 0.1, this.fxRng);
+      // round 28: the chime, shake and sparks come with the pop itself: if a hint or banner holds the pop back, they wait
+      // with it (and a pop dropped as stale is silent), so a payout is never heard without being seen
+      const chain = ev.chain;
+      const juice = () => {
+        this.audio.slipPayout(chain);
+        this.payoutChimes++;
+        this.cameraRig.addShake(0.06 + 0.03 * chain);
+        this.vfx.burst(d.group.position, this.slipColor, 12 + chain * 6, 6 + chain, 0.12, this.fxRng);
+        if (chain >= 3) this.vfx.burst(d.group.position, this.slipHot, 6 + chain * 3, 9 + chain, 0.1, this.fxRng);
+      };
+      if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus', false, juice);
+      else if (this.stale) this.hud.slipPop('Off route', ev.chain, 'No bonus · head for the marker', false, juice);
+      else this.hud.slipPop('Bonus full', ev.chain, d.carrying ? 'Deliver to cash in' : 'Grab the parcel', false, juice);
       }
     }
     // round 20: a parcel off its route goes stale: the banked street bonus fades while the leg makes no progress
@@ -1851,7 +1890,7 @@ export class Game {
       combo: this.delivery.combo,
       crashes: this.crashes,
       leg: { time: this.delivery.legTime, par: this.delivery.legPar },
-      slipstream: { level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
+      slipstream: { chimes: this.payoutChimes, level: this.slip.level, intensity: this.slip.intensity, quality: this.slip.quality, wall: this.slip.wall, speedFactor: this.slip.speedFactor, rate: this.slip.rate, hotPoints: this.slip.hotPoints, hug: this.slip.hug, firstPayoutAt: this.slip.firstPayoutAt, drafting: this.slip.drafting, chain: this.slip.chain, payouts: this.slip.payouts, points: this.slip.points, seconds: this.slip.seconds, clockK: this.slipClockK, clockGain: this.slipClockGain, budget: this.slipBudget, toward: this.slipToward, bank: this.bank, bankTotal: this.bankTotal, bankPaid: this.bankPaid, bankLost: this.bankLost, legBanked: this.legBanked, legCap: this.legCap },
       scoreLog: this.scoreLog,
       teach: { on: this.teachOn, log: this.teachLog, queue: this.teachQueue.slice() },
       routeHint: this.routeHint ? { ...this.routeHint } : null,
@@ -1995,6 +2034,50 @@ export class Game {
       // round 27 test hook: facade / rooftop detail kit on or off (perf comparisons)
       detailOn: (on: boolean) => { this.detail.group.visible = on; },
       detailAudit: () => this.detail.audit(this.layout),
+      // round 28 test hooks: CC0 street assets
+      assetsReady: () => ({
+        on: this.env.assetsOn, ms: Math.round(this.assetMs), propsVisible: this.env.streetProps?.visible ?? 0,
+        treesNear: this.env.treesNear, carModels: this.env.traffic.modelsOn,
+      }),
+      assetsOn: (on: boolean) => { this.assetGroup.visible = on; },
+      // round 28 perf switches: props, near trees, prop shadows, wall / paving detail textures
+      assetParts: (o: { props?: boolean; trees?: boolean; propShadows?: boolean; detail?: boolean }) => {
+        const sp = this.env.streetProps;
+        if (sp && o.props !== undefined) sp.mesh.visible = o.props;
+        if (sp && o.propShadows !== undefined) sp.castShadow = o.propShadows;
+        if (o.trees !== undefined) for (const ch of this.assetGroup.children) if (ch.name.startsWith('tree-')) ch.visible = o.trees;
+        if (o.detail !== undefined) this.cityMaterial.userData.uniforms!.uDetail.value = o.detail ? 1 : 0;
+      },
+      // round 28: one frame from a free camera pose (screenshots of people and props up close); the rig is untouched
+      renderFrom: (px: number, py: number, pz: number, tx: number, ty: number, tz: number) => {
+        const p0 = this.camera.position.clone(), q0 = this.camera.quaternion.clone();
+        this.camera.position.set(px, py, pz);
+        this.camera.lookAt(tx, ty, tz);
+        this.camera.updateMatrixWorld();
+        this.render();
+        this.camera.position.copy(p0); this.camera.quaternion.copy(q0); this.camera.updateMatrixWorld();
+      },
+      streetPropAudit: (r = 40, x?: number, z?: number) => propAudit(this.layout.props, this.layout,
+        x ?? this.drone.group.position.x, z ?? this.drone.group.position.z, r),
+      propPlacementAudit: () => propPlacementAudit(this.layout),
+      shopAudit: () => {
+        // neighbouring shop bays along a street face line (within one building and across party walls)
+        const bays = this.layout.shopFronts;
+        let pairs = 0, sameSign = 0, sameDoor = 0, sameAwning = 0, sameAll = 0, awningPairs = 0;
+        for (let i = 0; i < bays.length; i++) for (let j = i + 1; j < bays.length; j++) {
+          const a = bays[i], b = bays[j];
+          if (a.axis !== b.axis || a.n !== b.n || Math.abs(a.line - b.line) > 2.5) continue;
+          const gap = Math.max(a.lo, b.lo) - Math.min(a.hi, b.hi);
+          if (gap < -0.5 || gap > 4) continue;
+          pairs++;
+          const s1 = a.sign === b.sign, d1 = a.door === b.door, w1 = a.awn === b.awn;
+          if (s1) sameSign++;
+          if (d1) sameDoor++;
+          if (a.awn >= 0 && b.awn >= 0) { awningPairs++; if (w1) sameAwning++; }
+          if (s1 && d1 && w1) sameAll++;
+        }
+        return { bays: bays.length, pairs, sameSign, sameDoor, sameAwning, sameAll, awningPairs };
+      },
       archetypesInView: (range = 70) => this.detail.archetypesInView(this.layout, this.camera, range),
       traffic: () => this.env.traffic.snapshot(),
       people: () => this.env.people.snapshot(),

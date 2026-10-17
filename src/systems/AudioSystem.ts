@@ -118,6 +118,22 @@ export class AudioSystem {
     return !!this.ctx && this.ctx.state === 'running';
   }
 
+  /**
+   * Round 28: make the audio context early (on the title screen). Creating it cost about 200 ms, and it was made inside
+   * start(), so it was the first-flight hitch. A context made before any gesture starts suspended; unlock() resumes it.
+   */
+  prewarm(): void {
+    if (this.ctx) return;
+    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+    try {
+      this.ctx = new Ctor();
+    } catch {
+      return;
+    }
+    this.build();
+  }
+
   unlock(): void {
     if (!this.ctx) {
       const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;

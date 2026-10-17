@@ -1,0 +1,19 @@
+node prop-audit28.mjs > prop-audit.log 2>&1
+node perf-street.mjs > perf-street-d3.log 2>&1
+node perf-street.mjs > perf-street-d4.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m3.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 SHOTAT=10,31,45 PFX=fr28c- node critic27/hud-probe27.mjs > fr-m-22c.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 SHOTAT=10,31,45 PFX=fr28c- node critic27/hud-probe27.mjs > fr-m-58c.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 SHOTAT=10,31,45 PFX=fr28c- node critic27/hud-probe27.mjs > fr-m-130c.log 2>&1
+DEV=android SEED=317 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud28c- node critic27/hud-probe27.mjs > hud-a-317c.log 2>&1
+DEV=iphone SEED=22 BIGSHOT=1 PFX=cam28c- node critic27/hud-probe27.mjs > cam-m-22c.log 2>&1
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud28c- node hud-probe26.mjs > hud-m-22c.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22c.log 2>&1
+node acceptance-probe.mjs > flat-c.log 2>&1
+node street-probe.mjs > street-probe-c.log 2>&1
+SEEDS=130,22 node art28.mjs > art28-final.log 2>&1
+node closeup28.mjs > closeup28-final.log 2>&1
+for p in 5190; do PORT=$p node firstframe27.mjs; PORT=$p MOBILE=1 node firstframe27.mjs; done > firstframe-final.log 2>&1
+CASES=all,nodetail,nopeople,bare,all node perf27.mjs > perf27-d-final.log 2>&1
+MOBILE=1 CASES=all,nodetail,nopeople,bare,all node perf27.mjs > perf27-m-final.log 2>&1
+END

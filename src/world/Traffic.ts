@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createSeededRandom, pick, range, type Rng } from '../core/random';
 import { CAR_PAINTS, MOOD_LIGHTS, TAXI_PAINT, VAN_PAINTS, VDIM, VT, buildVehicleGeometry, vehicleMaterial, type VehicleRange } from './StreetKit';
+import type { ModelParts } from './StreetAssets';
 
 /**
  * Round 22: street traffic. Cars, taxis, vans and box trucks drive the street grid on the right-hand lane (2.9 m off the
@@ -500,6 +501,21 @@ export class Traffic {
   }
 
   // ----------------------------------------------------------------------------------------------------------------
+
+  /** Round 28: swap the car bodies for the CC0 models (same types, sizes, lanes and lights; only the meshes change). */
+  setCarModels(models: ModelParts): void {
+    const geo = buildVehicleGeometry(models);
+    const ranges = geo.userData.ranges as VehicleRange[];
+    let i = 0;
+    for (let lod = 0; lod < 2; lod++) for (let t = 0; t <= VT.hover; t++, i++) {
+      const g = this.typeMeshes[i].geometry;
+      const r = ranges[t] ?? { first: 0, count: 0, far: 0 };
+      for (const [name, attr] of Object.entries(geo.attributes)) g.setAttribute(name, attr);
+      g.setDrawRange(r.first, lod === 0 ? r.count : r.far);
+    }
+    this.modelsOn = true;
+  }
+  modelsOn = false;
 
   update(dt: number, cam: THREE.Vector3): void {
     if (dt <= 0) return;

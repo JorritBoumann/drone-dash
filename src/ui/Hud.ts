@@ -866,8 +866,9 @@ export class Hud {
    * Payout pop near the drone: grows, brightens and gets a chain tag as the chain climbs. Once the slow clock has banked
    * a second or more, the tag also shows the run's total clock time from the slipstream so far.
    */
-  slipPop(points: string, chain: number, sub: string, paid = false): void {
+  slipPop(points: string, chain: number, sub: string, paid = false, onShow?: () => void): void {
     this.centre('slip', this.slipPopEl, () => {
+      onShow?.();
       this.slipPopMain.textContent = points;
       this.slipPopSub.textContent = sub;
       this.slipPopEl.dataset.chain = String(Math.min(chain, 5));

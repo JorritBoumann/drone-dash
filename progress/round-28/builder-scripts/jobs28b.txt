@@ -1,0 +1,10 @@
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 SHOTAT=10,31,45 PFX=fr28b- node critic27/hud-probe27.mjs > fr-m-22b.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 SHOTAT=10,31,45 PFX=fr28b- node critic27/hud-probe27.mjs > fr-m-58b.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 SHOTAT=10,31,45 PFX=fr28b- node critic27/hud-probe27.mjs > fr-m-130b.log 2>&1
+DEV=android SEED=317 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud28b- node critic27/hud-probe27.mjs > hud-a-317b.log 2>&1
+DEV=iphone SEED=22 BIGSHOT=1 PFX=cam28b- node critic27/hud-probe27.mjs > cam-m-22b.log 2>&1
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud28b- node hud-probe26.mjs > hud-m-22b.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22b.log 2>&1
+node perf-street.mjs > perf-street-d2.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m2.log 2>&1
+END

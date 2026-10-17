@@ -287,6 +287,8 @@ export class CameraRig {
   private readonly frameV = new THREE.Vector3();
   /** Round 26: seconds left of the wide camera floor after a pickup or drop (Game calls holdRoom). */
   private roomHold = 0;
+  /** Round 28: scale of the slow-drone room floor (1 on desktop, more on touch screens; Game sets it). */
+  touchRoom = 1;
   holdRoom(seconds: number): void {
     this.roomHold = Math.max(this.roomHold, seconds);
   }
@@ -389,7 +391,10 @@ export class CameraRig {
     // round 26: a slow drone (at a pad, right after a pickup or drop) gets more room: at 2.4 m beside a wall it filled
     // half a phone screen. Full `slowDist` at or below 4 m/s, the plain floor from 9 m/s.
     // Round 26b: and for `roomHold` s after a pickup or a drop, whatever the speed (the drone accelerates away from the pad).
-    const want = this.roomHold > 0 ? SWING.slowDist : THREE.MathUtils.lerp(SWING.slowDist, SWING.minDist, THREE.MathUtils.smoothstep(drone.speed, 4, 9));
+    // Round 28: on a phone (narrower view) the slow floor is wider still: 4.2 m from close above filled up to 74% of
+    // the screen height after a pickup beside a wall.
+    const slow = SWING.slowDist * this.touchRoom;
+    const want = this.roomHold > 0 ? slow : THREE.MathUtils.lerp(slow, SWING.minDist, THREE.MathUtils.smoothstep(drone.speed, 4, 9));
     if (L >= want) return;
     if (L > 0.05) {
       this.cand.copy(dp).addScaledVector(rel, want / L);

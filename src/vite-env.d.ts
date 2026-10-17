@@ -21,7 +21,7 @@ interface ThreeGameDiagnostics {
   /** Round 15: mid-run escalation (rush hour): stage 0 before RUSH.startAt, 1 every second parcel, 2 every parcel. */
   escalation?: { kind: string; on: boolean; startedAt: number; stage: number; orders: number; made: number; missed: number; points: number; active: boolean; left: number; window: number };
   goals?: { tier: number; tierName: string; next: number; passes: number; passList: { tier: number; name: string; score: number; t: number }[]; best: number; bestTier: number; thresholds: number[] };
-  slipstream?: { level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number; clockK: number; clockGain: number; budget: number; toward: number; bank: number; bankTotal: number; bankPaid: number; bankLost: number; legBanked: number; legCap: number };
+  slipstream?: { chimes?: number; level: number; intensity: number; quality: number; wall: number; speedFactor: number; rate: number; hotPoints: number; hug: number; firstPayoutAt: number; drafting: boolean; chain: number; payouts: number; points: number; seconds: number; clockK: number; clockGain: number; budget: number; toward: number; bank: number; bankTotal: number; bankPaid: number; bankLost: number; legBanked: number; legCap: number };
   scoreLog?: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[];
   /** Round 25: layered teaching on a new player's first run: introductions so far (run seconds) and the queue. */
   teach?: { on: boolean; log: { k: string; t: number }[]; queue: string[] };
@@ -136,6 +136,14 @@ interface DroneDashApi {
   people?(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }>;
   /** Round 24: the drone's screen box in CSS px (visible vertices through the render camera) and the touch framing shift. */
   droneBox?(): { x: number; y: number; w: number; h: number; behind: boolean; shift: number };
+  /** Round 28: CC0 street assets loaded and in use; street furniture within r of a point (default the drone); shop-front audit. */
+  assetsReady?(): { on: boolean; ms: number; propsVisible: number; treesNear: number[]; carModels: boolean };
+  streetPropAudit?(r?: number, x?: number, z?: number): { count: number; kinds: Record<string, number>; kindCount: number; pavementM: number; perTenM: number };
+  shopAudit?(): { bays: number; pairs: number; sameSign: number; sameDoor: number; sameAwning: number; sameAll: number; awningPairs: number };
+  assetsOn?(on: boolean): void;
+  assetParts?(o: { props?: boolean; trees?: boolean; propShadows?: boolean; detail?: boolean }): void;
+  propPlacementAudit?(): { props: number; padHits: number; alleyHits: number; diagHits: number; roadHits: number; poleHits: number; kinds: Record<string, number> };
+  renderFrom?(px: number, py: number, pz: number, tx: number, ty: number, tz: number): void;
 }
 
 interface Window {

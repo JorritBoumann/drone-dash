@@ -1,0 +1,24 @@
+node layout-check27.mjs > layout-check.log 2>&1
+node detail-audit27.mjs > detail-audit.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip-22.log 2>&1
+node street-probe.mjs > street-probe.log 2>&1
+node pad-people23.mjs > pad-people.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+DEV=iphone SEED=22 OVSHOT=1 SHOTEVERY=15 CAM=1 PFX=hud27- node hud-probe26.mjs > hud-m-22.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 node music-run-esc.mjs > m-low-a.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-a.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > m-lazy-a.log 2>&1
+node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+CASES=all,nodetail,nopeople,bare,all node perf27.mjs > perf27-d.log 2>&1
+MOBILE=1 CASES=all,nodetail,nopeople,bare,all node perf27.mjs > perf27-m.log 2>&1
+PORT=5191 CASES=all,nopeople,bare,all node perf27.mjs > perf27-base-d.log 2>&1
+PORT=5191 MOBILE=1 CASES=all,nopeople,bare,all node perf27.mjs > perf27-base-m.log 2>&1
+for p in 5190 5191; do PORT=$p node firstframe27.mjs; PORT=$p MOBILE=1 node firstframe27.mjs; done > firstframe.log 2>&1
+TAG=after MOBILE=1 node shots27.mjs > after-m.log 2>&1
+PORT=5191 ONLY=park,door TAG=before node shots27.mjs > before-extra-d.log 2>&1
+PORT=5191 ONLY=park,door TAG=before MOBILE=1 node shots27.mjs > before-extra-m.log 2>&1
+LINE=high SEEDS=22,22 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-high-rep22.log 2>&1
+END

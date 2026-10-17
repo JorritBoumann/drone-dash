@@ -18,6 +18,7 @@ export const Style = {
   solar: -6,
   tiles: -7,
   water: -8,
+  awning: -9, // round 27: striped canvas (stripes along u)
 } as const;
 
 const _v = new THREE.Vector3();

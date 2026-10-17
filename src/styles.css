@@ -1436,3 +1436,10 @@ kbd {
 #app.teach:not(.l-view) #view-hint {
   display: none !important;
 }
+
+/* Round 26: little room between the score column and the stick: compact centre pops (they stay clear of the "Fly" label) */
+#app.touch .pop-tight .pop-icon { display: none; }
+#app.touch .pop-tight .pop strong { font-size: 1.4rem; -webkit-text-stroke-width: 5px; }
+#app.touch .pop-tight .pop span { margin-top: 2px; padding: 2px 8px; font-size: 0.64rem; }
+#app.touch .pop-tight .event-pop strong, #app.touch .pop-tight .medal-pop strong { font-size: 1.25rem; }
+#app.touch .pop-tight .medal-pop .medal { width: 26px; height: 26px; }

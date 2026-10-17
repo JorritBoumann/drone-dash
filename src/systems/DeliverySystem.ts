@@ -50,7 +50,7 @@ export function jobSpec(phase: 'pickup' | 'drop', n: number, roofSlot: boolean, 
 export type DeliveryPhase = 'pickup' | 'deliver';
 export type DeliveryEvent =
   | { type: 'picked'; site: Site }
-  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number; final: boolean; plain: number; fastPts: number }
+  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number; final: boolean; plain: number; fastPts: number; clockTime: number; under: number; sharp: boolean }
   | null;
 
 export type Tally = {
@@ -79,6 +79,8 @@ export class DeliverySystem {
   combo = 0;
   deliveries = 0;
   legTime = 0;
+  /** Round 26: clock seconds the slow clock gave back on this leg (the leg's clock time is legTime minus this). */
+  legClockGain = 0;
   legPar = 0;
   legDistance = 0;
   legRoute = 0;
@@ -118,6 +120,7 @@ export class DeliverySystem {
     this.target = this.pickLeg(rng, from, JOBS.first, isClear ? (s) => isClear(from, s.pos) : undefined, false);
     this.pickupSite = this.target;
     this.legTime = 0;
+    this.legClockGain = 0;
   }
 
   /** Crash cost: take seconds off the clock (never below `floor`) and break any running combo. */
@@ -154,6 +157,7 @@ export class DeliverySystem {
     if (seconds <= 0 || this.timeLeft <= 0 || this.overtime) return 0;
     this.timeLeft += seconds;
     this.tally.slipSeconds += seconds;
+    this.legClockGain += seconds;
     return seconds;
   }
 
@@ -294,13 +298,20 @@ export class DeliverySystem {
       this.legRoute = Math.abs(this.target.pos.x - t.pos.x) + Math.abs(this.target.pos.z - t.pos.z) + Math.abs(this.target.pos.y - t.pos.y);
       this.legPar = this.legRoute / RUN.parSpeed + RUN.parSlack;
       this.legTime = 0;
+      this.legClockGain = 0;
       return { type: 'picked', site: picked };
     }
 
     // delivered
     const legTime = this.legTime;
-    const fast = this.legTime <= this.legPar;
-    this.combo = fast ? this.combo + 1 : 0;
+    // round 26: par is judged on the run clock (the timer the player sees): seconds the slow clock gave back on this leg
+    // count as time saved, so a fast, low street line beats par by more than a slow, centred one
+    const clockTime = Math.max(0, this.legTime - this.legClockGain);
+    const fast = clockTime <= this.legPar;
+    const underRaw = this.legPar - clockTime;
+    // a sharp drop (at least `comboSharp` s under par) builds the combo; a drop that only scrapes in keeps it; a late one breaks it
+    const sharp = underRaw >= RUN.comboSharp;
+    this.combo = sharp ? this.combo + 1 : fast ? this.combo : 0;
     const decay = this.clockDecay;
     // Round 17: a delivery made in overtime adds no clock and ends the run (overtime cannot chain)
     const final = this.overtime;
@@ -308,7 +319,7 @@ export class DeliverySystem {
     const timeBonus = final || this.lastCall ? 0 : Math.round(Math.max(RUN.minTimeBonus, Math.min(20, 5 + this.legDistance / 11)) * decay);
     const plain = Math.round(RUN.baseScore + this.legDistance * RUN.perMetre);
     // round 25: the fast drop pays a time bonus, more the further under par
-    const under = Math.max(0, Math.min(RUN.fastSecCap, this.legPar - this.legTime));
+    const under = Math.max(0, Math.min(RUN.fastSecCap, underRaw));
     const fastPts = fast ? Math.round(RUN.fastBonus + under * RUN.fastPerSec) : 0;
     const points = Math.round((plain + fastPts) * this.multiplier);
     this.score += points;
@@ -326,7 +337,7 @@ export class DeliverySystem {
     if (final) {
       this.finished = true;
       T.overtimeDrop = 1;
-      return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts };
+      return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts, clockTime, under: Math.max(0, underRaw), sharp };
     }
     // next pickup reasonably close so the loop keeps moving (round 16: a street-distance band, low pads only).
     // Round 17: never further than the clock left can reach (at last-call pace), so the last pickup is a real chance.
@@ -335,6 +346,7 @@ export class DeliverySystem {
     if (preach < pspec.streetMax) Object.assign(pspec, { streetMax: preach, streetMin: Math.min(pspec.streetMin, preach * 0.6) });
     this.target = this.pickLeg(rng, t.pos, pspec, this.approachable(t.pos));
     this.legTime = 0;
-    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts };
+    this.legClockGain = 0;
+    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts, clockTime, under: Math.max(0, underRaw), sharp };
   }
 }

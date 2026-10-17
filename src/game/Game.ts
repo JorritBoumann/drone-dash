@@ -15,6 +15,7 @@ import { Slipstream } from '../systems/Slipstream';
 import { VfxSystem } from '../systems/VfxSystem';
 import { Hud, fmtX, type Box, type TouchLayout } from '../ui/Hud';
 import { createCityMaterial, type CityMaterial } from '../world/CityMaterial';
+import { BuildingDetail } from '../world/BuildingDetail';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
 import { radialTexture } from '../world/Textures';
@@ -38,12 +39,20 @@ export type GameState = 'title' | 'playing' | 'paused' | 'over';
 const BEST_KEY = 'drone-dash-best-v1';
 /** Round 25: set when a run ends. With it (or a saved best) the player is returning: full HUD from the start, no hints. */
 const PLAYED_KEY = 'drone-dash-played-v1';
-/** Round 25: layered teaching on a new player's first run. Nothing new on the HUD before `from` s, then one system at a time, `gap` s apart. */
-const TEACH = { from: 30, gap: 4 };
+/**
+ * Round 25: layered teaching on a new player's first run. Round 26: paced. One introduction at a time, at least `gap` s
+ * apart, never within `popClear` s of a pickup or delivery pop (before or after: an arrival due inside that time waits),
+ * and each hint only while its system is running. The slipstream comes first, on the first draft from `slipFrom` s (so
+ * the flight to the first pickup has something to watch, and its payouts are never heard before they are seen); everything
+ * else from `from` s.
+ * Rush hour keeps its start time (scoring is the same for every player) but on a first run its banner waits for a clear
+ * moment, and the `gap` s before it are kept free.
+ */
+const TEACH = { from: 30, gap: 8, popClear: 3.5, slipFrom: 8, windAlt: 30 };
 const TEACH_HINTS: Record<string, [string, string]> = {
   slip: ['Slipstream', 'Fly low by walls: bonus paid on delivery'],
   clock: ['Slow clock', 'Drafting toward the marker slows the clock'],
-  combo: ['Combo', 'Fast drops in a row raise the multiplier'],
+  combo: ['Combo', 'Drops 3 s under par build it'],
   route: ['Shortcuts', 'Arches mark alleys and tunnels'],
   wind: ['High wind', 'Up high the wind slows you'],
 };
@@ -85,6 +94,8 @@ export class Game {
   private readonly learned = new Set<string>();
   private teachQueue: string[] = [];
   private teachLast = -99;
+  private objPopAt = -99; // round 26: run time of the last pickup or delivery pop
+  private rushBannerDue = false; // round 26: rush hour has started on a first run and its banner waits for a clear moment
   /** Round 25: first appearance (run seconds) of each taught system, for probes. */
   private teachLog: Array<{ k: string; t: number }> = [];
   private readonly slip = new Slipstream();
@@ -118,7 +129,7 @@ export class Game {
   private rushMissed = 0;
   private rushPoints = 0;
   private lastWasRush = false;
-  private scoreLog: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; par?: number }[] = []; // test/tuning log
+  private scoreLog: { t: number; k: string; v: number; c?: number; m?: number; lt?: number; lc?: number; par?: number }[] = []; // test/tuning log
   private readonly slipColor = new THREE.Color('#ffe7b0');
   private readonly slipHot = new THREE.Color('#fff6e8');
   private readonly windColor = new THREE.Color('#e6f2ff');
@@ -127,6 +138,8 @@ export class Game {
   private readonly env: Environment;
   private readonly lighting: LightingRig;
   private readonly cityMaterial: CityMaterial;
+  /** Round 27: facade and rooftop detail near the camera (balconies, fire escapes, sills, signs, vents). */
+  private readonly detail: BuildingDetail;
   private readonly sky: THREE.Mesh;
   private readonly delivery: DeliverySystem;
   private readonly blob: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
@@ -221,6 +234,12 @@ export class Game {
     city.receiveShadow = true;
     city.name = 'city';
     this.scene.add(city);
+    // round 27: lit windows follow the light mood (golden hour, morning, dusk, noon)
+    const lit = [[0.22, 0.95], [0.07, 0.8], [0.36, 1.05], [0.05, 0.8]][this.look.mood] ?? [0.16, 0.95];
+    this.cityMaterial.userData.uniforms!.uLitAmount.value = lit[0];
+    this.cityMaterial.userData.uniforms!.uLitIntensity.value = lit[1];
+    this.detail = new BuildingDetail(this.layout, this.cityMaterial, this.seed, touch ? 75 : 95);
+    this.scene.add(this.detail.group);
 
     this.sky = createSky();
     this.scene.add(this.sky);
@@ -408,6 +427,8 @@ export class Game {
     this.learned.clear();
     this.teachQueue = [];
     this.teachLast = -99;
+    this.objPopAt = -99;
+    this.rushBannerDue = false;
     this.teachLog = [];
     this.hud.setTeach(this.teachOn);
     this.gateRoot.visible = true;
@@ -722,7 +743,9 @@ export class Game {
     if (ev) this.slipBudget = SLIPSTREAM.clockBudget; // a new leg: the slow clock budget refills (to the cap, no stacking)
     if (ev?.type === 'picked') {
       this.newLeg(ev.site.pos);
+      this.objPopAt = this.runTime;
       this.scoreLog.push({ t: this.rt(), k: 'pick', v: this.bank });
+      this.cameraRig.holdRoom(3.2); // round 26: room around the drone while it leaves the pad
       this.hud.setBank(this.bank, true);
       d.setCarrying(true);
       this.audio.pickup();
@@ -739,13 +762,17 @@ export class Game {
       this.setMarkerFromDelivery();
     } else if (ev?.type === 'delivered') {
       d.setCarrying(false);
+      this.objPopAt = this.runTime;
       this.audio.deliver(ev.combo);
+      this.cameraRig.holdRoom(3.2);
       this.topCombo = Math.max(this.topCombo, ev.combo);
       this.vfx.burst(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 1), MARKER_COLORS.drop, 56, 12, 0.22, this.fxRng);
       this.vfx.ring(this.tmp.copy(ev.site.pos).setY(ev.site.pos.y + 0.3), MARKER_COLORS.drop, 9);
       this.cameraRig.addShake(0.2);
       // round 25: the fast drop names its time bonus (more the further under par)
-      const sub = ev.fast ? (ev.combo > 1 ? `Fast +${ev.fastPts} · ${fmtX(this.delivery.multiplier)} combo` : `Fast drop +${ev.fastPts}`) : 'Too slow for a fast bonus';
+      // round 26: it names the seconds under par (on the clock), the measure of a good leg
+      const u = Math.round(ev.under);
+      const sub = ev.fast ? (ev.combo > 1 && ev.sharp ? `Fast +${ev.fastPts} · ${u} s under par · ${fmtX(this.delivery.multiplier)}` : `Fast +${ev.fastPts} · ${u} s under par`) : 'Late · no fast bonus';
       // round 17: an overtime delivery pays the bank by the share of the leg flown when the clock ran out (so overtime
       // finishes a parcel that was nearly there; it does not cash in a bank farmed far from the drop)
       let otCut = 0;
@@ -768,7 +795,7 @@ export class Game {
         this.rushPoints += rush;
         this.scoreLog.push({ t: this.rt(), k: 'rush', v: rush });
       }
-      this.scoreLog.push({ t: this.rt(), k: 'drop', v: ev.points, c: paid, m: this.delivery.multiplier, lt: Math.round(ev.legTime * 10) / 10, par: Math.round(ev.par * 10) / 10 });
+      this.scoreLog.push({ t: this.rt(), k: 'drop', v: ev.points, c: paid, m: this.delivery.multiplier, lt: Math.round(ev.legTime * 10) / 10, lc: Math.round(ev.clockTime * 10) / 10, par: Math.round(ev.par * 10) / 10 });
       if (paid > 0) this.bankPaid++;
       this.bank = 0;
       this.newLeg(ev.site.pos);
@@ -983,20 +1010,62 @@ export class Game {
     else if (key === 'medal' && this.tier > 0) this.audio.medal(this.tier, this.hud.medalPop(this.tier, true));
   }
 
-  /** Round 25: what has happened so far, and the next introduction once the run is 30 s old (one at a time). */
+  /**
+   * Round 25: what has happened so far, and the next introduction. Round 26: paced (see TEACH): at most one every
+   * `gap` s, none within `popClear` s of a pickup or delivery pop, and each one only while its system is running.
+   */
   private updateTeach(windy: boolean): void {
     this.gateRoot.visible = this.shown('route');
     if (!this.teachOn) return;
     const D = this.delivery;
+    const t = this.runTime;
     if (this.slip.drafting || D.deliveries >= 1) this.teach('slip');
     if (this.learned.has('slip') && this.slipClockGain > 0.05) this.teach('clock');
     if (D.combo >= 1) this.teach('combo');
     if (D.deliveries >= 2) this.teach('route');
     if (D.deliveries >= 1) this.teach('view');
     if (windy) this.teach('wind');
-    if (this.runTime < TEACH.from || !this.teachQueue.length || this.runTime - this.teachLast < TEACH.gap) return;
+    if (t - this.teachLast < TEACH.gap || t - this.objPopAt < TEACH.popClear || this.arrivalDue()) return;
+    if (this.rushBannerDue) {
+      this.rushBannerDue = false;
+      this.reveal('rush');
+      this.rushBanner();
+      return;
+    }
+    if (!this.teachQueue.length) return;
+    // the gap before rush hour stays free, so its banner can come on time
+    if (!this.rushOn && t >= RUSH.startAt - TEACH.gap) return;
+    const early = t < TEACH.from;
+    if (early && t < TEACH.slipFrom) return;
     this.teachQueue.sort((a, b) => TEACH_ORDER.indexOf(a) - TEACH_ORDER.indexOf(b));
-    this.reveal(this.teachQueue.shift()!);
+    const key = this.teachQueue.find((k) => (!early || k === 'slip') && this.teachActive(k));
+    if (!key) return;
+    this.teachQueue = this.teachQueue.filter((k) => k !== key);
+    this.reveal(key);
+  }
+
+  /** Round 26: is this system running right now (its hint only shows while it is)? */
+  private teachActive(key: string): boolean {
+    const d = this.drone;
+    if (key === 'slip') return this.slip.drafting || this.slip.level > 0.05;
+    if (key === 'clock') return this.slipClockGain > 0.05;
+    if (key === 'wind') return d.headwind > 0.35 && d.speed > 7 && d.group.position.y > TEACH.windAlt;
+    if (key === 'route') return this.gate.visible; // only while an arch marks a shortcut on this leg
+    return true;
+  }
+
+  /** Round 26: a pickup or delivery is due within the pop clearance (an introduction now would sit on its pop). */
+  private arrivalDue(): boolean {
+    const p = this.drone.group.position, g = this.delivery.target.pos;
+    const dist = Math.hypot(p.x - g.x, p.z - g.z) + Math.abs(p.y - g.y) * 0.5;
+    return Math.max(0, dist - 4) / Math.max(3, this.drone.speed) < TEACH.popClear + 0.5;
+  }
+
+  /** Rush hour's banner and horn (round 26: on a first run it waits for a clear moment; the rush itself starts on time). */
+  private rushBanner(): void {
+    this.hud.eventPop('Rush hour', this.rushActive && this.delivery.phase === 'deliver' ? `This parcel is a rush order: +${RUSH.bonus} if you beat the tag` : `Rush parcels pay +${RUSH.bonus} if you beat the tag`);
+    this.audio.rushHour();
+    this.cameraRig.addShake(0.12);
   }
 
   /** Medals: crossing a tier's score is a moment (banner, fanfare, sparkle) and is counted for scripts. */
@@ -1007,9 +1076,10 @@ export class Game {
     if (t <= this.tier) return;
     for (let k = this.tier + 1; k <= t; k++) this.tierPasses.push({ tier: k, name: tierName(k), score, t: Math.round(this.runTime * 10) / 10 });
     this.tier = t;
-    // round 25: on a new player's first run the medal banner waits for the medal layer's introduction
+    // round 26: on a new player's first run the medal layer is introduced right here, at its cause (the banner follows
+    // the delivery pop that crossed the line, as for a returning player)
     if (this.shown('medal')) this.audio.medal(t, this.hud.medalPop(t));
-    else this.teach('medal');
+    else this.teachNow('medal');
     const c = MEDAL_COLORS[Math.min(t, MEDAL_COLORS.length) - 1];
     this.vfx.burst(this.drone.group.position, c, 26 + t * 6, 8 + t, 0.16, this.fxRng);
     this.cameraRig.addShake(0.12);
@@ -1338,16 +1408,14 @@ export class Game {
       this.rushAt = this.rt();
       this.env.setRush(true);
       this.scoreLog.push({ t: this.rt(), k: 'rushhour', v: 0 });
-      const aboard = this.delivery.phase === 'deliver';
-      this.teachNow('rush');
-      this.hud.eventPop('Rush hour', aboard ? `This parcel is a rush order: +${RUSH.bonus} if you beat the tag` : `Rush parcels pay +${RUSH.bonus} if you beat the tag`);
-      this.audio.rushHour();
-      this.cameraRig.addShake(0.12);
       if (this.delivery.phase === 'deliver') {
         const p = this.drone.group.position, t = this.delivery.target.pos;
         this.makeRush(Math.abs(t.x - p.x) + Math.abs(t.z - p.z) + Math.abs(t.y - p.y));
         this.setMarkerFromDelivery();
       }
+      // round 26: on a first run the banner (and the rush tag with it) waits for a clear moment (see updateTeach)
+      if (this.shown('rush')) this.rushBanner();
+      else this.rushBannerDue = true;
     }
     if (!this.rushActive) return;
     this.rushLeft -= dt;
@@ -1446,7 +1514,7 @@ export class Game {
     this.slipClockGain = dt > 0 ? added / dt : 0;
     const idle = this.delivery.overtime || this.slipClockK < 0.3 || this.slipClockGain >= 0.03 ? '' : this.slipBudget <= 0 ? 'spent' : this.slipToward < 0.05 ? 'away' : '';
     this.hud.setSlowClock(this.slipClockGain, dt, this.slipBudget, idle);
-    if (ev?.type === 'tick') this.audio.slipTick(ev.step);
+    if (ev?.type === 'tick') { if (this.shown('slip')) this.audio.slipTick(ev.step); }
     else if (ev?.type === 'payout') {
       // round 14: the payout is banked on the parcel run (paid on delivery), not scored now
       const S = SLIPSTREAM;
@@ -1473,15 +1541,18 @@ export class Game {
       this.scoreLog.push({ t: this.rt(), k: 'pay', v: pts, c: d.carrying ? 1 : 0, m: ev.points, par: Math.round(ev.pace * 10) / 10 });
       this.hud.setBank(this.bank, d.carrying);
       d.boost = Math.min(1, d.boost + SLIPSTREAM.boost);
+      // round 25: before the slipstream layer is introduced, payouts bank quietly. Round 26: really quietly (no chime,
+      // shake or sparks either: nothing on screen would explain them; the bank is shown with the slipstream's introduction)
+      if (!this.shown('slip')) { /* banked, shown with the delivery or the slipstream's introduction */ }
+      else {
       this.audio.slipPayout(ev.chain);
-      // round 25: before the slipstream layer is introduced, payouts bank quietly (no pop)
-      if (!this.shown('slip')) { /* banked, shown with the delivery */ }
-      else if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus');
+      if (pts > 0) this.hud.slipPop(`+${pts}`, ev.chain, ev.chain > 1 ? `Banked · chain x${ev.chain}` : 'Banked · street bonus');
       else if (this.stale) this.hud.slipPop('Off route', ev.chain, 'No bonus · head for the marker');
       else this.hud.slipPop('Bonus full', ev.chain, d.carrying ? 'Deliver to cash in' : 'Grab the parcel');
       this.cameraRig.addShake(0.06 + 0.03 * ev.chain);
       this.vfx.burst(d.group.position, this.slipColor, 12 + ev.chain * 6, 6 + ev.chain, 0.12, this.fxRng);
       if (ev.chain >= 3) this.vfx.burst(d.group.position, this.slipHot, 6 + ev.chain * 3, 9 + ev.chain, 0.1, this.fxRng);
+      }
     }
     // round 20: a parcel off its route goes stale: the banked street bonus fades while the leg makes no progress
     if (this.stale && this.bank > 0 && !this.delivery.overtime) {
@@ -1755,6 +1826,7 @@ export class Game {
   }
 
   private render(): void {
+    this.detail.update(this.camera.position);
     this.renderer.info.reset();
     this.pipeline.render();
     this.drawCalls = this.renderer.info.render.calls;
@@ -1787,6 +1859,7 @@ export class Game {
       routeMark: this.mark ? { kind: this.mark.kind, name: this.mark.name, names: this.mark.names.slice(), stage: this.mark.stage, gate: { x: this.mark.gate.x, y: this.mark.gate.y, z: this.mark.gate.z }, inward: { ...this.mark.inward }, exit: { x: this.mark.exit.x, y: this.mark.exit.y, z: this.mark.exit.z }, outward: { ...this.mark.outward }, width: this.mark.width, legAt: this.mark.legAt, shownAt: this.mark.shownAt, seenAt: this.mark.seenAt, seenDist: this.mark.seenDist, tagAt: this.mark.tagAt, tagOn: this.mark.tagOn, gateIn: this.mark.gateIn, board: this.gate.text, n: this.marksThisLeg } : null,
       progress: { best: Math.round(this.legBestLeft), stall: this.stallT, stale: this.stale, staleLost: this.staleLost, staleCount: this.staleCount },
       vanDraft: this.vanDraft,
+      detail: { chunks: this.detail.drawnChunks, triangles: this.detail.triangles, counts: this.detail.counts },
       street: { ...this.env.traffic.stats(), people: this.env.people.total, peopleDrawn: this.env.people.drawn, reactions: this.env.people.reactions, reacting: this.env.people.reacting, onActivePad: this.env.people.onPad, droppedLoops: this.env.people.droppedLoops, msTraffic: +this.env.streetMs.traffic.toFixed(3), msPeople: +this.env.streetMs.people.toFixed(3) },
       centreLog: this.hud.centreLog.slice(-30),
       city: { mode: this.city.mode, seed: this.seed, date: this.city.date, dailyBest: this.daily.best, dailyTier: this.daily.tier, mood: MOODS[this.look.mood].name, parks: this.look.parks, features: this.featureCounts, rushLanes: this.env.rushLevel },
@@ -1919,6 +1992,10 @@ export class Game {
       // run's rush orders; traffic() lists every live vehicle as a box; people() every person (x, z, reaction).
       rush: (on: boolean) => this.env.setRush(on),
       streetLife: (traffic: boolean, people: boolean) => this.env.setStreetLife(traffic, people),
+      // round 27 test hook: facade / rooftop detail kit on or off (perf comparisons)
+      detailOn: (on: boolean) => { this.detail.group.visible = on; },
+      detailAudit: () => this.detail.audit(this.layout),
+      archetypesInView: (range = 70) => this.detail.archetypesInView(this.layout, this.camera, range),
       traffic: () => this.env.traffic.snapshot(),
       people: () => this.env.people.snapshot(),
       rushLanes: () => this.layout.rushLanes.map((l) => ({ axis: l.axis, at: this.layout.roadCenters[l.index] })),

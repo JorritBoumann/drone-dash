@@ -65,11 +65,16 @@ export const RUN = {
   // pays a time bonus: `fastBonus` plus `fastPerSec` for every second under par (up to `fastSecCap` s), so a quick,
   // clean leg pays visibly more than one that just scrapes in. Street bonus banking was cut a little to match
   // (SLIPSTREAM.bankCarry/bankPickup/bankPerMetre: about 14% less), so delivery points are well over half of every bot run.
-  baseScore: 200,
-  perMetre: 2.4,
-  fastBonus: 100, // points for beating the leg's par (before the combo multiplier)...
-  fastPerSec: 15, // ...plus this per second under par (a lazy flier scrapes in 0 to 3 s under, a street pilot 4 to 9)...
-  fastSecCap: 8, // ...counted up to this many seconds (the roof line beats the street-route par by 6 to 11 s; a longer cap made it the better line)
+  // Round 26: medals counted drops, not flying (a lazy 3-drop run scored like a skilled 2-drop street run). The drop's
+  // skill part now carries more: par is judged on the run clock (seconds the slow clock gave back count as saved), the
+  // flat part of the fast bonus is small and each second under par pays double, and only a sharp drop builds the combo.
+  // The base shrinks a little so a slow drop is worth less. Delivery stays the headline (all of this is paid with the drop).
+  baseScore: 160, // round 26: 200 -> 160
+  perMetre: 2.2, // round 26: 2.4 -> 2.2
+  fastBonus: 40, // points for beating the leg's par on the clock (before the combo multiplier; round 26: 100 -> 40)...
+  fastPerSec: 30, // ...plus this per second under par (round 26: 15 -> 30; a lazy flier scrapes in 0 to 3 s under, a street pilot 6 to 10 with the slow clock)...
+  fastSecCap: 10, // ...counted up to this many seconds (round 26: 8 -> 10)
+  comboSharp: 3, // round 26: a drop at least this many clock seconds under par builds the combo; one that scrapes in keeps it; a late one breaks it
   parSpeed: 9, // m/s: a leg's par is its street-route length at this speed (a clean street run with corners)...
   parSlack: 7, // ...plus this many seconds
   maxCombo: 5,
@@ -272,11 +277,16 @@ export const RUSH = {
  * 1,249 to 1,713. On 6 fresh cities the lazy flier's best is 2,449 (three drops), the street bot's 3,592 to 6,366 (one city
  * 1,959 with two drops). Bronze 1000 -> 1200, Silver 2000 -> 2800, Gold 4500 -> 6000, Ace 10000 -> 15000.
  * See progress/round-25/builder.md.
+ * Round 26: the drop's skill part carries more (par on the run clock, 30 points a second under par, only sharp drops build
+ * the combo; RUN.baseScore and perMetre a little lower). On 12 fresh cities a lazy flier's three-drop runs fell from 2,426
+ * to 2,617 to 1,725 to 1,804; a street pilot's two-drop run scores about 2,800 and its three-drop runs 3,178 and up.
+ * Silver 2800 -> 2400 sits between them with room on both sides. Bronze 1200 -> 1000: a lazy two-drop run (966 to 1,403)
+ * still earns the first medal most of the time. See progress/round-26/builder.md.
  */
 export const GOALS = {
   tiers: [
-    { name: 'Bronze', score: 1200 },
-    { name: 'Silver', score: 2800 },
+    { name: 'Bronze', score: 1000 },
+    { name: 'Silver', score: 2400 },
     { name: 'Gold', score: 6000 },
     { name: 'Ace', score: 15000 },
   ],

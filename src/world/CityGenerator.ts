@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { chance, pick, randInt, range, type Rng } from '../core/random';
 import { GeometryBuilder, Style, color } from './GeometryBuilder';
+import { type BuildingSpec, type Archetype, lotHash } from './BuildingDetail';
 import {
   TUNNEL_CLEAR, buildStreetGraph, boulevardStops, featureRng, planAlleys, planBoulevards, planRushLanes,
   type Alley, type Boulevard, type FeatureKind, type RushLane, type StreetGraph,
@@ -36,6 +37,8 @@ export type CityLayout = {
   rushLanes: RushLane[];
   graph: StreetGraph;
   gridGraph: StreetGraph;
+  /** Round 27: every regular building's footprint, height, style and archetype (the facade detail kit reads these). */
+  buildings: BuildingSpec[];
 };
 
 const FLOOR_H = 3.2;
@@ -89,6 +92,8 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
   const awnings: Box[] = [];
   let buildingCount = 0;
   let towerNameIdx = randInt(rng, 0, TOWERS.length - 1);
+  // round 27: buildings for the detail kit (collected without drawing from rng, so the city layout is unchanged)
+  SPECS = [];
 
   const addSite = (pos: THREE.Vector3, kind: SiteKind, name: string, radius: number) => {
     sites.push({ id: sites.length, pos, kind, name, radius });
@@ -400,7 +405,7 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
           const near = lotTops.filter((l) => l.x1 > bx0 - 1 && l.x0 < bx1 + 1 && l.z1 > bz0 - 1 && l.z0 < bz1 + 1).map((l) => l.top);
           const top = Math.max(y0 + 2 * FLOOR_H, Math.min(...(near.length ? near : [y0 + 2 * FLOOR_H])) - FLOOR_H);
           const wall = color(pick(rng, TOWER_WALLS), 0.4, rng);
-          gb.box(bx0, y0, bz0, bx1, top, bz1, wall, Style.punched, Math.floor(rng() * 256), { floorH: FLOOR_H, bottom: true });
+          gb.box(bx0, y0, bz0, bx1, top, bz1, wall, Style.punched, Math.floor(rng() * 256) + 256 * 2, { floorH: FLOOR_H, bottom: true, vOffset: 2 });
           gb.box(bx0 - 0.1, y0 - 0.35, bz0 - 0.1, bx1 + 0.1, y0, bz1 + 0.1, color('#3c4650'), Style.plain, 0, { bottom: true });
           colliders.push({ minX: bx0, minY: y0 - 0.35, minZ: bz0, maxX: bx1, maxY: top, maxZ: bz1 });
           for (let t = -L + 1.5; t < L - 1; t += 3) {
@@ -508,6 +513,7 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
     awnings,
     geometry: gb.build(),
     buildingCount,
+    buildings: SPECS,
   };
 }
 
@@ -553,9 +559,13 @@ function addBuilding(
   const gabled = floors <= 4 && chance(rng, 0.6);
   let top = y0 + floors * FLOOR_H;
   const baseTop = top;
+  // round 27: archetype and wall material from the lot position (no rng draw)
+  const arch = archetypeOf(style, floors, tall, gabled, lotHash(x0, z0, 1));
+  const mseed = seed + 256 * MATERIAL[arch];
+  const c0 = colliders.length;
 
   // plinth / ground floor band in trim colour for character
-  gb.box(bx0, y0, bz0, bx1, top, bz1, wall, style, seed, { floorH: FLOOR_H, colW: style === Style.curtain ? 3.2 : 2.7 });
+  gb.box(bx0, y0, bz0, bx1, top, bz1, wall, style, mseed, { floorH: FLOOR_H, colW: style === Style.curtain ? 3.2 : 2.7 });
   colliders.push({ minX: bx0, minY: 0, minZ: bz0, maxX: bx1, maxY: top, maxZ: bz1 });
   // corner pilasters
   if (!tall && chance(rng, 0.6)) {
@@ -580,7 +590,8 @@ function addBuilding(
     if (edges.edgeW) boxes.push({ minX: bx0 - ad, minY: ay, minZ: bz0 + 0.8, maxX: bx0, maxY: ay + 0.35, maxZ: bz1 - 0.8 });
     if (edges.edgeE) boxes.push({ minX: bx1, minY: ay, minZ: bz0 + 0.8, maxX: bx1 + ad, maxY: ay + 0.35, maxZ: bz1 - 0.8 });
     for (const b of boxes) {
-      gb.box(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ, aw, Style.plain);
+      // round 27: a sloped, striped awning with a valance, inside the same box (the pad audit keeps the box)
+      awningShape(gb, b, edges, bx0, bz0, bx1, bz1, aw);
       awnings.push(b);
     }
   }
@@ -593,7 +604,8 @@ function addBuilding(
     const s = range(rng, 1.8, 3.2);
     const ux0 = bx0 + s, uz0 = bz0 + s, ux1 = bx1 - s, uz1 = bz1 - s;
     cornice(gb, bx0, bz0, bx1, bz1, top, trim, colliders);
-    gb.box(ux0, top, uz0, ux1, top + extra * FLOOR_H, uz1, wall, style, (seed + 7) % 256, { floorH: FLOOR_H, vOffset: floors, colW: style === Style.curtain ? 3.2 : 2.7 });
+    gb.box(ux0, top, uz0, ux1, top + extra * FLOOR_H, uz1, wall, style, ((seed + 7) % 256) + 256 * MATERIAL[arch], { floorH: FLOOR_H, vOffset: floors, colW: style === Style.curtain ? 3.2 : 2.7 });
+    SPECS?.push({ x0: ux0, z0: uz0, x1: ux1, z1: uz1, y0: top, top: top + extra * FLOOR_H, floors: extra, style, arch, edges: { edgeW: false, edgeE: false, edgeN: false, edgeS: false }, tier: true, gabled: false, padRoof: null, roof: null, wall: wall.clone(), trim: trim.clone(), vOffset: floors, colliders: [] });
     colliders.push({ minX: ux0, minY: top, minZ: uz0, maxX: ux1, maxY: top + extra * FLOOR_H, maxZ: uz1 });
     top += extra * FLOOR_H;
     roofX0 = ux0; roofZ0 = uz0; roofX1 = ux1; roofZ1 = uz1;
@@ -609,6 +621,7 @@ function addBuilding(
       const chz = range(rng, bz0 + 1, bz1 - 1);
       gb.box(chx - 0.4, top, chz - 0.4, chx + 0.4, top + rise + 0.8, chz + 0.4, color('#8c5a48'), Style.plain);
     }
+    SPECS?.push({ x0: bx0, z0: bz0, x1: bx1, z1: bz1, y0, top: baseTop, floors, style, arch, edges, tier: false, gabled: true, padRoof: null, roof: null, wall: wall.clone(), trim: trim.clone(), vOffset: 0, colliders: colliders.slice(c0) });
     return { padRoof: null, tall, top: baseTop };
   }
 
@@ -673,6 +686,7 @@ function addBuilding(
     gb.box(hx - 1.1, top, hz - 1.1, hx + 1.1, top + 2.4, hz + 1.1, color('#d8d2c6', 0.3, rng), Style.plain);
     colliders.push({ minX: hx - 1.1, minY: top, minZ: hz - 1.1, maxX: hx + 1.1, maxY: top + 2.4, maxZ: hz + 1.1 });
   }
+  SPECS?.push({ x0: bx0, z0: bz0, x1: bx1, z1: bz1, y0, top: baseTop, floors, style, arch, edges, tier: roofX0 !== bx0, gabled: false, padRoof, roof: { x0: roofX0, z0: roofZ0, x1: roofX1, z1: roofZ1, top }, wall: wall.clone(), trim: trim.clone(), vOffset: 0, colliders: colliders.slice(c0) });
   return { padRoof, tall, top: baseTop };
 }
 
@@ -694,6 +708,7 @@ function addCutBuilding(
   const trim = color(pick(rng, TRIM), 0.2, rng);
   const style = pick(rng, [Style.punched, Style.tall, Style.ribbon]);
   const step = 2;
+  const cmat = MATERIAL[archetypeOf(style, floors, false, false, lotHash(x0, z0, 1))];
   for (let a = x0; a < x1 - 0.01; a += step) {
     const b = Math.min(x1, a + step);
     let parts: Array<[number, number]> = [[z0, z1]];
@@ -708,7 +723,7 @@ function addCutBuilding(
     }
     for (const [pz0, pz1] of parts) {
       if (pz1 - pz0 < 1) continue;
-      gb.box(a, y0, pz0, b, top, pz1, wall, style, seed, { floorH: FLOOR_H, colW: 2 });
+      gb.box(a, y0, pz0, b, top, pz1, wall, style, seed + 256 * cmat, { floorH: FLOOR_H, colW: 2 });
       gb.box(a - 0.05, top, pz0 - 0.05, b + 0.05, top + 0.45, pz1 + 0.05, trim, Style.plain);
       colliders.push({ minX: a, minY: 0, minZ: pz0, maxX: b, maxY: top + 0.45, maxZ: pz1, facade: true });
     }
@@ -729,4 +744,52 @@ function cornice(gb: GeometryBuilder, x0: number, z0: number, x1: number, z1: nu
     // parapets are solid for both drone and camera
     colliders.push({ minX: ax, minY: top - 0.2, minZ: az, maxX: bx, maxY: top + h, maxZ: bz });
   }
+}
+
+/** Round 27: the detail kit's building list for the city being generated (null outside generateCity). */
+let SPECS: BuildingSpec[] | null = null;
+
+/** Round 27: wall material per archetype, read by the city shader (0 plaster, 1 brick, 2 concrete, 3 stone, 4 metal and glass). */
+const MATERIAL: Record<Archetype, number> = { townhouse: 0, walkup: 1, apartments: 2, classic: 3, office: 4, glass: 4 };
+
+/** Round 27: a building's archetype from its window style, height and a lot hash (h in 0..1). */
+function archetypeOf(style: number, floors: number, tall: boolean, gabled: boolean, h: number): Archetype {
+  if (style === Style.curtain) return 'glass';
+  if (tall) return style === Style.ribbon ? (h < 0.6 ? 'office' : 'apartments') : h < 0.5 ? 'classic' : 'apartments';
+  if (style === Style.ribbon) return h < 0.5 ? 'office' : 'apartments';
+  if (gabled) return h < 0.35 ? 'walkup' : 'townhouse';
+  if (style === Style.tall) return h < 0.3 ? 'walkup' : h < 0.75 ? 'townhouse' : 'apartments';
+  // punched windows
+  if (floors >= 5) return h < 0.45 ? 'walkup' : h < 0.75 ? 'classic' : 'apartments';
+  return h < 0.55 ? 'walkup' : h < 0.8 ? 'townhouse' : 'classic';
+}
+
+/** Round 27: a sloped awning with a striped canopy and a valance, filling the given box (wall side high, street side low). */
+function awningShape(gb: GeometryBuilder, b: Box, edges: Edges, bx0: number, bz0: number, bx1: number, bz1: number, c: THREE.Color): void {
+  const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+  const val = 0.16;
+  // outward axis: which face the box sits on
+  const onN = b.maxZ <= bz0 + 1e-3, onS = b.minZ >= bz1 - 1e-3, onW = b.maxX <= bx0 + 1e-3;
+  void edges; void bx1;
+  const yTop = b.maxY, yLow = b.minY + val;
+  let wallA: THREE.Vector3, wallB: THREE.Vector3, outA: THREE.Vector3, outB: THREE.Vector3, len: number;
+  if (onN || onS) {
+    const zw = onN ? b.maxZ : b.minZ, zo = onN ? b.minZ : b.maxZ;
+    wallA = V(b.minX, yTop, zw); wallB = V(b.maxX, yTop, zw); outA = V(b.minX, yLow, zo); outB = V(b.maxX, yLow, zo); len = b.maxX - b.minX;
+  } else {
+    const xw = onW ? b.maxX : b.minX, xo = onW ? b.minX : b.maxX;
+    wallA = V(xw, yTop, b.minZ); wallB = V(xw, yTop, b.maxZ); outA = V(xo, yLow, b.minZ); outB = V(xo, yLow, b.maxZ); len = b.maxZ - b.minZ;
+  }
+  const st = len / 0.5;
+  // canopy (both windings so it shows from above and below)
+  gb.tri(wallA, outA, outB, c, Style.awning, 0, [[0, 0], [0, 0], [st, 0]]);
+  gb.tri(wallA, outB, wallB, c, Style.awning, 0, [[0, 0], [st, 0], [st, 0]]);
+  gb.tri(wallA, outB, outA, c, Style.awning, 0, [[0, 0], [st, 0], [0, 0]]);
+  gb.tri(wallA, wallB, outB, c, Style.awning, 0, [[0, 0], [st, 0], [st, 0]]);
+  // valance
+  const dA = outA.clone().setY(b.minY), dB = outB.clone().setY(b.minY);
+  gb.tri(outA, dA, dB, c, Style.awning, 0, [[0, 1], [0, 1], [st, 1]]);
+  gb.tri(outA, dB, outB, c, Style.awning, 0, [[0, 1], [st, 1], [st, 1]]);
+  gb.tri(outA, dB, dA, c, Style.awning, 0, [[0, 1], [st, 1], [0, 1]]);
+  gb.tri(outA, outB, dB, c, Style.awning, 0, [[0, 1], [st, 1], [st, 1]]);
 }

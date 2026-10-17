@@ -52,9 +52,11 @@ const YAW_STEPS = [0.12, 0.25, 0.4, 0.6, 0.85, 1.15, 1.5, 2.0, 2.6, 3.2];
  * angle with clear room instead of being pulled in until the drone fills the screen. Not in alleys or tunnels (their own
  * framing) and not above `maxSpeed` (the view stays behind the heading). CameraRig.keepRoom is the hard floor.
  */
-const SWING = { need: 3.2, keep: 2.6, rate: 3.2, hold: 0.9, back: 1.4, minDist: 2.4, maxYaw: 0.6, maxSpeed: 6 };
+const SWING = { need: 3.2, keep: 2.6, rate: 3.2, hold: 0.9, back: 1.4, minDist: 2.4, slowDist: 4.2, maxYaw: 0.6, maxSpeed: 6 };
 /** Round 23: the camera never moves more than this relative to the drone in one frame (no pull-in snaps). */
 const MAX_REL_STEP = 1.7;
+/** Round 26: the drone's centre is kept inside these normalised screen bounds (y up; -1 is the bottom edge). */
+const FRAME = { bottom: -0.45, top: 0.6, side: 0.8 };
 
 /** Chase camera with positional lag, yaw lag, FOV kick on boost, collision pull-in and impact shake. */
 export class CameraRig {
@@ -282,6 +284,13 @@ export class CameraRig {
 
   private readonly cand = new THREE.Vector3();
   private readonly best = new THREE.Vector3();
+  private readonly frameV = new THREE.Vector3();
+  /** Round 26: seconds left of the wide camera floor after a pickup or drop (Game calls holdRoom). */
+  private roomHold = 0;
+  holdRoom(seconds: number): void {
+    this.roomHold = Math.max(this.roomHold, seconds);
+  }
+  private readonly frameLook = new THREE.Vector3();
   /**
    * Round 23: pull the ideal in to where the line of sight from the drone is clear. When that line is blocked close to
    * the drone (a narrow gap between buildings, a corner), small sideways and upward nudges of the ideal are tried too and
@@ -377,7 +386,10 @@ export class CameraRig {
     const cam = this.camera.position, dp = drone.group.position;
     const rel = this.tmp.copy(cam).sub(dp);
     const L = rel.length();
-    const want = SWING.minDist;
+    // round 26: a slow drone (at a pad, right after a pickup or drop) gets more room: at 2.4 m beside a wall it filled
+    // half a phone screen. Full `slowDist` at or below 4 m/s, the plain floor from 9 m/s.
+    // Round 26b: and for `roomHold` s after a pickup or a drop, whatever the speed (the drone accelerates away from the pad).
+    const want = this.roomHold > 0 ? SWING.slowDist : THREE.MathUtils.lerp(SWING.slowDist, SWING.minDist, THREE.MathUtils.smoothstep(drone.speed, 4, 9));
     if (L >= want) return;
     if (L > 0.05) {
       this.cand.copy(dp).addScaledVector(rel, want / L);
@@ -398,6 +410,30 @@ export class CameraRig {
     }
   }
 
+  /**
+   * Round 26: the drone stays in frame. When the camera has risen over the drone (its floor beside a wall, a pad
+   * approach), the look point ahead could leave the drone at or under the bottom edge. Then the look point blends toward
+   * the drone, just enough to keep it inside FRAME (normalised screen units).
+   */
+  private keepInFrame(dp: THREE.Vector3): void {
+    const cam = this.camera;
+    const inside = (): boolean => {
+      cam.updateMatrixWorld();
+      const v = this.frameV.copy(dp).project(cam);
+      return v.z < 1 && v.y > FRAME.bottom && v.y < FRAME.top && Math.abs(v.x) < FRAME.side;
+    };
+    if (inside()) return;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 6; i++) {
+      const mid = (lo + hi) / 2;
+      cam.lookAt(this.frameLook.copy(this.lookSmoothed).lerp(dp, mid));
+      if (inside()) hi = mid;
+      else lo = mid;
+    }
+    cam.lookAt(this.frameLook.copy(this.lookSmoothed).lerp(dp, hi));
+    cam.updateMatrixWorld();
+  }
+
   /** 0..1 weight of the final-approach framing: the target is close and below the drone. */
   private approachWeight(drone: Drone, target: THREE.Vector3 | null): number {
     if (!target) return 0;
@@ -411,6 +447,7 @@ export class CameraRig {
 
   update(dt: number, drone: Drone, world: CollisionWorld, alt = 0, target: THREE.Vector3 | null = null, view: ViewIntent | null = null): void {
     this.time += dt;
+    this.roomHold = Math.max(0, this.roomHold - dt);
     this.applyView(view, dt);
     // yaw follows the drone heading with lag; shortest-arc
     let dy = drone.yaw - this.yaw;
@@ -500,6 +537,7 @@ export class CameraRig {
 
     this.lookSmoothed.lerp(this.look, 1 - Math.exp(-12 * dt));
     cam.lookAt(this.lookSmoothed);
+    this.keepInFrame(drone.group.position);
 
     // impact shake
     if (this.shake > 0) {
@@ -511,7 +549,10 @@ export class CameraRig {
     }
     // round 21: never inside a wall, or so close that the near plane cuts into it (an orbit can swing the camera
     // toward the wall the drone is hugging); the shake is applied first so it cannot push the camera in either
-    if (world.pushOutPoint(cam.position, 0.3)) cam.lookAt(this.lookSmoothed);
+    if (world.pushOutPoint(cam.position, 0.3)) {
+      cam.lookAt(this.lookSmoothed);
+      this.keepInFrame(drone.group.position);
+    }
     cam.position.y = Math.max(cam.position.y, 0.8);
     this.lastRel.copy(cam.position).sub(drone.group.position);
     this.relValid = true;

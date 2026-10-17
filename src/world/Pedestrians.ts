@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createSeededRandom, pick, range, type Rng } from '../core/random';
 import type { CityLayout } from './CityGenerator';
 import { PANTS, SHIRTS, buildPedGeometry, pedMaterial } from './StreetKit';
+import { benchSpots } from './BuildingDetail';
 
 /**
  * Round 22: people. Walkers stroll round every block on the sidewalk (two loops a block, one each way, keeping right),
@@ -27,6 +28,9 @@ type Ped = {
   react: number; cool: number; aside: number; asideT: number; jx: number; jz: number;
   phase: number; x: number; z: number; y: number; yaw: number; scale: number;
   shirt: THREE.Color; pants: THREE.Color; look: number; seg: number; rx: number; rz: number; hid?: boolean;
+  /** round 27: outfit (0 shirt, 1 shorts, 2 dress, 3 jacket, 4 coat), accessory bits (1 hat, 2 bag, 4 backpack),
+   * pose (0 walk / stand, 1 phone, 2 talking, 3 sitting) and accent colour index */
+  outfit: number; acc: number; pose: number; accent: number; sit?: boolean;
 };
 
 export class Pedestrians {
@@ -36,6 +40,13 @@ export class Pedestrians {
   private readonly far: THREE.InstancedMesh;
   private readonly fanim: THREE.InstancedBufferAttribute;
   private readonly fpants: THREE.InstancedBufferAttribute;
+  private readonly iextra: THREE.InstancedBufferAttribute;
+  private readonly fextra: THREE.InstancedBufferAttribute;
+  /** Round 27: the looks (outfit, hair, accessories, pose) come from their own stream, so placement is unchanged. */
+  private readonly lookRng: Rng;
+  sitting = 0;
+  phones = 0;
+  talking = 0;
   private readonly paths: Path[] = [];
   private readonly peds: Ped[] = [];
   private readonly rng: Rng;
@@ -59,10 +70,14 @@ export class Pedestrians {
 
   constructor(private readonly layout: CityLayout, seed: number, mobile = false) {
     this.rng = createSeededRandom(seed * 53 + 29);
+    this.lookRng = createSeededRandom(seed * 101 + 7);
     this.R = mobile ? 82 : 105;
     this.build();
-    const geo = buildPedGeometry();
+    const geo = buildPedGeometry(false);
+    const geoFar = buildPedGeometry(true);
     const n = Math.max(1, this.peds.length);
+    this.iextra = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4);
+    this.fextra = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4);
     this.ianim = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4);
     this.ipants = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3);
     this.fanim = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4);
@@ -70,17 +85,19 @@ export class Pedestrians {
     const mat = pedMaterial();
     const make = (anim: THREE.InstancedBufferAttribute, pants: THREE.InstancedBufferAttribute, far: boolean) => {
       const g = new THREE.BufferGeometry();
-      for (const [name, attr] of Object.entries(geo.attributes)) g.setAttribute(name, attr);
-      if (far) g.setDrawRange(0, geo.userData.farCount as number);
+      for (const [name, attr] of Object.entries((far ? geoFar : geo).attributes)) g.setAttribute(name, attr);
+      const extra = far ? this.fextra : this.iextra;
       anim.setUsage(THREE.DynamicDrawUsage);
       pants.setUsage(THREE.DynamicDrawUsage);
+      extra.setUsage(THREE.DynamicDrawUsage);
       g.setAttribute('ianim', anim);
       g.setAttribute('ipants', pants);
+      g.setAttribute('iextra', extra);
       const m = new THREE.InstancedMesh(g, mat, n);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       m.setColorAt(0, new THREE.Color());
       m.instanceColor!.setUsage(THREE.DynamicDrawUsage);
-      m.castShadow = true;
+      m.castShadow = !far; // round 27: far people (40 m on) cast no shadow (the near ones do)
       m.frustumCulled = false;
       m.count = 0;
       m.name = far ? 'pedestrians-far' : 'pedestrians';
@@ -160,11 +177,23 @@ export class Pedestrians {
     const r = this.rng;
     const kid = r() < 0.07;
     const base = range(r, 1.05, 1.5);
-    return {
+    const ped: Ped = {
       path, s, speed: base, base, pause: 0, faceYaw: yaw, hurry: false, react: 0, cool: 0, aside: 0, asideT: 0, jx: 0, jz: 0,
       phase: r() * 6.28, x, z, y, yaw, scale: kid ? range(r, 0.62, 0.72) : range(r, 0.92, 1.08),
       shirt: new THREE.Color(pick(r, SHIRTS)), pants: new THREE.Color(pick(r, PANTS)), look: Math.floor(r() * 4) + 4 * Math.floor(r() * 4), seg: -1, rx: x, rz: z,
+      outfit: 0, acc: 0, pose: 0, accent: 0,
     };
+    // round 27: outfit, hair style, accessories (own stream)
+    const L = this.lookRng;
+    const o = L();
+    ped.outfit = o < 0.34 ? 0 : o < 0.52 ? 1 : o < 0.7 ? 2 : o < 0.9 ? 3 : 4;
+    const hs = ped.outfit === 2 ? (L() < 0.55 ? 1 : 2) : L() < 0.6 ? 0 : L() < 0.5 ? 1 : L() < 0.5 ? 2 : 3;
+    ped.look += 16 * hs;
+    ped.acc = (L() < 0.18 ? 1 : 0) + (L() < 0.2 ? 2 : 0);
+    if (!(ped.acc & 2) && L() < 0.15) ped.acc += 4;
+    ped.accent = Math.floor(L() * 8);
+    if (path >= 0 && L() < 0.1) { ped.pose = 1; ped.base *= 0.85; ped.speed = ped.base; }
+    return ped;
   }
 
   private build(): void {
@@ -241,6 +270,7 @@ export class Pedestrians {
       const rz = roadCenters.reduce((a, b) => (Math.abs(b - s.pos.z) < Math.abs(a - s.pos.z) ? b : a));
       const alongX = Math.abs(s.pos.z - rz) < Math.abs(s.pos.x - rx); // the face runs along x (road at z = rz)
       const ox = alongX ? 0 : Math.sign(rx - s.pos.x), oz = alongX ? Math.sign(rz - s.pos.z) : 0; // outward
+      const first = this.peds.length;
       for (let k = 0; k < n; k++) {
         const side = r() < 0.5 ? -1 : 1;
         const along = range(r, 2.5, 3.6) * side;
@@ -250,6 +280,37 @@ export class Pedestrians {
         if (this.blocked(x, z, 0.3) || this.nearPad(x, z, 0.9)) continue;
         const yaw = r() < 0.5 ? Math.atan2(ox, oz) : Math.atan2(s.pos.x - x, s.pos.z - z);
         this.peds.push(this.newPed(-1, 0, x, z, SIDEWALK_H, yaw));
+      }
+      // round 27: a pair at a shop door stands together talking (the second steps over beside the first, both turn in);
+      // someone alone often reads their phone
+      const here = this.peds.slice(first);
+      if (here.length === 2) {
+        const [a, b] = here;
+        const ux = alongX ? 1 : 0, uz = alongX ? 0 : 1;
+        const sgn = Math.sign((a.x - s.pos.x) * ux + (a.z - s.pos.z) * uz) || 1;
+        const bx = a.x + ux * sgn * 0.95, bz = a.z + uz * sgn * 0.95;
+        if (!this.blocked(bx, bz, 0.3) && !this.nearPad(bx, bz, 0.9)) {
+          b.x = bx; b.z = bz;
+          a.faceYaw = a.yaw = Math.atan2(b.x - a.x, b.z - a.z) - 0.35 * sgn;
+          b.faceYaw = b.yaw = Math.atan2(a.x - b.x, a.z - b.z) + 0.35 * sgn;
+          a.pose = b.pose = 2;
+          b.phase = a.phase + 2.2;
+        }
+      } else if (here.length === 1 && this.lookRng() < 0.5) here[0].pose = 1;
+    }
+    // round 27: people sitting on the park benches (one or two a bench), facing the path
+    for (const b of benchSpots(this.layout)) {
+      const n = this.lookRng() < 0.35 ? 2 : this.lookRng() < 0.55 ? 1 : 0;
+      for (let k = 0; k < n; k++) {
+        const off = n === 2 ? (k === 0 ? -0.42 : 0.42) : (this.lookRng() - 0.5) * 0.6;
+        const fx = Math.sin(b.yaw), fz = Math.cos(b.yaw);
+        const x = b.x + (b.alongX ? off : 0) - fx * 0.02, z = b.z + (b.alongX ? 0 : off) - fz * 0.02;
+        if (this.nearPad(x, z, 1.0)) continue;
+        const ped = this.newPed(-1, 0, x, z, b.y, b.yaw);
+        ped.pose = 3;
+        ped.scale = Math.max(ped.scale, 0.92);
+        ped.sit = true;
+        this.peds.push(ped);
       }
     }
     for (const ped of this.peds) if (ped.path < 0) ped.phase = this.rng() * 100;
@@ -340,6 +401,9 @@ export class Pedestrians {
     this.onPad = 0;
     const anim = this.ianim.array as Float32Array;
     const pants = this.ipants.array as Float32Array;
+    const extra = this.iextra.array as Float32Array;
+    const fextra = this.fextra.array as Float32Array;
+    this.sitting = this.phones = this.talking = 0;
     for (const w of this.peds) {
       const p = w.path >= 0 ? this.paths[w.path] : null;
       if (p && !p.near) continue;
@@ -370,7 +434,7 @@ export class Pedestrians {
       const rc = w.react > 0 ? Math.min(1, (1.4 - w.react) * 7) * Math.min(1, w.react * 2.2) : 0;
       const target = w.react > 0 ? w.asideT : 0;
       w.aside += (target - w.aside) * Math.min(1, dt * (w.react > 0 ? 6 : 1.2));
-      const lo = p ? p.asideMin : -0.4, hi = p ? p.asideMax : 0.4;
+      const lo = p ? p.asideMin : w.sit ? 0 : -0.4, hi = p ? p.asideMax : w.sit ? 0 : 0.4;
       const as = Math.max(lo, Math.min(hi, w.aside));
       w.jx *= Math.max(0, 1 - dt * 4); w.jz *= Math.max(0, 1 - dt * 4);
       x += inx * as + w.jx; z += inz * as + w.jz;
@@ -398,24 +462,27 @@ export class Pedestrians {
       const isFar = d > LOD_NEAR;
       const mesh = isFar ? this.far : this.near;
       const j = isFar ? kf++ : k++;
-      const A = isFar ? fanim : anim, PA = isFar ? fpants : pants;
+      const A = isFar ? fanim : anim, PA = isFar ? fpants : pants, EX = isFar ? fextra : extra;
+      EX[j * 4] = w.outfit; EX[j * 4 + 1] = w.acc; EX[j * 4 + 2] = w.pose; EX[j * 4 + 3] = w.accent;
+      if (w.pose === 3) this.sitting++; else if (w.pose === 1) this.phones++; else if (w.pose === 2) this.talking++;
       mesh.setMatrixAt(j, this.m);
       mesh.setColorAt(j, w.shirt);
       const walk = p ? Math.min(1, w.speed / 1.1) : 0;
       // standing people idle: a slow weight shift
-      const ph = p ? w.phase : 0;
+      const ph = p || w.pose === 2 ? w.phase : 0; // round 27: talkers gesture on their own clock
       if (!p) w.phase += dt;
       A[j * 4] = ph; A[j * 4 + 1] = p ? walk : 0.06 * Math.sin(w.phase * 0.7); A[j * 4 + 2] = rc; A[j * 4 + 3] = w.look;
       PA[j * 3] = w.pants.r; PA[j * 3 + 1] = w.pants.g; PA[j * 3 + 2] = w.pants.b;
     }
     this.drawn = k + kf;
     this.drawnFar = kf;
-    for (const [mesh, cnt, an, pa] of [[this.near, k, this.ianim, this.ipants], [this.far, kf, this.fanim, this.fpants]] as const) {
+    for (const [mesh, cnt, an, pa, ex] of [[this.near, k, this.ianim, this.ipants, this.iextra], [this.far, kf, this.fanim, this.fpants, this.fextra]] as const) {
       mesh.count = cnt;
       mesh.instanceMatrix.needsUpdate = true;
       mesh.instanceColor!.needsUpdate = true;
       an.needsUpdate = true;
       pa.needsUpdate = true;
+      ex.needsUpdate = true;
     }
     this.ianim.needsUpdate = true;
     this.ipants.needsUpdate = true;

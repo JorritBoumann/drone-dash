@@ -226,6 +226,8 @@ export class Hud {
 
   // round 24: touch layout (measured from the DOM a few times a second, never per frame)
   private touchAt = -1e9;
+  private popCy = 0; // round 26: the touch pop slot's centre line and the lowest a pop may reach (above the "Fly" label)
+  private popLower = 0;
   private touchGeo: TouchLayout | null = null;
   private readonly hudCenterEl = document.querySelector('.hud-center') as HTMLElement;
   private readonly hudScoreEl = document.querySelector('.hud-score') as HTMLElement;
@@ -271,13 +273,19 @@ export class Hud {
     const slotR = w / 2 - 100;
     const upper = Math.max(score ? score.b : 0, pillBottom * 0.6) + 8;
     const lower = (stick ? stick.t - 20 : h * 0.7) - 6;
-    const cy = Math.max(upper + 30, Math.min((upper + lower) / 2, h * 0.62));
+    // round 26: the pop never reaches the stick's "Fly" label. When the score column (combo chip, medal row) leaves
+    // little room above the stick, the pops go compact (no icon, smaller type) and sit in the middle of what is left.
+    const tight = lower - upper < 118;
+    const cy = tight ? (upper + lower) / 2 : Math.min(lower - 54, Math.max(upper + 30, Math.min((upper + lower) / 2, h * 0.62)));
+    this.hudEl.classList.toggle('pop-tight', tight);
     const slot: Box = { l: left, t: cy - 42, r: slotR, b: cy + 42 };
     if (!g || g.slot.l !== slot.l || g.slot.r !== slot.r || Math.abs(g.slot.t - slot.t) > 0.5) {
       this.hudEl.style.setProperty('--pop-x', `${((slot.l + slot.r) / 2).toFixed(1)}px`);
       this.hudEl.style.setProperty('--pop-y', `${cy.toFixed(1)}px`);
       this.hudEl.style.setProperty('--pop-w', `${Math.max(120, slot.r - slot.l).toFixed(1)}px`);
     }
+    this.popCy = cy;
+    this.popLower = lower;
     this.touchGeo = { w, h, controls, top, pillBottom, bottomTop: bottom ? bottom.t : h - 80, slot };
     return this.touchGeo;
   }
@@ -386,6 +394,12 @@ export class Hud {
     m.el.classList.remove('show');
     void m.el.offsetWidth;
     m.el.classList.add('show');
+    // round 26: on a touch screen a tall message (a two-line hint or medal banner) is lifted so its bottom stays above
+    // the stick's "Fly" label (offsetHeight ignores the pop-in scale; 0.56 of it covers the 1.1 overshoot)
+    if (this.isTouch && this.popLower > 0) {
+      const half = m.el.offsetHeight * 0.56;
+      m.el.style.top = `${Math.min(this.popCy, this.popLower - half).toFixed(1)}px`;
+    } else m.el.style.top = '';
     this.cActive = { kind: m.kind, el: m.el, shownAt: now, minMs: m.minMs, durMs: m.durMs };
   }
 

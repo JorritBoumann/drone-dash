@@ -216,89 +216,175 @@ export const MOOD_LIGHTS = [0.75, 0.22, 1.0, 0.15];
 // Pedestrians
 // ------------------------------------------------------------------------------------------------------------------
 
-/** parts: 0 skin, 1 shirt (instance colour), 2 trousers, 3 hair, 4 shoes. limbs: 0 body, 1/2 legs, 3/4 arms, 5 head. */
-function pedPart(g: THREE.BufferGeometry, part: number, limb: number, pivot: number): THREE.BufferGeometry {
+/**
+ * Round 27: people with knees and elbows, outfits, hair styles, accessories and poses.
+ * pinfo = (colour role, limb, joint pivot y), pmask = which per-person option shows the part (0 always).
+ * Colour roles: 0 skin, 1 shirt, 2 trousers, 3 hair, 4 shoes, 5 accent (hat, bag, jacket), 6 lower leg (skin under shorts
+ * or a dress), 7 phone, 8 dress, 9 torso and sleeves (accent for a jacket or coat), 10 forearm (skin for short sleeves).
+ * Limbs: 0 body, 1/2 thighs, 3/4 upper arms, 5 head, 6/7 shins, 8/9 forearms.
+ * Masks: 1 dress, 2 hat, 3 shoulder bag, 4 backpack, 5 phone, 6 long hair, 7 bun, 8 hair cap (not cropped), 9 coat.
+ */
+function pedPart(g: THREE.BufferGeometry, part: number, limb: number, pivot: number, mask = 0): THREE.BufferGeometry {
   const n = g.index ? g.toNonIndexed() : g;
   for (const k of Object.keys(n.attributes)) if (k !== 'position') n.deleteAttribute(k);
   n.computeVertexNormals();
   const count = n.getAttribute('position').count;
-  const a = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) { a[i * 3] = part; a[i * 3 + 1] = limb; a[i * 3 + 2] = pivot; }
-  n.setAttribute('pinfo', new THREE.BufferAttribute(a, 3));
+  const a = new Float32Array(count * 4);
+  for (let i = 0; i < count; i++) { a[i * 4] = part; a[i * 4 + 1] = limb; a[i * 4 + 2] = pivot; a[i * 4 + 3] = mask; }
+  n.setAttribute('pinfo', new THREE.BufferAttribute(a, 4));
   return n;
 }
 
-export function buildPedGeometry(): THREE.BufferGeometry {
-  // round 23: the far version (legs, arms, torso, head, hair cap: 104 of 188 triangles) comes first in the buffer, so
-  // people far from the camera draw only that slice (userData.farCount vertices)
-  const F: THREE.BufferGeometry[] = [];
-  const N: THREE.BufferGeometry[] = [];
-  const hip = 0.88, shoulder = 1.42;
+const HIP = 0.9, KNEE = 0.5, SHOULDER = 1.47, ELBOW = 1.2, NECK = 1.55;
+
+/** Round 27: the near figure (far = false, ~330 triangles) or the far figure (~110 triangles). */
+export function buildPedGeometry(far = false): THREE.BufferGeometry {
+  const P: THREE.BufferGeometry[] = [];
   for (const s of [-1, 1]) {
-    const limb = s < 0 ? 1 : 2;
-    F.push(pedPart(box(0.15, 0.8, 0.18, s * 0.095, 0.48, 0), 2, limb, hip));
-    N.push(pedPart(box(0.16, 0.09, 0.27, s * 0.095, 0.045, 0.04), 4, limb, hip));
-    const arm = s < 0 ? 3 : 4;
-    F.push(pedPart(box(0.11, 0.42, 0.13, s * 0.26, 1.2, 0), 1, arm, shoulder));
-    N.push(pedPart(box(0.09, 0.14, 0.1, s * 0.26, 0.93, 0), 0, arm, shoulder));
+    const L = s < 0 ? 0 : 1;
+    P.push(pedPart(box(0.15, 0.42, 0.17, s * 0.092, 0.69, 0), 2, 1 + L, HIP)); // thigh
+    P.push(pedPart(box(0.125, 0.44, 0.14, s * 0.092, 0.29, -0.005), 6, 6 + L, KNEE)); // shin
+    P.push(pedPart(box(0.1, 0.31, 0.115, s * 0.245, 1.33, 0), 9, 3 + L, SHOULDER)); // upper arm (sleeve)
+    P.push(pedPart(box(0.088, 0.27, 0.1, s * 0.245, 1.065, 0), 10, 8 + L, ELBOW)); // forearm
+    if (!far) {
+      P.push(pedPart(box(0.115, 0.08, 0.27, s * 0.092, 0.04, 0.045), 4, 6 + L, KNEE)); // shoe
+      P.push(pedPart(box(0.075, 0.1, 0.09, s * 0.245, 0.88, 0.005), 0, 8 + L, ELBOW)); // hand
+    }
   }
-  N.push(pedPart(box(0.36, 0.16, 0.22, 0, 0.92, 0), 2, 0, 0)); // hips
-  F.push(pedPart(new THREE.CylinderGeometry(0.22, 0.17, 0.56, 6).scale(1, 1, 0.62).rotateY(Math.PI / 6).translate(0, 1.27, 0), 1, 0, 0)); // torso
-  N.push(pedPart(box(0.09, 0.08, 0.09, 0, 1.58, 0), 0, 5, 1.56)); // neck
-  F.push(pedPart(new THREE.IcosahedronGeometry(0.125, 0).scale(1, 1.12, 1).translate(0, 1.7, 0.01), 0, 5, 1.56)); // head
-  F.push(pedPart(box(0.27, 0.1, 0.27, 0, 1.81, -0.02), 3, 5, 1.56)); // hair cap
-  N.push(pedPart(box(0.26, 0.16, 0.06, 0, 1.72, -0.12), 3, 5, 1.56)); // hair back
-  const farCount = F.reduce((n, g) => n + g.getAttribute('position').count, 0);
-  const P = [...F, ...N];
+  // torso: shoulders wider than the waist
+  P.push(pedPart(new THREE.CylinderGeometry(0.205, 0.165, 0.58, far ? 6 : 8).scale(1, 1, 0.6).translate(0, 1.25, 0), 9, 0, 0));
+  P.push(pedPart(new THREE.IcosahedronGeometry(0.112, far ? 0 : 1).scale(0.95, 1.13, 1).translate(0, 1.68, 0.01), 0, 5, NECK)); // head
+  P.push(pedPart(new THREE.IcosahedronGeometry(0.126, far ? 0 : 1).scale(1.0, 0.86, 1.02).translate(0, 1.718, -0.022), 3, 5, NECK, 8)); // hair cap
+  P.push(pedPart(new THREE.CylinderGeometry(0.19, 0.3, 0.44, far ? 6 : 10).scale(1, 1, 0.78).translate(0, 0.76, 0), 8, 0, 0, 1)); // dress skirt
+  if (!far) {
+    P.push(pedPart(box(0.34, 0.17, 0.21, 0, 0.92, 0), 2, 0, 0)); // hips
+    P.push(pedPart(box(0.085, 0.09, 0.09, 0, 1.56, 0), 0, 5, NECK)); // neck
+    P.push(pedPart(box(0.03, 0.045, 0.035, 0, 1.665, 0.12), 0, 5, NECK)); // nose
+    P.push(pedPart(box(0.235, 0.3, 0.07, 0, 1.56, -0.095), 3, 5, NECK, 6)); // long hair
+    P.push(pedPart(new THREE.IcosahedronGeometry(0.058, 0).translate(0, 1.79, -0.11), 3, 5, NECK, 7)); // bun
+    P.push(pedPart(new THREE.CylinderGeometry(0.128, 0.132, 0.075, 10).translate(0, 1.795, -0.01), 5, 5, NECK, 2)); // cap
+    P.push(pedPart(box(0.2, 0.02, 0.13, 0, 1.765, 0.12), 5, 5, NECK, 2)); // cap brim
+    P.push(pedPart(box(0.07, 0.25, 0.23, 0.225, 0.98, 0.02), 5, 0, 0, 3)); // shoulder bag
+    P.push(pedPart(box(0.025, 0.5, 0.04, 0.0, 1.27, 0.115).rotateZ(0.62), 5, 0, 0, 3)); // bag strap
+    P.push(pedPart(box(0.28, 0.36, 0.14, 0, 1.24, -0.17), 5, 0, 0, 4)); // backpack
+    P.push(pedPart(box(0.065, 0.115, 0.016, 0.245, 0.875, 0.06), 7, 9, ELBOW, 5)); // phone in the right hand
+    P.push(pedPart(new THREE.CylinderGeometry(0.2, 0.27, 0.46, 8).scale(1, 1, 0.72).translate(0, 0.77, 0), 5, 0, 0, 9)); // coat skirt
+  }
   const g = mergeGeometries(P)!;
-  g.userData.farCount = farCount;
   for (const p of P) p.dispose();
   return g;
 }
 
 /**
  * Lambert material for people. Per instance: instance colour = shirt, `ipants` = trousers, `ianim` = (walk phase,
- * walk amount, reaction 0..1, skin + 4 * hair index). Legs and arms swing about the hip and shoulder; a reaction ducks
- * the figure, throws the arms up over the head and tips the head back to look up.
+ * walk amount, reaction 0..1, skin + 4 * hair colour + 16 * hair style), `iextra` = (outfit, accessory bits, pose,
+ * accent colour). Hips, knees, shoulders and elbows bend; a reaction ducks the figure, throws the arms up over the head
+ * and tips the head back to look up. Poses: 0 walk / stand, 1 phone, 2 talking, 3 sitting.
  */
 export function pedMaterial(): THREE.MeshLambertMaterial {
   const m = new THREE.MeshLambertMaterial({ color: '#ffffff' });
   const pose = /* glsl */ `
-    float pPart = pinfo.x, pLimb = pinfo.y, pPivot = pinfo.z;
+    float pPart = pinfo.x, pLimb = pinfo.y, pPivot = pinfo.z, pMask = pinfo.w;
     float wph = ianim.x, wamt = ianim.y, wre = ianim.z;
-    float sw = sin(wph) * 0.62 * wamt;
-    float ang = 0.0;
-    if (pLimb > 0.5 && pLimb < 1.5) ang = sw * (1.0 - wre);
-    else if (pLimb > 1.5 && pLimb < 2.5) ang = -sw * (1.0 - wre);
-    else if (pLimb > 2.5 && pLimb < 3.5) ang = -sw * 0.75 - wre * 2.5;
-    else if (pLimb > 3.5 && pLimb < 4.5) ang = sw * 0.75 - wre * 2.5;
-    else if (pLimb > 4.5) ang = -wre * 0.55;
-    float ca = cos(ang), sa = sin(ang);`;
+    float outfit = iextra.x, acc = iextra.y, ppose = iextra.z;
+    float hstyle = floor(ianim.w / 16.0);
+    float sw = sin(wph) * 0.5 * wamt;
+    float cw = cos(wph);
+    float isPhone = step(0.5, ppose) * step(ppose, 1.5);
+    float isTalk = step(1.5, ppose) * step(ppose, 2.5);
+    float isSit = step(2.5, ppose);
+    float hipL = sw, hipR = -sw;
+    float kneeL = wamt * (0.1 + 0.75 * max(0.0, -cw)), kneeR = wamt * (0.1 + 0.75 * max(0.0, cw));
+    float shL = -sw * 0.8, shR = sw * 0.8;
+    float elL = -(0.18 + 0.3 * wamt + 0.12 * max(0.0, sw)), elR = -(0.18 + 0.3 * wamt + 0.12 * max(0.0, -sw));
+    float headA = 0.0;
+    // standing idle: a slow weight shift (wamt carries it, small) without leg swing
+    if (isPhone > 0.5) { shR = -0.32; elR = -1.3; headA = 0.42; }
+    if (isTalk > 0.5) { float gst = sin(wph * 1.7); shR = -0.25 - 0.15 * gst; elR = -0.9 - 0.45 * max(0.0, gst); shL = -0.05; elL = -0.35; headA = 0.08 * sin(wph * 0.9); }
+    if (isSit > 0.5) { hipL = -1.5; hipR = -1.45; kneeL = 1.5; kneeR = 1.42; shL = -0.3; shR = -0.32; elL = -0.85; elR = -0.8; headA = 0.06; }
+    // reaction: arms up, head back, legs still
+    float legRe = wre * (1.0 - isSit);
+    hipL *= 1.0 - legRe; hipR *= 1.0 - legRe; kneeL *= 1.0 - legRe; kneeR *= 1.0 - legRe;
+    shL = mix(shL, -2.6, wre); shR = mix(shR, -2.6, wre); elL = mix(elL, -0.25, wre); elR = mix(elR, -0.25, wre);
+    headA = mix(headA, -0.55, wre);
+    float jointA = 0.0, rootA = 0.0, rootPivot = 0.0;
+    if (pLimb > 0.5 && pLimb < 1.5) { rootA = hipL; rootPivot = ${HIP.toFixed(2)}; }
+    else if (pLimb > 1.5 && pLimb < 2.5) { rootA = hipR; rootPivot = ${HIP.toFixed(2)}; }
+    else if (pLimb > 2.5 && pLimb < 3.5) { rootA = shL; rootPivot = ${SHOULDER.toFixed(2)}; }
+    else if (pLimb > 3.5 && pLimb < 4.5) { rootA = shR; rootPivot = ${SHOULDER.toFixed(2)}; }
+    else if (pLimb > 4.5 && pLimb < 5.5) { rootA = headA; rootPivot = ${NECK.toFixed(2)}; }
+    else if (pLimb > 5.5 && pLimb < 6.5) { jointA = kneeL; rootA = hipL; rootPivot = ${HIP.toFixed(2)}; }
+    else if (pLimb > 6.5 && pLimb < 7.5) { jointA = kneeR; rootA = hipR; rootPivot = ${HIP.toFixed(2)}; }
+    else if (pLimb > 7.5 && pLimb < 8.5) { jointA = elL; rootA = shL; rootPivot = ${SHOULDER.toFixed(2)}; }
+    else if (pLimb > 8.5) { jointA = elR; rootA = shR; rootPivot = ${SHOULDER.toFixed(2)}; }
+    // which optional parts this person shows
+    float show = 1.0;
+    if (pMask > 0.5 && pMask < 1.5) show = step(1.5, outfit) * step(outfit, 2.5);
+    else if (pMask > 1.5 && pMask < 2.5) show = mod(acc, 2.0);
+    else if (pMask > 2.5 && pMask < 3.5) show = mod(floor(acc / 2.0), 2.0);
+    else if (pMask > 3.5 && pMask < 4.5) show = mod(floor(acc / 4.0), 2.0);
+    else if (pMask > 4.5 && pMask < 5.5) show = isPhone;
+    else if (pMask > 5.5 && pMask < 6.5) show = step(0.5, hstyle) * step(hstyle, 1.5);
+    else if (pMask > 6.5 && pMask < 7.5) show = step(1.5, hstyle) * step(hstyle, 2.5) * (1.0 - mod(acc, 2.0));
+    else if (pMask > 7.5 && pMask < 8.5) show = 1.0 - step(2.5, hstyle) * 0.0;
+    else if (pMask > 8.5) show = step(3.5, outfit) * (1.0 - isSit);
+    float ca = cos(rootA), sa = sin(rootA), cj = cos(jointA), sj = sin(jointA);`;
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 pinfo;\nattribute vec4 ianim;\nattribute vec3 ipants;')
+      .replace('#include <common>', '#include <common>\nattribute vec4 pinfo;\nattribute vec4 ianim;\nattribute vec3 ipants;\nattribute vec4 iextra;')
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+        objectNormal = vec3(objectNormal.x, objectNormal.y * cj - objectNormal.z * sj, objectNormal.y * sj + objectNormal.z * cj);
         objectNormal = vec3(objectNormal.x, objectNormal.y * ca - objectNormal.z * sa, objectNormal.y * sa + objectNormal.z * ca);`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         {
-          float ry = transformed.y - pPivot;
-          if (pLimb > 0.5) transformed = vec3(transformed.x, pPivot + ry * ca - transformed.z * sa, ry * sa + transformed.z * ca);
+          if (jointA != 0.0) { float ry = transformed.y - pPivot; transformed = vec3(transformed.x, pPivot + ry * cj - transformed.z * sj, ry * sj + transformed.z * cj); }
+          if (pLimb > 0.5) { float ry = transformed.y - rootPivot; transformed = vec3(transformed.x, rootPivot + ry * ca - transformed.z * sa, ry * sa + transformed.z * ca); }
+          // sitting: the whole figure drops onto the seat
+          transformed.y -= isSit * 0.45;
           // duck: hips drop, body leans forward
           transformed.y *= 1.0 - wre * 0.28;
           transformed.z += wre * 0.18 * smoothstep(0.6, 1.6, transformed.y);
-          transformed.y += abs(cos(wph)) * 0.035 * wamt;
+          transformed.y += abs(cw) * 0.03 * wamt;
+          // a little side sway of the upper body with each step
+          transformed.x += sin(wph) * 0.018 * wamt * smoothstep(0.85, 1.6, transformed.y);
+          if (show < 0.5) transformed = vec3(0.0);
         }`)
       .replace('#include <color_vertex>', `
         ${pose}
         {
-          float sk = mod(ianim.w, 4.0), hr = floor(ianim.w / 4.0);
+          float sk = mod(ianim.w, 4.0), hr = mod(floor(ianim.w / 4.0), 4.0);
           vec3 skin = sk < 0.5 ? vec3(0.93, 0.66, 0.5) : sk < 1.5 ? vec3(0.72, 0.47, 0.32) : sk < 2.5 ? vec3(0.45, 0.28, 0.18) : vec3(0.98, 0.78, 0.64);
-          vec3 hair = hr < 0.5 ? vec3(0.08, 0.06, 0.05) : hr < 1.5 ? vec3(0.32, 0.18, 0.08) : hr < 2.5 ? vec3(0.75, 0.55, 0.25) : vec3(0.55, 0.55, 0.55);
-          vec3 c = pPart < 0.5 ? skin * skin : pPart < 1.5 ? instanceColor.rgb : pPart < 2.5 ? ipants : pPart < 3.5 ? hair * hair : vec3(0.014, 0.012, 0.01);
+          vec3 hair = hr < 0.5 ? vec3(0.08, 0.06, 0.05) : hr < 1.5 ? vec3(0.32, 0.18, 0.08) : hr < 2.5 ? vec3(0.75, 0.55, 0.25) : vec3(0.6, 0.6, 0.58);
+          float ai = iextra.w;
+          vec3 accent = ai < 0.5 ? vec3(0.13, 0.15, 0.2) : ai < 1.5 ? vec3(0.45, 0.3, 0.18) : ai < 2.5 ? vec3(0.62, 0.55, 0.42) : ai < 3.5 ? vec3(0.2, 0.32, 0.26)
+            : ai < 4.5 ? vec3(0.6, 0.18, 0.14) : ai < 5.5 ? vec3(0.85, 0.82, 0.75) : ai < 6.5 ? vec3(0.25, 0.25, 0.27) : vec3(0.85, 0.6, 0.2);
+          float o = iextra.x;
+          bool bareLeg = (o > 0.5 && o < 2.5);
+          bool jacket = o > 2.5;
+          bool shortSleeve = (o > 0.5 && o < 2.5);
+          vec3 c;
+          if (pPart < 0.5) c = skin * skin;
+          else if (pPart < 1.5) c = instanceColor.rgb;
+          else if (pPart < 2.5) c = (o > 1.5 && o < 2.5) ? skin * skin : ipants;
+          else if (pPart < 3.5) c = hair * hair;
+          else if (pPart < 4.5) c = mod(ai, 3.0) < 0.5 ? vec3(0.8, 0.78, 0.74) : vec3(0.02, 0.018, 0.016);
+          else if (pPart < 5.5) {
+            // hats and bags take a second and third accent so a person is not one colour head to toe
+            float k = pMask > 1.5 && pMask < 2.5 ? 3.0 : pMask > 2.5 && pMask < 4.5 ? 5.0 : 0.0;
+            float aj = mod(ai + k, 8.0);
+            vec3 a2 = aj < 0.5 ? vec3(0.13, 0.15, 0.2) : aj < 1.5 ? vec3(0.45, 0.3, 0.18) : aj < 2.5 ? vec3(0.62, 0.55, 0.42) : aj < 3.5 ? vec3(0.2, 0.32, 0.26)
+              : aj < 4.5 ? vec3(0.6, 0.18, 0.14) : aj < 5.5 ? vec3(0.85, 0.82, 0.75) : aj < 6.5 ? vec3(0.25, 0.25, 0.27) : vec3(0.85, 0.6, 0.2);
+            c = a2 * a2;
+          }
+          else if (pPart < 6.5) c = bareLeg ? skin * skin : ipants;
+          else if (pPart < 7.5) c = vec3(0.01, 0.012, 0.016);
+          else if (pPart < 8.5) c = instanceColor.rgb;
+          else if (pPart < 9.5) c = jacket ? accent * accent : instanceColor.rgb;
+          else c = shortSleeve ? skin * skin : (jacket ? accent * accent : instanceColor.rgb);
           vColor = vec4(c, 1.0);
         }`);
   };
-  m.customProgramCacheKey = () => 'street-peds-v1';
+  m.customProgramCacheKey = () => 'street-peds-v2';
   return m;
 }
 

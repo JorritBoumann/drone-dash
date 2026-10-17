@@ -658,12 +658,13 @@ export class Drone {
       this.cargoSwingVel.y += (-kSpring * this.cargoSwing.y - damp * this.cargoSwingVel.y - lr * 0.25) * dt;
       this.cargoSwing.addScaledVector(this.cargoSwingVel, dt);
       this.cargo.rotation.set(this.cargoSwing.x - this.pitch * 0.8, 0, this.cargoSwing.y - this.roll * 0.8);
-      // snap-in: parcel is reeled up from below with an overshoot pop
+      // snap-in: parcel is reeled up from below with an overshoot pop (round 26: from 1 m below, was 1.6: the long cable
+      // made the drone plus parcel fill a phone screen right after a pickup)
       if (this.cargoSnap > 0) {
         this.cargoSnap = Math.max(0, this.cargoSnap - dt / 0.45);
         const t = 1 - this.cargoSnap;
         const c1 = 2.2, back = 1 + (c1 + 1) * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-        this.cargo.position.y = -1.6 + (-0.22 + 1.6) * back;
+        this.cargo.position.y = -1.0 + (-0.22 + 1.0) * back;
         this.cargo.scale.setScalar(0.6 + 0.4 * back + Math.sin(t * Math.PI) * 0.25);
       } else {
         this.cargo.position.y = -0.22;

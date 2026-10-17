@@ -36,6 +36,7 @@ interface ThreeGameDiagnostics {
   narrow?: { kind: string; name: string; roof: boolean } | null;
   vanDraft?: boolean;
   /** Round 22: street life counts (vehicles, people drawn, reactions to the drone, people on the live pad). */
+  detail?: { chunks: number; triangles: number; counts: Record<string, number> };
   street?: { cars: number; target: number; vans: number; held: number; braking: number; turning: number; people: number; peopleDrawn: number; reactions: number; reacting: number; onActivePad: number; droppedLoops: number; msTraffic: number; msPeople: number };
   centreLog?: Array<{ kind: string; text: string; t: number }>;
   /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
@@ -128,6 +129,9 @@ interface DroneDashApi {
   vans?(): Array<{ x: number; y: number; z: number; dx: number; dz: number }>;
   rush?(on: boolean): void;
   streetLife?(traffic: boolean, people: boolean): void;
+  detailOn?(on: boolean): void;
+  archetypesInView?(range?: number): { arch: Record<string, number>; shopFronts: number };
+  detailAudit?(): { padHits: number; alleyHits: number; roadHits: number; vertices: number; samples: number[][] };
   traffic?(): Array<{ kind: 'car' | 'van'; type: number; x: number; y: number; z: number; fx: number; fz: number; len: number; wid: number; y0: number; y1: number; mode: string; lat: number; axis: number }>;
   people?(): Array<{ x: number; z: number; y: number; walking: boolean; react: number; path: number }>;
   /** Round 24: the drone's screen box in CSS px (visible vertices through the render camera) and the touch framing shift. */

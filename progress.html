@@ -16,7 +16,407 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-18 21:15 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-18 23:19 UTC.</p>
+<section><h2>round 36</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 36 critic report
+
+**Verdict:** Pass on the water bar. I found 0 views with sea inside any hull. Every flag the probes raised is open sea outside the hull. The new rigging, the sail or a pier beam frames it. I checked each case pixel by pixel. The new boats win the blind A/B 5 of 6 and the wakes win 6 of 6. No regression found.
+
+## Setup
+
+- Build tested: the working tree on top of commit 5a53f9e ("Round 35: ..."), round 36 builder work, not committed yet.
+- Control: a clean `git archive` of 5a53f9e in the scratchpad (`c36/r35c`).
+- My servers: 5191 (round 36 dev), 5192 (round 35 control dev), 5193 (round 36 production preview from my own build). Each dev server had its own Vite cache folder in the scratchpad, HMR off. I did not touch the owner's server on 5188. All three of mine are stopped now.
+- I did not read `builder.md`. I read `src/` only for hooks and the diff (wake shader, sail flutter, lid material).
+- Every browser ran alone, one job at a time, from `critic-scripts/queue36.sh` and `jobs36.txt`.
+- Machine load (top process): hull probe XprotectService 21%, boats loginwindow 10%, cold load coreaudiod 13%, perf systemstats 13%, medal run coreaudiod 5%.
+
+## New or changed scripts (progress/round-36/critic-scripts/)
+
+- `hullwater35.mjs`: unchanged copy, run with `TAG=r36` and `TAG=r35c`.
+- `seams36.py`: a fix to round 35's offline check. The probe paints its own in-browser leaks green in the `-M` frames. `seams35.py` only read magenta, so it never saw those pixels. Now green counts as sea too. Round 35's "18 of 151" missed some views for this reason.
+- `seams36.mjs`: as `seams35.mjs`, and it also writes each leak's pixels so I can crop them.
+- `hwdbg36.mjs`: the hull probe plus, for each leak, where the probe's ray-march thinks the sea is (in boat coordinates) and which boat it blames. It also saves sweep frames that leak.
+- `hwlid36.mjs`: adds two frames per view with the water hidden: `-L1` shows the lid in magenta, `-L2` has no lid. A ray into a real hole in a hull hits wood in `-L2`. A ray over open sea hits the sea bed.
+- `wake36.mjs`: wake views from above (straight down, and a 20 m chase view) for the wake A/B.
+- `ab36.py`: two blind sets, boats and wakes. Keys are written hidden before judging.
+- `stuck36.mjs` and `stuck36b.mjs`: the sailboat low ram with a frame-by-frame trace.
+
+## Sea inside hulls
+
+| Run | Views | Sweep frames | Caps-off control (sea in hull) |
+|---|---|---|---|
+| Desktop, golden / morning / dusk | 183 | 432 | 49 views, 178 sweep frames |
+| Phone (iPhone 13), same | 183 | 216 | 70 views, 99 sweep frames |
+
+The control is live: with the lids off the rowing boat and the sailboat fill with sea (`hw35-r36-golden-row-into-hull-M0.jpg`).
+
+**Flags raised with the lids on, and what they were:**
+
+- In-browser leak column: desktop 12 views and 14 sweep frames, phone 28 views and 5 sweep frames. Almost all on the sailboat, plus a few rowing-boat views of 1 to 22 px.
+- Offline seam check (fixed): 7 of 168 saved round 36 views, 3 to 674 px. The round 35 control gives 8 of 42 on its smaller set, including the old thwart lines (770 px in the morning sailboat).
+
+**I checked the flags pixel by pixel** (normal frame, lid-on magenta, lid-off magenta side by side, at 3 to 5 times zoom):
+
+1. Sailboat, very close, golden and dusk (3,646 and 3,788 px): the patch sits between the boom, the mast, a shroud and the far rail. It is the same shape with the lid off. In the water-hidden frame the same pixels show the sea bed, not wood. So it is sea beyond the far rail (`leak-check-rigging-1.jpg`, `lid-shown-and-water-hidden.jpg`).
+2. Sailboat, sun behind the sail, phone (674 px): sea beyond the far rail, framed by the boom, the mast and a stay (`leak-check-rigging-1.jpg`, top row).
+3. Moored sailboat, into the hull, phone, and the bow sweep frames (600 to 2,400 px): a triangle of sea beyond the bow, between the sail foot, the bow block and the forestay (`leak-check-sweep-bow.jpg`).
+4. Sailboat side views and moored stern views (13 to 256 px): slivers of sea beyond the far rail, split off by a shroud or a small post. With the lid off the shroud line joins them to a bigger patch, so the offline rule fires (`leak-check-rigging-2.jpg`).
+5. Moored sailboat stern and bow views (100 to 1,160 px): sea just beyond the far gunwale of the moored rowing boat, under the pier beam (`leak-check-pier-rail.jpg`).
+6. Rowing boat moored stern (3 px): a JPEG speck inside open sea.
+
+So the builder's claim holds. The new rigging and sail frame small patches of open sea, and the probe's ray-march misplaces them. I traced why. A ray can graze a far rail. Then the ray-march puts the sea hit inside the hull (median 0.43 of the half-beam in case 1). But the water-hidden frame shows that the ray clears the hull. Use the water-hidden frame in future seam tests, not the ray-march.
+
+**Result: 0 views with sea inside a hull.** This is true for every boat kind, on desktop and phone, in all three moods and all sweeps. Round 35 had 18 of 151 by its own count (more with the green fix).
+
+**The lid hides nothing but sea.** In some places the lid-on and lid-off frames differ off the water. There the difference is a 1 px rim on the edge of the old sea area, never a part. See `lid-diff-row-inside-close.jpg`: the deck, thwart and oars are all there. One case was marked "lid hid sea outside the hull" (phone, moored rowing boat, 1,502 px). It is sea inside that rowing boat, again misplaced by the ray-march. No flat lid shows in any view. No boat carries a person.
+
+**Motion:** bob heave -0.20 to +0.24 m in the sweeps, rib at planing trim, three views per step: 0 frames with sea in a hull.
+
+## Blind A/B: round 36 against round 35 (5a53f9e)
+
+Same seed, time and pose. Picks in `critic/ab/picks-boat.txt` and `picks-wake.txt`, written before I opened `.key-boat.json` and `.key-wake.json`.
+
+**Close boat views** (`ab/boat-1.jpg` to `boat-6.jpg`)
+
+| Pair | View | My pick | Result |
+|---|---|---|---|
+| 1 | Golden, sailboat, into the hull | rigging and gaff, clear | **new wins** |
+| 2 | Golden, rowing boat, into the hull | thwarts and oars, clear | **new wins** |
+| 3 | Morning, rib, low quarter | weak | old wins (the new rib trails a pale streak) |
+| 4 | Dusk, sailboat, very close | shrouds, clear | **new wins** |
+| 5 | Golden, bus, low quarter | rails, windows, deck houses, clear | **new wins** |
+| 6 | Phone, golden, sailboat, low quarter | rigging, weak | new wins |
+
+5 of 6: pass.
+
+**Wakes from above** (`ab/wake-1.jpg` to `wake-6.jpg`)
+
+| Pair | View | Result |
+|---|---|---|
+| 1 | Golden, sailboat, straight down | **new wins**, clear |
+| 2 | Golden, rib, chase view into the sun | **new wins**, clear |
+| 3 | Morning, bus, straight down | **new wins**, clear |
+| 4 | Morning, rib, straight down | **new wins**, clear |
+| 5 | Dusk, sailboat and marina, chase view | **new wins**, clear |
+| 6 | Phone, golden, rib, straight down | **new wins**, clear |
+
+6 of 6: pass. Every old wake has the pale box round the hull and the bright fan. Every new one has thin V lines.
+
+## Round 35 low-quality list
+
+| Item | Status | Evidence |
+|---|---|---|
+| Wakes: pale rectangle and torch-beam fan | **Fixed.** No box round any hull, no fan. Thin V arms, an echo line, a wash band hugging the hull. A soft pale haze still lies inside the V just behind the transom, and the arms look dotted, like perforations. | `ab/wake-*.jpg`, `wake36-r36-*` vs `wake36-r35c-*`, `hw35-r36-golden-sail-above.jpg` vs `hw35-r35c-golden-sail-above.jpg` |
+| Flat sail, no rigging | **Fixed.** Gaff and boom, a curved sail with belly, shrouds and a forestay, a slight flutter. Lit through with the sun behind. | `sheet-r36-golden-sail.jpg`, `hw35-r36-morning-sail-sun-behind-sail.jpg` |
+| Empty eight-sided rowing tub | **Fixed.** Thwarts, two oars, oarlocks, a proper pointed bow. Still a little wide. | `sheet-r36-golden-row.jpg`, `hw35-r36-dusk-row-very-close.jpg` |
+| Bare white bus, band with steps | **Improved.** The band is clean at 1 m (no steps). Rails, window rows, deck houses, funnel. Still white boxes with black window strips, no texture. | `bus-band-and-rib-r35c-left-r36-right.jpg`, `sheet-r36-golden-ferry.jpg` |
+| Faceted rib tubes | **Improved.** Seats are now round, the white bands lost the hatch. The outer tubes still show hard facets along their length. | `bus-band-and-rib-r35c-left-r36-right.jpg`, `sheet-r36-golden-rib.jpg` |
+
+**Against polished stylized games** (described in words): the best stylized harbours give each boat a clear silhouette, chunky deliberate detail and foam that hugs the hull. The sailboat and rowing boat now meet that bar. What still reads low quality, most visible first:
+
+1. **The sea right around the boats.** In every low view it is a leopard print of navy blobs on cream, with hard blob edges. It reads as camouflage more than water, and it frames every boat (`sheet-r36-golden-sail.jpg` low side, bow, stern).
+2. **Wake texture.** The arms are dotted, and the soft haze behind the transom is still a faint beam in the chase view (`wake36-r36-golden-rib-cruise.jpg`).
+3. **The bus** is clean but plain: flat white, black strips for windows.
+4. **The rib** tubes show facets at close range.
+
+## Faces
+
+About 400 close round 36 frames checked. No holes in the outer hulls, no flipped faces, no z-fighting, no lid shimmer. Rigging lines are thin and stable. No stretched sail texture. The sail flutter is small and does not tear the sail.
+
+## The sailboat "stuck" case, seed 22
+
+- `boats32` on seed 22, 5 runs on round 36: 1 run marked stuck (run 3). Round 35 control, 2 runs: 0. With the traced copy (`stuck36b.mjs`) it showed again on run 4 of 4. So it is about 1 run in 4 to 5, on both builds (round 35 saw it too).
+- `stuck36.mjs` (60 low rams with time offsets): 0 stuck. The case needs the exact boats32 sequence. It is not deterministic between page loads.
+- The trace (`stuck36b-22-4.log`): the drone rams the side at 0.9 m and 39 m/s. It clips the top edge of the hull box and goes up to 1.2 m. No crash is charged (a top-edge graze). W is let go after 21 frames. The drone then hovers with no input. Its centre stays 0.95 m (its own radius) above the hull box top. The boat slides under it from bow to stern at 2.4 m/s for 2.5 s. The mast passes through it as a soft column (a scrape). Past the stern it drifts away at up to 6 m/s. In the other runs it bounces off within 3 to 7 frames.
+- **Verdict: not a game bug in the sense of being stuck.** The drone is never trapped. A player can fly off at any frame. The probe flags it because contact lasts over 111 frames. Two small real oddities: the drone hovers on an invisible box about a drone-radius above the deck, and the sail passes through the drone.
+
+## Regressions
+
+| Check | Round 36 | Round 35 |
+|---|---|---|
+| boats33, seeds 22, 58, 4711, 9001 | 156 approaches: 0 inside a hull, 0 near a mast, 0 pushed down, 0 stuck, longest contact 112 frames. Bus rams 16 of 16 charged one crash. | 1 stuck |
+| Mast and rigging hits | 24 of 24 mast-height rams touch the soft mast. 0 crashes at the mast. The 4 crashes in that group are 47 to 57 m past the boat (W still held, into the wall). | 3 such |
+| boats31 overlap, 120 s, seeds 22, 58, 5150 (new) | 0 hull on hull, 0 hull on dock, 0 in a solid. Heave 0.27 m. Sailboat fly-through 0 crashes. | 0 |
+| Bus-stop probe, 4 seeds | 4 stops each, piers alternate, stops 9.0 to 9.25 s, top speed 4.6 m/s | same |
+| boattrace33, seeds 4711 and 22 | largest single-frame move beyond own speed 0.008 to 0.013 m, 0 frames over 0.15 m | 0.008 to 0.013 m |
+| Flat frames, bloom on | 939 frames, 0 flat, 0 errors. All 366 hull-probe views (6 sun-behind-sail views per device, rigging against the sun): 0 flat. | 0 |
+| Crash-classify 12 m | 21 crashes in 195 s (6.5 a minute), 0 hop-like, 0 at a lip height | 5.7 a minute |
+| Crash-classify 20 m | 13 in 278 s (2.8 a minute), 0 hop-like, 0 at a lip height | 2.2 a minute |
+| Water contrast31 cruise ratio | golden 0.51, morning 0.53, dusk 0.40, noon 0.53 (all at most 0.6) | 0.52 / 0.54 / 0.41 / 0.54 |
+| People probe | 0 people on active pads (48 legs, 1,536 samples) | 0 |
+| Traffic overlap | 0 pair frames on 3 seeds | 0 |
+| Phone HUD probe 22, 58, 130 | marker on controls 0, drone under pills 0, pops on drone 0. Pops over the top column 104 of 246, 119 of 249, 87 of 293. | 106/275, 89/224, 84/247 |
+| Street medal gate 22, 58, 130 | 5,906 Silver, 4,026 Silver, 5,378 Silver. Breakdown and end screen sum exact on all 3. | 4,800 S / 2,990 S / 6,188 G |
+| Cold load, no unstyled flash | 8 cold loads (dev and production, desktop and phone): 0 bad frames. Production styled title at 11 to 15 ms. | 0 |
+| `npm run build` (tsc, build to the scratchpad) | No chunk warning. three 587 kB, game 356 kB, StreetAssets 45 kB, lil-gui 31 kB, three-post 19 kB, CSS 40 kB. | same |
+
+The crash rate at 12 m moved from 5.7 to 6.5 a minute. No crash or flight code changed this round, and the bot's runs swing like this between rounds.
+
+## Perf
+
+| Check | Desktop | iPhone 13 |
+|---|---|---|
+| Street, normal, no frame cap | median 3.6, **p95 7.9**, max 25.2 (1 frame over 20 ms) | median 2.6, **p95 5.2**, max 21.9 (1 over 20) |
+| Street, rush | median 3.6, **p95 7.6**, max 11.5 | median 2.5, **p95 4.8**, max 9.1 |
+| Harbour, close to boats | median 3.3, **p95 8.3**, max 28.1 | median 2.5, **p95 3.7**, max 21.5 |
+| Phone HUD runs, 80 s, vsync | | p95 9.6 to 9.7 |
+
+- All p95 under 12 ms. The harbour p95 rose from 7.5 to 8.3 ms on desktop (the new wake shader and rigging). That is still well inside the budget.
+- Draw calls over the full spot sweep (about 3,300 spots each): desktop 119, 113 and 115 on seeds 130, 22 and 33, iPhone 104 on 130. All under 125. Round 35: 117 and 97.
+- Triangles: max 443k desktop, 410k iPhone. Under 480k. Round 35: 430k and 398k.
+- First load on the wire (production, 4 cold loads): **2.73 MB** with all street assets. Round 35: 2.48 MB. `boats.glb` grew from 211 kB to 460 kB.
+
+## Single biggest gap for the boats and water
+
+**Camouflage sea round the boats**
+
+The sea right around the boats looks like a camouflage print. Look at any low view, with the drone under about 4 m by the marina. The water is large navy blobs with hard edges on a cream sheen. The boats are now better than the water they sit in.
+
+Acceptance test:
+1. Run `water31.mjs` on seeds 130, 22, 33, 58 and `contrast31.py`. The `low` value (drone at 2 m) is now 35.2, 30.8, 40.7, 31.3. Pass: under 24 on all four, with the cruise ratio still at most 0.6.
+2. Make a blind A/B of 6 low boat views against round 36. Use the low side and low quarter views of the sailboat, rib and rowing boat, at golden hour and morning. Pass: new wins 5 of 6.
+3. The hull probe still gives 0 views with sea in a hull, and flat frames stay 0.
+
+## Other gaps
+
+1. **Wake texture.** The arms look dotted, and a soft haze sits behind the transom (it lost A/B pair 3 for the rib). Test: in the straight-down wake views, no dotted gap along an arm is longer than 3 px. The core behind the transom is not brighter than the arms.
+2. **Sailboat ride-along.** In about 1 run in 4 of the seed 22 low ram, the drone hovers on the hull box top. The boat and its sail slide through it for 2.5 s. Test: run boats32 on seed 22 10 times. Pass: longest contact under 111 frames in all runs. The drone centre is never inside the sail's soft column for more than 10 frames.
+3. **Phone pops over the top column** in 30 to 48% of pop samples. Not new. Test: under 5% on 22, 58, 130 with pops on the drone still 0.
+4. **Bus and rib detail.** The bus is plain white with black strips. The rib tubes show facets. Test: blind A/B of 4 close bus and rib views against round 36 wins 3 of 4.
+5. **Human playtest and medal pace.** These still need a human player.
+
+## Screenshots (progress/round-36/critic/)
+
+- Blind A/B: `ab/boat-1.jpg` to `boat-6.jpg`, `ab/wake-1.jpg` to `wake-6.jpg`, picks and hidden keys beside them.
+- Sea in hull checks: `leak-check-rigging-1.jpg`, `leak-check-rigging-2.jpg`, `leak-check-sweep-bow.jpg`, `leak-check-pier-rail.jpg` (normal / lid on / lid off, zoomed), `lid-shown-and-water-hidden.jpg`, `lid-diff-row-inside-close.jpg`, `hw35-r36-golden-row-into-hull.jpg` and `-M0.jpg` (live control).
+- Boats: `sheet-r36-golden-sail.jpg`, `sheet-r36-golden-row.jpg`, `sheet-r36-golden-rib.jpg`, `sheet-r36-golden-ferry.jpg`, `hw35-r36-golden-sail-into-hull.jpg`, `hw35-r36-morning-sail-sun-behind-sail.jpg`, `hw35-r36-m-golden-sail-low-quarter.jpg`, `hw35-r36-dusk-row-very-close.jpg`, `bus-band-and-rib-r35c-left-r36-right.jpg`.
+- Wakes: `hw35-r36-golden-sail-above.jpg` vs `hw35-r35c-golden-sail-above.jpg`, `hw35-r36-golden-ferry-stern.jpg`, `wake36-r36-golden-rib-cruise.jpg` vs `wake36-r35c-golden-rib-cruise.jpg`, `wake36-r36-morning-rib-top.jpg` vs `wake36-r35c-morning-rib-top.jpg`, `wake36-r36-dusk-sail-cruise.jpg`.
+</pre></details><details><summary>builder.md</summary><pre># Drone Dash: round 36 builder notes
+
+Main concern: thin lines of sea inside the sailboat. The round 35 critic found them in 18 of 151 views. They were at the floor seam, under the thwarts and in the bow corner of the moored sailboat. The largest patch was 1,370 px.
+Second concern: the low-quality items that the critic named (wakes, sail, rowing boat, harbour bus, rib).
+
+Setup:
+- Build: the working tree on top of the round 35 commit.
+- Control: a copy of the round 35 tree in my scratchpad, on port 5193, with its own Vite cache.
+- My server: port 5190, with its own Vite cache. I did not touch the owner's server on 5188.
+- Both of my servers are stopped now.
+- Every browser job ran alone, one at a time, from `builder-scripts/queue36.sh`. The job lists are `jobs36*.txt`. The log is `queue36.log`.
+- Time used: 23:16 to about 00:40.
+
+## 1. Sea inside the hulls: fixed at the source
+
+**Cause.**
+- The round 35 lid was the inner hull outline at the lid height, shrunk 2 cm toward its centre.
+- This left a gap of 2 cm between the lid and the inner wall. At the narrow bow the gap was larger.
+- A view ray went through this gap and hit the sea. Inside the hull, the sea is above the floor.
+- From above, the gap showed as a line along the floor seam and as short lines at the thwart ends.
+- It also showed as a patch in the bow corner.
+
+**Fix** (`blender_boats36.py` and `Boats.ts`):
+- Blender now cuts the lid from the **outer** outline of the hull at the lid height.
+- The outline is inset 2.5 cm along its own normals. Thus the lid edge is inside the solid wall all the way round. The walls are 12 to 45 cm thick at that height.
+- A ray into the open hull below the gunwale must cross the lid.
+- The lid stays under the rim top and inside the outer skin. From outside the boat, the hull always hides it.
+- The lid heights did not change: sail 1.0 m, rowing boat 0.8 m, rib 0.5 m above the keel. The rims are 1.5 to 20 cm higher.
+- The lid material has a small depth offset toward the camera (`polygonOffset` -1 and -2).
+- The lid writes no colour. Thus it cannot hide the deck, the cargo or the floor. It only stops the sea inside the hull.
+- Each lid uses the instance matrix of its boat. Thus it follows the heave, pitch, roll and planing trim.
+
+**Acceptance.** I used the critic's scripts `hullwater35.mjs`, `seams35.py` and `seams35.mjs`. I changed only the output folders. All runs are on the final build.
+
+| Run | Views | Views with sea in a hull (seams) | Caps-off control: views with sea |
+|---|---|---|---|
+| Desktop, seeds 130, 22, 33, SWEEP 8 | 183 (70 with masks) | **0** | 49 views, 180 of 432 sweep frames |
+| iPhone 13, same seeds, SWEEP 4 | 183 (94 with masks) | **0** | 66 views, 99 of 216 sweep frames |
+| Bob, roll and planing sweep frames that the in-browser count marked (diagnostic copy, then seams) | 12 frames | **0** | |
+
+- Lid side effects: the largest caps-on against caps-off change on a pixel that is not sea is 0.43% of the boat box on desktop. On the phone it is 0.88%. It is a soft rim at the lid edge, as in round 35.
+- In the frames that I examined, the lid did not hide the deck, a thwart, the barrel, the crates, the oars or the floor.
+- Some pixels are marked "sea hidden outside the hull". I looked at them (`golden-row-moored-side`). They are inside the rowing boat. The ray-march of the probe is not exact near the hull. The round 35 critic found the same.
+
+**Important: the in-browser `leak` column.**
+- It now shows a value in 12 desktop and 25 phone views, and in 5 and 7 sweep frames.
+- The new rigging lines close small pockets of open sea outside the hull. The pockets are between the shrouds, the sail, the boom and the tack line.
+- The in-browser count calls each closed pocket a leak.
+- The seams check passes all of them. Seams counts only sea that is part of a patch 3 times larger with the caps off.
+- Example: `builder-shots/rig-enclosed-sea-example.jpg`. The green pocket is sea in front of the bow, between the sail and the tack line.
+- In most of these views, the caps-on count is equal to the caps-off count. Thus the lid has no effect there.
+
+Flat check: the 6 sun-behind-sail views per device and all other probe views have 0 flat frames.
+
+## 2. Wakes (`Water.ts`)
+
+Cause of the old look:
+- The pale rectangle was a wide trail with a hard start across the hull.
+- The torch beam was a pair of broad arm bands, with strong ripple glints between them.
+
+The new wake for each boat:
+- A V of two thin foam lines on each side: a main crest and a weaker echo inside it.
+- The lines start at the bow shoulders at 19.5 degrees.
+- They are 9 cm wide at the bow and get 1.3 cm wider for each metre. They fade with distance.
+- A fine froth noise breaks the lines up. This is one more texture read, only near a moving boat.
+- A short, narrow, broken trail starts at the transom. It fades in over the last half metre of the hull.
+- A thin band of wash stays near the hull. It is strongest at the bow.
+- Weak ripples run along the arms. Cross crests fill the V. Their wavelength comes from the boat speed.
+- All parts fade to 0 before the range limit. Thus there is no straight edge.
+
+Blind A/B of 6 wake views against round 35: **new wins 6 of 6** (`ab36-wakes-final.log`).
+- Views: straight down at 9 to 20 m, the game camera at cruise height, and a low stern view.
+- Moods: golden, morning and dusk.
+- From above, there is no straight edge around a hull.
+- In the glitter path of a low sun, the bus trail is still a bright streak. The round 33 glare rule keeps wake foam visible there. The streak is now about half as wide.
+
+## 3. Boat detail (`blender_boats36.py`, Blender MCP, no new bake)
+
+Method:
+- The script models each new part.
+- Each part uses the UV of one clean texel of the correct colour in the round 35 texture of its boat.
+- Each part also gets the round 35 flags (sail cloth, metalness, roughness).
+- No texture changed. I used no new asset and no generation. `ASSETS.md` has the details.
+
+Sail:
+- Blender subdivides the cloth (4 cuts) and gives it a belly of up to 0.34 m to leeward. The sail now shades as a curved sheet.
+- New rig: a forestay, two shrouds with chainplates, a tack line to the stem and a sheet from the clew. They are thin tubes with 5 sides.
+- The boom and the gaff were already in the model. They stay.
+- Flutter: the flags carry a weight. It is 0 at the edges of the sail and largest near the leech.
+- The vertex shader moves the cloth by up to 3 cm with an uneven ripple. Each boat has a different phase.
+
+Rowing boat:
+- Blender cuts the hull at a station every 0.15 m. It then scales each station to a smooth curve (a superellipse). The plan is now round, not eight-sided.
+- The hull is 10% narrower (2.14 m) and has smooth shading.
+- New parts: two thwarts with knees, two oars on the thwarts with painted blades, two oarlocks.
+
+Harbour bus:
+- The large white and dark faces above the boot top now use one clean texel each.
+- Thus the band with steps is gone. The steps came from the bake edge between thin UV islands.
+- New parts: windows on the main cabin, and a glazed wheelhouse (sides and front) with a visor.
+- Also new: a red name band with a dark pinstripe.
+- Also new: railings on the roof deck, the side walkways and the stern.
+
+Rib:
+- The tubes and the seats have smooth shading.
+- The white bands use one clean texel. Their baked diagonal hatch shimmered in motion.
+
+The lids come from the final hulls. The rowing-boat lid follows its new outline.
+
+Blind A/B of 6 close boat views against round 35, with the same seed, time and pose: **new wins 6 of 6** (`ab36-boats-final.log`).
+- Views: golden sail into the hull, golden rowing boat into the hull, morning rib low quarter, dusk sail quarter, golden bus quarter, phone golden sail quarter.
+- I wrote the key before I judged.
+- I am the builder and I know what changed. The critic must judge again.
+
+## Regressions
+
+| Check | Result |
+|---|---|
+| boats32, seeds 22, 58, 4711 (final build) | 117 runs: 0 inside a hull, 0 stuck, 0 near a mast, overlap 0, longest contact 114 |
+| boats32, the stuck case | See the notes below the table. |
+| bus-stop33, seeds 4711, 9001 | 4 stops each. Piers alternate 3 of 3. Stops 9 to 9.25 s. Top speed 4.6 m/s. |
+| boattrace33, seeds 4711, 22 | Peak speed over the cap 0.08 to 0.64 m/s (round 35: 0.08 to 0.56). Ferry hover run. No boat code changed. |
+| Boat overlap (boats31), 120 s, seeds 22, 58, 130, final build | 0 hull on hull, 0 hull on dock, 0 in a solid. Fly-through: 0 crashes, 0 frames in a solid. |
+| Flat frames, bloom on (`acceptance-probe.mjs`), final build | 959 frames, 0 flat. Also 12 sun-behind-sail views in the hull probe, 0 flat. |
+| Crash-classify 12 m, seeds 22, 58, 130 | 24 crashes in 191 s. 0 hop-like. 7 near a target, closest 1.4 m below a top. **0 pad lips.** |
+| Crash-classify 20 m | 16 crashes in 218 s. 0 hop-like. 8 near a target, closest 1.4 m below a top. **0 pad lips.** |
+| Water contrast31, cruise ratio | golden 0.52, morning 0.54, dusk 0.41, noon 0.54 (limit 0.6) |
+| People probe | 0 people on active pads (48 legs, 1,536 samples) |
+| Traffic overlap | 0 pair frames, seeds 22, 58, 130 |
+| Phone HUD probe, 22, 58, 130 | Marker on the controls 0. Drone under a pill 0. Pops on the drone 0. |
+| Street medal gate, 22, 58, 130 | 6,922 Gold, 3,695 Silver, 4,910 Silver. Breakdown exact (`bdOk`) on all 3. |
+| Unstyled flash (`fouc34.mjs`, dev, desktop and iPhone) | 0 bad frames |
+| `npm run build` | No chunk warning (three 587 kB, game 356 kB) |
+| Bloom clamps, `#app` rule, debug hooks | Not changed |
+
+Notes on the boats32 stuck case:
+- The first run had 1 stuck run: seed 22, sailboat, ram at 0.9 m, 151 frames. The round 35 critic saw the same case.
+- That first run was before the final GLB.
+- Reruns of seed 22: round 36 had 0 and 0 (67 and 64 frames). The round 35 control had 1 and 1 (150 and 151 frames).
+- Thus the case is older than this round. The boat positions at the start of the bot decide it.
+
+Which build each check used:
+- Final build: the hull probe, the sweeps, the A/B, boats32, overlap, flat frames, budgets and frame time.
+- The build before the last rowing-boat change: HUD, medal, crash, people, traffic, contrast and unstyled flash.
+- The last change was only the rowing-boat mesh and its lid. No game code changed after those runs.
+
+## Budgets (final build)
+
+| Budget | Round 35 | Round 36 |
+|---|---|---|
+| Draw calls, full sweep, desktop 130 and 22 | 117 (critic) | 115 and 115 (limit 125) |
+| Draw calls, iPhone 130 | 97 to 102 | 100 |
+| Triangles, desktop 130 and 22 | 430k | 441k and 435k (limit 480k) |
+| Triangles, iPhone 130 | 398k | 408k |
+| boats.glb | 211 KB | 459 KB (textures not changed, 369 KB) |
+| First load on the wire | 2.48 MB (critic) | About 2.73 MB. This is an estimate (round 35 plus the larger boats.glb). I did not measure it again. |
+
+Frame time, no frame cap, final build:
+- Marina, desktop: p95 6.9 ms. Beside a sailboat: 6.8 ms.
+- Marina, iPhone: 3.4 ms. Beside a sailboat: 3.8 ms.
+- Street, desktop: normal 8.0 ms, rush 7.6 ms. Street, iPhone (earlier build): 5.2 and 4.7 ms.
+- All values are under 12 ms.
+
+## What is still open
+
+- The lids come on only within 160 m of the **game** camera (round 35 design).
+  - A probe can render from a pose far from the game camera (`renderFrom` after it moves the drone far away). Then the lid is off and the sea shows in the hull.
+  - My own shot script did this once. In play, the game camera is the camera that renders. Thus it cannot occur in play.
+- The stern of the rowing boat is still a little square.
+- The bus is still a kit model, now with windows and railings.
+- In the glitter path of a low sun, the bus trail is still a bright streak, but narrower.
+- On the phone, the soft rim at the lid edge is 0.88% of the boat box in the worst close view. This is under 1%.
+
+## Files changed
+
+- `src/world/Boats.ts`: lid depth offset. Sail flutter (time uniform, weight in `flags.r`, phase for each boat).
+- `src/world/Water.ts`: new wake block (V of thin broken foam lines, transom trail, hull wash, soft edges).
+- `public/assets/models/boats.glb`: new lids, sail belly and rig, rowing-boat shape, thwarts and oars, bus details, smooth rib.
+- `ASSETS.md`: round 36 section.
+
+## Scripts (`builder-scripts/`)
+
+New:
+- `blender_boats36.py`: the full Blender pass. You can run it again. It ends with the GLB export.
+- `boatshots36.mjs`: fixed boat views on both builds.
+- `ab36.py`: blind A/B. It writes the key first. Keys: `ab36-*-key.json`. Picks: `ab36-picks.txt`.
+- `hullwater36-sweepshots.mjs`: a diagnostic copy of the critic's probe. It also saves the marked sweep frames for the seams check. It is not the acceptance run.
+- `queue36.sh` and the `jobs36*.txt` lists.
+
+Copied from the critic, with only the output folders changed: `hullwater35.mjs`, `seams35.py`, `seams35.mjs`.
+
+Copied from the round 35 builder scripts, not changed (the port is already 5190): the regression probes.
+
+## Screenshots (`builder-shots/`, 39 JPEGs)
+
+- Blind A/B pairs: `ab36-boats-1..6.jpg`, `ab36-wakes-1..6.jpg`.
+- The leak views that the critic named, now clean: `hw35-r36-golden-sail-into-hull.jpg` and `-M.jpg`, `hw35-r36-morning-sail-moored-into-hull.jpg` and `-M.jpg`, `hw35-r36-m-golden-sail-moored-very-close.jpg` and `-M.jpg`.
+- Detail: `hw35-r36-golden-row-*`, `hw35-r36-dusk-ferry-very-close.jpg` (no steps), `hw35-r36-morning-rib-very-close.jpg`, `hw35-r36-morning-sail-sun-behind-sail.jpg`.
+- Wakes: `hw35-r36-golden-sail-above.jpg`, `hw35-r36-golden-ferry-stern.jpg`.
+- Dusk, round 35 and round 36 side by side: `r35-dusk-*.jpg`, `r36-dusk-*.jpg`.
+- `rig-enclosed-sea-example.jpg`: why the in-browser leak count shows a value for rigging pockets.
+</pre></details><div class="grid"><figure><a href="progress/round-36/critic/bus-band-and-rib-r35c-left-r36-right.webp"><img loading="lazy" src="progress/round-36/critic/bus-band-and-rib-r35c-left-r36-right.webp" alt="bus-band-and-rib-r35c-left-r36-right.webp"></a><figcaption>bus-band-and-rib-r35c-left-r36-right.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r35c-golden-sail-above.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r35c-golden-sail-above.webp" alt="hw35-r35c-golden-sail-above.webp"></a><figcaption>hw35-r35c-golden-sail-above.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-dusk-row-very-close.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-dusk-row-very-close.webp" alt="hw35-r36-dusk-row-very-close.webp"></a><figcaption>hw35-r36-dusk-row-very-close.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-golden-ferry-stern.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-golden-ferry-stern.webp" alt="hw35-r36-golden-ferry-stern.webp"></a><figcaption>hw35-r36-golden-ferry-stern.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-golden-row-into-hull-M0.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-golden-row-into-hull-M0.webp" alt="hw35-r36-golden-row-into-hull-M0.webp"></a><figcaption>hw35-r36-golden-row-into-hull-M0.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-golden-row-into-hull.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-golden-row-into-hull.webp" alt="hw35-r36-golden-row-into-hull.webp"></a><figcaption>hw35-r36-golden-row-into-hull.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-golden-sail-above.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-golden-sail-above.webp" alt="hw35-r36-golden-sail-above.webp"></a><figcaption>hw35-r36-golden-sail-above.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-golden-sail-into-hull.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-golden-sail-into-hull.webp" alt="hw35-r36-golden-sail-into-hull.webp"></a><figcaption>hw35-r36-golden-sail-into-hull.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-m-golden-sail-low-quarter.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-m-golden-sail-low-quarter.webp" alt="hw35-r36-m-golden-sail-low-quarter.webp"></a><figcaption>hw35-r36-m-golden-sail-low-quarter.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/hw35-r36-morning-sail-sun-behind-sail.webp"><img loading="lazy" src="progress/round-36/critic/hw35-r36-morning-sail-sun-behind-sail.webp" alt="hw35-r36-morning-sail-sun-behind-sail.webp"></a><figcaption>hw35-r36-morning-sail-sun-behind-sail.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/leak-check-pier-rail.webp"><img loading="lazy" src="progress/round-36/critic/leak-check-pier-rail.webp" alt="leak-check-pier-rail.webp"></a><figcaption>leak-check-pier-rail.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/leak-check-rigging-1.webp"><img loading="lazy" src="progress/round-36/critic/leak-check-rigging-1.webp" alt="leak-check-rigging-1.webp"></a><figcaption>leak-check-rigging-1.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/leak-check-rigging-2.webp"><img loading="lazy" src="progress/round-36/critic/leak-check-rigging-2.webp" alt="leak-check-rigging-2.webp"></a><figcaption>leak-check-rigging-2.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/leak-check-sweep-bow.webp"><img loading="lazy" src="progress/round-36/critic/leak-check-sweep-bow.webp" alt="leak-check-sweep-bow.webp"></a><figcaption>leak-check-sweep-bow.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/lid-diff-row-inside-close.webp"><img loading="lazy" src="progress/round-36/critic/lid-diff-row-inside-close.webp" alt="lid-diff-row-inside-close.webp"></a><figcaption>lid-diff-row-inside-close.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/lid-shown-and-water-hidden.webp"><img loading="lazy" src="progress/round-36/critic/lid-shown-and-water-hidden.webp" alt="lid-shown-and-water-hidden.webp"></a><figcaption>lid-shown-and-water-hidden.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/sheet-r36-golden-ferry.webp"><img loading="lazy" src="progress/round-36/critic/sheet-r36-golden-ferry.webp" alt="sheet-r36-golden-ferry.webp"></a><figcaption>sheet-r36-golden-ferry.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/sheet-r36-golden-rib.webp"><img loading="lazy" src="progress/round-36/critic/sheet-r36-golden-rib.webp" alt="sheet-r36-golden-rib.webp"></a><figcaption>sheet-r36-golden-rib.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/sheet-r36-golden-row.webp"><img loading="lazy" src="progress/round-36/critic/sheet-r36-golden-row.webp" alt="sheet-r36-golden-row.webp"></a><figcaption>sheet-r36-golden-row.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/sheet-r36-golden-sail.webp"><img loading="lazy" src="progress/round-36/critic/sheet-r36-golden-sail.webp" alt="sheet-r36-golden-sail.webp"></a><figcaption>sheet-r36-golden-sail.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/wake36-r35c-golden-rib-cruise.webp"><img loading="lazy" src="progress/round-36/critic/wake36-r35c-golden-rib-cruise.webp" alt="wake36-r35c-golden-rib-cruise.webp"></a><figcaption>wake36-r35c-golden-rib-cruise.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/wake36-r35c-morning-rib-top.webp"><img loading="lazy" src="progress/round-36/critic/wake36-r35c-morning-rib-top.webp" alt="wake36-r35c-morning-rib-top.webp"></a><figcaption>wake36-r35c-morning-rib-top.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/wake36-r36-dusk-sail-cruise.webp"><img loading="lazy" src="progress/round-36/critic/wake36-r36-dusk-sail-cruise.webp" alt="wake36-r36-dusk-sail-cruise.webp"></a><figcaption>wake36-r36-dusk-sail-cruise.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/wake36-r36-golden-rib-cruise.webp"><img loading="lazy" src="progress/round-36/critic/wake36-r36-golden-rib-cruise.webp" alt="wake36-r36-golden-rib-cruise.webp"></a><figcaption>wake36-r36-golden-rib-cruise.webp</figcaption></figure>
+<figure><a href="progress/round-36/critic/wake36-r36-morning-rib-top.webp"><img loading="lazy" src="progress/round-36/critic/wake36-r36-morning-rib-top.webp" alt="wake36-r36-morning-rib-top.webp"></a><figcaption>wake36-r36-morning-rib-top.webp</figcaption></figure></div></section>
 <section><h2>round 35</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 35 critic report
 
 **Verdict:** A big step up, but not a pass on the strict water bar. The sea no longer fills any hull. The new boats win the blind A/B 6 of 6. But thin lines of sea still show through gaps inside the sailboat in 18 of 151 checked close views. No regression found.

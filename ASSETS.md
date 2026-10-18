@@ -75,8 +75,24 @@ What changed per boat: welded (0.1 mm), every closed part checked to face outwar
 
 `boats.glb` is now 211 KB (round 31: 240 KB): 2,728 boat triangles (unchanged: sail 1,020, rib 626, ferry 858, row 224) plus 3 hull caps (30, 32 and 18 triangles) and the dock (388). Boat textures 369 KB. Everything loads after the first frame with the street assets. The source JPEGs and the PNG bakes stay local in `asset-src/polyhaven/` and `asset-src/bake35/`.
 
+## Round 36: boat detail pass and new hull lids
+
+Tool: Blender 5.2.2 through the Blender MCP (`execute_blender_code`), round 36, in the same unsaved round 35 scene. No new third-party asset, no paid or free-tier generation, no .blend file saved.
+Script: `progress/round-36/builder-scripts/blender_boats36.py`.
+
+All new parts are modelled in the script and reuse the round 35 baked textures (each new part takes the UV of one clean texel of a matching colour in its own boat's texture), so no texture changed and no re-bake was needed.
+
+- Sailboat: sail cloth subdivided and given a belly (up to 0.34 m to leeward); forestay, two shrouds with chainplates, a tack line and a sheet (thin 5-sided tubes). The flags colour carries a flutter weight for the game's vertex shader.
+- Rowing boat: plan rounded from the eight-sided outline to a superellipse (station cuts every 0.15 m, each station's beam scaled), 10% narrower, smooth shading below 62 degrees; two thwarts with knees, two shipped oars with painted blades, two oarlocks.
+- Rib: tubes and seats shaded smooth; the white bands take one clean texel (their baked hatch shimmered).
+- Harbour bus: the big white and dark faces above the boot top take one clean texel (no stair-stepped bake edges); window bands on the cabin, a glazed wheelhouse with a visor, a red name band with a pinstripe, railings on the roof deck, the side walkways and the stern.
+- Hull lids (role `cap`): rebuilt from the outer outline of each open hull at the lid height, inset 2.5 cm, so the lid reaches into the wall all round.
+
+`boats.glb` is now 459 KB (round 35: 211 KB): sail 2,368 triangles, rib 626, ferry 2,642, row 2,632, lids 18 (sail) / 82 (row) / 82 (rib), dock 388. Textures unchanged (369 KB).
+
 ## Totals
 
 - Models: 385 KB. Textures: 1,182 KB. All round 28 assets: about 1.5 MB, loaded after the first frame.
 - Round 31: boats.glb 240 KB. All lazy assets now about 1.8 MB.
 - Round 35: boats.glb 211 KB plus 369 KB of boat textures. All lazy assets now about 2.1 MB.
+- Round 36: boats.glb 459 KB, textures unchanged. All lazy assets now about 2.4 MB.

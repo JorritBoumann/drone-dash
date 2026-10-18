@@ -1,0 +1,3 @@
+ %CPU COMM
+ 20.1 /System/Library/PrivateFrameworks/SafariSafeBrowsing.framework/com.apple.Safari.SafeBrowsing.Service
+ 10.4 /usr/sbin/coreaudiod

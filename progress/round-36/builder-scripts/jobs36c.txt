@@ -1,0 +1,5 @@
+SEEDS=22 SHOTS=0 node boats32.mjs > boats32-22-a.log 2>&1
+PORT=5193 SEEDS=22 SHOTS=0 node boats32.mjs > boats32-22-r35c-a.log 2>&1
+SEEDS=22 SHOTS=0 node boats32.mjs > boats32-22-b.log 2>&1
+PORT=5193 SEEDS=22 SHOTS=0 node boats32.mjs > boats32-22-r35c-b.log 2>&1
+SEEDS=22,58,4711 SHOTS=0 node boats32.mjs > boats32-final.log 2>&1

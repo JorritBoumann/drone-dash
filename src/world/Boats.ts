@@ -17,12 +17,16 @@ import { MAX_PIERS, MAX_WAKES, SHORE, WATER_Y, type Water, shoreDistance, waveFa
 type Kind = 'sail' | 'rib' | 'ferry' | 'row';
 
 /** Round 35: depth-only lid material for the hull caps (no colour, writes depth). */
-const CAP_MATERIAL = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.DoubleSide });
+// round 36: the lid now spans the hull's outer outline (inset 2.5 cm, inside the wall), and is pulled a hair toward the
+// camera in depth so no sliver of sea survives where the lid meets the inner wall at any roll angle
+const CAP_MATERIAL = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 CAP_MATERIAL.name = 'boat-cap';
 /** Round 35: hull caps draw only while a boat of their kind is this close to the camera (m). */
 const CAP_RANGE = 160;
 const CAP_SHOW = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide, fog: false, toneMapped: false });
 
+/** Round 36: shared clock for the sail flutter (set by Boats.update). */
+const BOAT_TIME = { value: 0 };
 /**
  * Round 35: boat material. The albedo is a texture baked in Blender (Poly Haven wood grain, painted bands, a wet band
  * at the waterline, sail cloth panels, rope and metal tones, ambient occlusion). The vertex colour carries per-part
@@ -34,9 +38,18 @@ function boatMaterial(map: THREE.Texture | null, gain = 1): THREE.MeshStandardMa
   // the sail cloth, and never past an albedo of 0.9)
   m.name = 'boat35';
   m.onBeforeCompile = (sh) => {
+    sh.uniforms.uBoatTime = BOAT_TIME;
+    // round 36: sail cloth carries a flutter weight in flags.r (0.55 at the bolt ropes, up to 1 toward the leech): a
+    // small, uneven ripple across the cloth; the luff, foot and head stay put
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 flags;\nvarying vec3 vFlags;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlags = flags;');
+      .replace('#include <common>', '#include <common>\nattribute vec3 flags;\nvarying vec3 vFlags;\nuniform float uBoatTime;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+vFlags = flags;
+if (flags.r > 0.5) {
+  float fl = clamp((flags.r - 0.55) / 0.45, 0.0, 1.0);
+  float ph = uBoatTime * 8.5 + position.y * 1.9 + position.z * 2.4 + float(gl_InstanceID) * 2.1;
+  transformed.x += fl * 0.032 * sin(ph) * (0.65 + 0.35 * sin(uBoatTime * 1.3 + float(gl_InstanceID)));
+}`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vFlags;')
       .replace('#include <map_fragment>', `#include <map_fragment>
@@ -54,7 +67,7 @@ diffuseColor.rgb = min(diffuseColor.rgb * mix(${gain.toFixed(3)}, 1.0, step(0.5,
   }
 #endif`);
   };
-  m.customProgramCacheKey = () => `boat35-${gain}`;
+  m.customProgramCacheKey = () => `boat36-${gain}`;
   return m;
 }
 /** Model name in boats.glb, hull length / beam (m), how deep the keel sits below the waterline, sailboat heel. */
@@ -340,6 +353,7 @@ export class Boats {
 
   update(dt: number, time: number, cam: THREE.Vector3): void {
     const w = this.water;
+    BOAT_TIME.value = time;
     let nw = 0;
     for (const b of this.boats) {
       const K = KIND[b.kind];

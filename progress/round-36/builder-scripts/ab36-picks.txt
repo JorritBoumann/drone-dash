@@ -1,0 +1,2 @@
+final boats picks (written before reading the key): B,T,B,B,T,T
+final wakes picks (written before reading the key): B,B,B,B,B,B

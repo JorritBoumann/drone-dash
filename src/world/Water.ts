@@ -360,40 +360,64 @@ vec3 skyRefl(vec3 d){
     float pd = rectD(wxz, uPier[i]);
     foam += (1.0 - smoothstep(0.2, 1.8, pd + (foamN - 0.5) * 1.2)) * 0.85;
   }
-  // boat wakes: a Kelvin V (19.5 deg arms) with a foam trail and bow wave
+  // boat wakes (round 36): a Kelvin V of thin foam lines from the bow shoulders (19.5 deg arms) that widen, break up
+  // and fade with distance, an inner echo line, transverse ripples inside the V, a short turbulent trail at the
+  // transom and a thin band of wash hugging the hull. Every term fades smoothly to zero, so no straight edge or pale
+  // box shows round a boat from above.
   vec2 wakeN = vec2(0.0);
   float wakeFoam = 0.0;
+  // fine froth noise (about 2.5 m across, drifting), fetched only near a boat
+  float fN = 0.5;
+  vec2 uvF = wxz * 0.41 + vec2(uTime * 0.045, -uTime * 0.03);
+  vec2 uvFdx = dFdx(uvF), uvFdy = dFdy(uvF);
+  bool fGot = false;
   for (int i = 0; i < ${MAX_WAKES}; i++) {
     if (i >= uWakeN) break;
     vec4 a = uWakeA[i]; vec4 b = uWakeB[i];
     vec2 rel = wxz - a.xy;
-    float reach = b.x * 2.0 + 20.0 + a.w * 6.0;
-    if (dot(rel, rel) > reach * reach) continue; // most of the bay is far from every boat
+    float spd = clamp(a.w / 8.0, 0.0, 1.0);
+    float len = 10.0 + a.w * 4.5 + b.x * 1.5; // arm length behind the bow (m)
+    float reach = len * 1.08 + b.x * 1.6 + 3.0;
+    if (dot(rel, rel) > reach * reach || a.w < 0.05) continue; // most of the bay is far from every boat
+    if (!fGot) { fN = textureGrad(uDetail, uvF, uvFdx, uvFdy).w; fGot = true; }
     vec2 fwd = b.zw; // (sin, cos) of the heading, from the CPU
     vec2 rgt = vec2(fwd.y, -fwd.x);
-    float u = -dot(rel, fwd) - b.x * 0.75; // metres behind the stern
+    float along = dot(rel, fwd);
     float v = dot(rel, rgt);
-    float spd = clamp(a.w / 8.0, 0.0, 1.0);
-    // round 33: a big hull churns more than its speed says (the 14 m harbour bus at 4.6 m/s left a faint trail)
+    float av = abs(v);
+    float ub = b.x * 0.92 - along;         // metres behind the bow
+    float us = ub - b.x * 1.84;            // metres behind the transom
+    // round 33: a big hull churns more than its speed says (the 14 m harbour bus at 4.6 m/s)
     float churn = clamp(spd + max(b.x - 4.0, 0.0) * 0.12, 0.0, 1.0);
-    float len = 14.0 + a.w * 6.0;
-    if (u > -b.x * 1.8 && u < len) {
-      float uu = max(u, 0.0);
-      float fade = 1.0 - smoothstep(0.0, len, uu);
-      float armOff = abs(v) - (uu * 0.354 + b.y * 0.9);
-      float armW = 0.35 + uu * 0.05;
-      float arm = exp(-armOff * armOff / armW) * fade * step(0.0, u);
-      float trail = exp(-v * v / (b.y * b.y * (0.8 + uu * 0.12))) * exp(-uu / (4.0 + a.w * 2.6 + max(b.x - 4.0, 0.0) * 0.8)) * step(0.0, u);
-      // bow wave: a short crescent round the front of the hull
-      vec2 bow = rel - fwd * b.x * 0.55;
-      float bowD = length(vec2(dot(bow, rgt), max(dot(bow, fwd), 0.0) * 1.6)) - b.y * 1.15;
-      float bowF = (1.0 - smoothstep(0.0, 0.9, abs(bowD))) * step(dot(rel, fwd), b.x * 0.9) * step(-b.x * 0.6, dot(rel, fwd));
-      float wf = arm * (0.45 + 0.55 * foamN) * (0.25 + 0.75 * spd) + trail * (0.75 + 0.45 * foamN) * (0.35 + 0.65 * churn) + bowF * 0.6 * spd;
-      foam += wf;
-      wakeFoam += trail * (0.75 + 0.45 * foamN) * (0.35 + 0.65 * churn);
-      // ripples along the arms tilt the surface
-      wakeN += rgt * sign(v) * cos(armOff * 3.0) * exp(-armOff * armOff / (armW * 3.0)) * fade * 0.35 * spd * step(0.0, u);
-    }
+    float win = smoothstep(-0.3, 0.8, ub) * (1.0 - smoothstep(len * 0.45, len, ub));
+    float age = exp(-max(ub, 0.0) / (4.0 + a.w * 1.3 + b.x * 0.4)); // young foam is bright, old foam thin and faint
+    // the arms: the main crest line and a fainter echo inside it
+    float x0 = b.y * 0.72 + max(ub, 0.0) * 0.354;
+    float d = av - x0;
+    float w1 = 0.06 + max(ub, 0.0) * 0.013;
+    float l1 = exp(-d * d / (w1 * w1));
+    float d2 = d + 0.45 + max(ub, 0.0) * 0.06;
+    float l2 = exp(-d2 * d2 / (w1 * w1 * 1.4)) * 0.4;
+    float brk = smoothstep(0.34, 0.62, fN * 0.75 + foamN * 0.25 + 0.14 * age);
+    float arms = (l1 + l2) * brk * (0.2 + 0.8 * age) * win * (0.3 + 0.7 * spd);
+    // transom trail: narrow, short, broken up; fades in over the last half metre of the hull
+    float uu = max(us, 0.0);
+    float tw = b.y * (0.42 + uu * 0.045);
+    float tr = exp(-v * v / (tw * tw)) * smoothstep(-0.5, 0.6, us) * exp(-uu / (1.6 + a.w * 0.55 + max(b.x - 4.0, 0.0) * 0.45));
+    tr *= smoothstep(0.18, 0.6, fN * 0.75 + foamN * 0.25 + 0.3 * exp(-uu / 1.5)) * (0.4 + 0.6 * churn);
+    // wash hugging the hull at the waterline (strongest at the bow), a thin band just outside an ellipse round the hull
+    vec2 he = vec2(v / (b.y * 1.02), (along - b.x * 0.05) / (b.x * 1.03));
+    float hd = (length(he) - 1.0) * b.y;
+    float bowness = smoothstep(0.0, 0.9, along / b.x);
+    float hug = exp(-(hd - 0.04) * (hd - 0.04) / 0.012) * (0.1 + 0.9 * bowness) * (0.2 + 0.8 * spd) * (0.5 + 0.5 * fN);
+    float wf = arms + tr * 0.95 + hug * 0.6;
+    foam += wf;
+    wakeFoam += tr;
+    // ripples: along the arms, and transverse crests inside the V (wavelength 2 pi U^2 / g)
+    float lam = max(6.283 * a.w * a.w / 9.81, 1.2);
+    float inV = smoothstep(0.5, -0.8, d) * win * age;
+    wakeN += rgt * sign(v) * cos(d * 6.0) * exp(-d * d / (w1 * w1 * 8.0)) * win * 0.16 * spd;
+    wakeN += fwd * sin(6.283 * ub / lam) * inV * 0.045 * spd;
   }
   foam = clamp(foam, 0.0, 1.0);
   vec3 nW = normalize(vec3(-g.x - dn.x - wakeN.x, 1.0, -g.y - dn.y - wakeN.y));

@@ -1,0 +1,4 @@
+ %CPU COMM
+ 10.7 /usr/sbin/systemstats
+  7.9 /usr/sbin/coreaudiod
+  4.6 /System/Library/PrivateFrameworks/CoreDuetContext.framework/Resources/ContextStoreAgent

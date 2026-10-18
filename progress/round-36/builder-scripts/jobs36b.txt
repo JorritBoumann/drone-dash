@@ -1,0 +1,20 @@
+SEEDS=22,58,4711 SHOTS=0 node boats32.mjs > boats32.log 2>&1
+node bus-stop33.mjs > bus-stop33.log 2>&1
+SEEDS=4711,22 node boattrace33.mjs > boattrace33.log 2>&1
+SEEDS=22,58,130 T=120 node boats31.mjs > boats31.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+GPU=0 node water31.mjs > water-d.log 2>&1; python3 contrast31.py r35 > contrast36.log 2>&1
+node pad-people23.mjs > pad-people.log 2>&1
+node traffic-det29.mjs > traffic-det36.log 2>&1
+for s in 22 58 130; do NEW=1 DEV=iphone SEED=$s LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr36- node hud-probe28.mjs > fr-m-$s.log 2>&1; done
+PORTS=5190 DEVS=desktop,iphone RUNS=1 node fouc34.mjs > fouc36.log 2>&1
+SEED=130 node trisweep34.mjs > trisweep34-d-130.log 2>&1
+SEED=22 node trisweep34.mjs > trisweep34-d-22.log 2>&1
+MOBILE=1 SEED=130 node trisweep34.mjs > trisweep34-m-130.log 2>&1
+ps -Ao pcpu,comm -r | head -4 > cpu-perf.txt; UNCAP=1 node perf-street34.mjs > perf-street-d-uncap.log 2>&1
+UNCAP=1 MOBILE=1 node perf-street34.mjs > perf-street-m-uncap.log 2>&1
+UNCAP=1 node perf-boats35.mjs > perf-boats-d.log 2>&1
+UNCAP=1 MOBILE=1 node perf-boats35.mjs > perf-boats-m.log 2>&1
+ps -Ao pcpu,comm -r | head -4 > cpu-medal.txt; LINE=low SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-low.log 2>&1

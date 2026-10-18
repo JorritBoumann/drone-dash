@@ -1,0 +1,4 @@
+ %CPU COMM
+  2.8 /usr/sbin/systemstats
+  1.6 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  1.2 /usr/sbin/coreaudiod

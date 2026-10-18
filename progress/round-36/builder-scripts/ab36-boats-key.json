@@ -1,0 +1,26 @@
+{
+ "1": {
+  "new": "B",
+  "view": "130-sail-moored-close"
+ },
+ "2": {
+  "new": "T",
+  "view": "130-row-into-hull"
+ },
+ "3": {
+  "new": "B",
+  "view": "22-rib-quarter"
+ },
+ "4": {
+  "new": "B",
+  "view": "33-sail-quarter"
+ },
+ "5": {
+  "new": "T",
+  "view": "130-ferry-quarter"
+ },
+ "6": {
+  "new": "T",
+  "view": "m-130-sail-quarter"
+ }
+}

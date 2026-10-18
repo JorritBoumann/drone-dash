@@ -1,0 +1,26 @@
+{
+ "1": {
+  "new": "B",
+  "view": "130-sail-above"
+ },
+ "2": {
+  "new": "B",
+  "view": "22-sail-cruise"
+ },
+ "3": {
+  "new": "B",
+  "view": "33-rib-cruise"
+ },
+ "4": {
+  "new": "B",
+  "view": "130-rib-above"
+ },
+ "5": {
+  "new": "B",
+  "view": "22-ferry-above"
+ },
+ "6": {
+  "new": "B",
+  "view": "130-ferry-stern"
+ }
+}

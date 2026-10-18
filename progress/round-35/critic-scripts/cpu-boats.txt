@@ -1,0 +1,3 @@
+ %CPU COMM
+  3.3 /Users/jorritboumann/Library/Application Support/Claude/claude-code/2.1.299/4fa9694b7975/claude.app/Contents/MacOS/claude
+  2.0 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer

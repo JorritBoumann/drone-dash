@@ -1,0 +1,17 @@
+PORT=5193 ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20-r34c.log 2>&1
+PORT=5193 ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12-r34c.log 2>&1
+MODE=probe STEPS=12 node boatclose35.mjs > probe35-d-final.log 2>&1
+MODE=probe STEPS=8 MOBILE=1 node boatclose35.mjs > probe35-m-final.log 2>&1
+SEED=130 node trisweep34.mjs > trisweep34-d-130-final.log 2>&1
+SEED=22 node trisweep34.mjs > trisweep34-d-22-final.log 2>&1
+MOBILE=1 SEED=130 node trisweep34.mjs > trisweep34-m-130-final.log 2>&1
+ps -Ao pcpu,comm -r | head -4 > cpu-perf2.txt; UNCAP=1 node perf-street34.mjs > perf-street-d-uncap-final.log 2>&1
+UNCAP=1 MOBILE=1 node perf-street34.mjs > perf-street-m-uncap-final.log 2>&1
+UNCAP=1 PORT=5193 node perf-street34.mjs > perf-street-d-uncap-r34c.log 2>&1
+SEEDS=4711,22 node boattrace34.mjs > boattrace34-final.log 2>&1
+SEEDS=22,58,4711 SHOTS=0 node boats32.mjs > boats32-final.log 2>&1
+UNCAP=1 node perf-boats35.mjs > perf-boats-d.log 2>&1
+UNCAP=1 MOBILE=1 node perf-boats35.mjs > perf-boats-m.log 2>&1
+UNCAP=1 PORT=5193 node perf-boats35.mjs > perf-boats-d-r34c.log 2>&1
+UNCAP=1 PORT=5193 MOBILE=1 node perf-boats35.mjs > perf-boats-m-r34c.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20-b.log 2>&1

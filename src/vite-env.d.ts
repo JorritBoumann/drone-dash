@@ -144,6 +144,8 @@ interface DroneDashApi {
   waterShown?(x: number, z: number): number;
   waterOn?(on: boolean): void;
   boatsOn?(on: boolean): void;
+  /** Round 35: hull caps drawn depth-only (default), shown in magenta (probe mask) or off. */
+  boatCaps?(mode: 'depth' | 'show' | 'off'): void;
   /** Round 32: the boat and dock collider boxes (turning boxes) as the collision world sees them. */
   boatColliders?(): Array<{ x: number; z: number; s: number; c: number; hx: number; hz: number; y0: number; y1: number; soft: boolean; on: boolean }>;
   droneBox?(): { x: number; y: number; w: number; h: number; behind: boolean; shift: number };

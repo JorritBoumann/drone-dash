@@ -1,0 +1,4 @@
+ %CPU COMM
+ 41.8 /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XprotectService.xpc/Contents/MacOS/XprotectService
+  5.1 /usr/libexec/syspolicyd
+  4.4 /usr/libexec/trustd

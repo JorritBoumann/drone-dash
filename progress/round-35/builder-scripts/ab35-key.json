@@ -1,0 +1,38 @@
+{
+ "1": {
+  "new": "L",
+  "mood": "golden",
+  "kind": "sail",
+  "view": "into-hull"
+ },
+ "2": {
+  "new": "L",
+  "mood": "morning",
+  "kind": "row",
+  "view": "into-hull"
+ },
+ "3": {
+  "new": "L",
+  "mood": "dusk",
+  "kind": "rib",
+  "view": "bow-quarter"
+ },
+ "4": {
+  "new": "L",
+  "mood": "golden",
+  "kind": "row",
+  "view": "side-low"
+ },
+ "5": {
+  "new": "L",
+  "mood": "dusk",
+  "kind": "sail",
+  "view": "bow-quarter"
+ },
+ "6": {
+  "new": "L",
+  "mood": "morning",
+  "kind": "ferry",
+  "view": "side-low"
+ }
+}

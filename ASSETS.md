@@ -58,7 +58,25 @@ Round 32: no new files. The game now draws the Cruise Ship model at 0.72 scale (
 
 Water: procedural, no file. The detail normal map (and its foam noise channel) is made in code at start (`src/world/Water.ts`, 18 tileable sine waves, 256 px, 128 px on phones). No third-party texture.
 
+## Round 35: boats rebuilt (materials, hull caps, clean normals)
+
+Tool: Blender 5.2.2 through the Blender MCP (`import_asset` with Poly Haven on, `execute_blender_code`), round 35. No paid or free-tier generation. No .blend file saved (a fresh unsaved scene "dd_boats35").
+Script: `progress/round-35/builder-scripts/blender_boats35.py`.
+
+Models: the same four CC0 Quaternius boats and the CC0 dock as round 31 (table above). Round 31 never decimated the boats; it only flattened their palette texture to one colour per face and dropped the UVs. I searched Poly Pizza (CC0: "sailboat", "speedboat", "yacht motor boat", "ferry", "rowboat canoe kayak") and Poly Haven (models, "boat"). Nothing was clearly better and still fit a modern city (Poly Pizza only has the same Quaternius set plus period ships and a Kenney pirate ship; Poly Haven's boats are 17th-century Dutch ships), so no model was swapped.
+
+What changed per boat: welded (0.1 mm), every closed part checked to face outwards, smooth shading with sharp edges above 34 degrees, new UVs (Smart UV Project), a baked albedo texture, a flags colour (sail cloth / metalness / roughness per part) and, for the three open boats, a hull cap (role `cap`, the inner hull outline at the gunwale, drawn depth-only in the game).
+
+| Asset | Source | Author | Licence | Tool | Used for | Game file |
+|---|---|---|---|---|---|---|
+| Brown Planks 03 | https://polyhaven.com/a/brown_planks_03 | Rob Tuytel | CC0 1.0 | Blender MCP (1k JPEG diffuse) | wood grain on the sailboat and rowing-boat hulls (baked, not shipped) | in `boat_sail_albedo.webp`, `boat_row_albedo.webp` |
+| Roof Planks | https://polyhaven.com/a/roof_planks | Rob Tuytel | CC0 1.0 | Blender MCP (1k JPEG diffuse) | varnished trim, mast, thwarts, keel (baked, not shipped) | in `boat_sail_albedo.webp`, `boat_row_albedo.webp` |
+| Boat textures (baked) | made in Blender from the two Poly Haven textures plus procedural paint bands, sail cloth panels, rope stripes, tube seams, wet band and ambient occlusion | (own bake) | CC0 inputs | Blender Cycles bake, cwebp q80 | albedo per boat | `public/assets/textures/boat_sail_albedo.webp` (2048 px, 216 KB), `boat_row_albedo.webp` (1024 px, 80 KB), `boat_rib_albedo.webp` (1024 px, 37 KB), `boat_ferry_albedo.webp` (1024 px, 37 KB) |
+
+`boats.glb` is now 211 KB (round 31: 240 KB): 2,728 boat triangles (unchanged: sail 1,020, rib 626, ferry 858, row 224) plus 3 hull caps (30, 32 and 18 triangles) and the dock (388). Boat textures 369 KB. Everything loads after the first frame with the street assets. The source JPEGs and the PNG bakes stay local in `asset-src/polyhaven/` and `asset-src/bake35/`.
+
 ## Totals
 
 - Models: 385 KB. Textures: 1,182 KB. All round 28 assets: about 1.5 MB, loaded after the first frame.
 - Round 31: boats.glb 240 KB. All lazy assets now about 1.8 MB.
+- Round 35: boats.glb 211 KB plus 369 KB of boat textures. All lazy assets now about 2.1 MB.

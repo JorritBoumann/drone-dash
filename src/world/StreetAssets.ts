@@ -26,7 +26,8 @@ export async function loadModelParts(file: string): Promise<ModelParts> {
     const role = (roleRaw ?? 'all').replace(/\d+$/, '').replace(/_$/, '');
     const g = mesh.geometry.clone();
     g.applyMatrix4(mesh.matrixWorld);
-    const keep = new Set(['position', 'normal', 'color']);
+    // round 35: UVs are kept too (the boats carry a baked texture; the other kits have none)
+    const keep = new Set(['position', 'normal', 'color', 'uv']);
     for (const k of Object.keys(g.attributes)) if (!keep.has(k)) g.deleteAttribute(k);
     // colours as float rgb (the exporter may write rgba or normalised shorts)
     const c = g.getAttribute('color');
@@ -50,6 +51,27 @@ export function loadTexture(file: string, srgb: boolean): Promise<THREE.Texture>
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return t;
   });
+}
+
+/** Round 35: the boats (boats.glb) and their baked albedo textures (wood, paint bands, sail cloth, AO), one per model. */
+export const BOAT_MODELS = ['boat_sail', 'boat_rib', 'boat_ferry', 'boat_row'] as const;
+export async function loadBoatAssets(): Promise<{ parts: ModelParts; tex: Map<string, THREE.Texture> }> {
+  const [parts, ...maps] = await Promise.all([
+    loadModelParts('boats.glb'),
+    ...BOAT_MODELS.map((m) => loadTexture(`${m}_albedo.webp`, true).catch(() => null)),
+  ]);
+  const tex = new Map<string, THREE.Texture>();
+  BOAT_MODELS.forEach((m, i) => {
+    const t = maps[i];
+    if (!t) return;
+    // glTF UVs (Blender export) already run top-down
+    t.flipY = false;
+    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    t.anisotropy = 4;
+    t.needsUpdate = true;
+    tex.set(m, t);
+  });
+  return { parts, tex };
 }
 
 export type StreetAssetSet = {

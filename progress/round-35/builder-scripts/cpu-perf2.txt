@@ -1,0 +1,4 @@
+ %CPU COMM
+ 27.9 /usr/sbin/systemstats
+  1.9 /Applications/AlDente.app/Contents/MacOS/AlDente
+  1.9 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer

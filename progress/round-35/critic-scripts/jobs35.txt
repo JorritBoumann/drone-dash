@@ -1,0 +1,32 @@
+ps -Ao pcpu,comm -r | head -3 > cpu-perf.txt; UNCAP=1 node perf-street34.mjs > perf-street-d-uncap.log 2>&1
+UNCAP=1 MOBILE=1 node perf-street34.mjs > perf-street-m-uncap.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-hull.txt; SEEDS=130,22,33 SWEEP=8 node hullwater35.mjs > hw35-d.log 2>&1
+PORT=5192 TAG=r34c SEEDS=130,22,33 SWEEP=2 node hullwater35.mjs > hw35-r34c-d.log 2>&1
+MOBILE=1 SEEDS=130,22,33 SWEEP=4 node hullwater35.mjs > hw35-m.log 2>&1
+PORT=5192 TAG=r34c MOBILE=1 SEEDS=130 SWEEP=1 node hullwater35.mjs > hw35-r34c-m.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-fouc.txt; PORTS=5191,5193 DEVS=desktop,iphone RUNS=2 node fouc34.mjs > fouc35.log 2>&1
+node load34.mjs > load35.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+SEED=22 node trisweep31.mjs > trisweep-d-22.log 2>&1
+SEED=130 node trisweep31.mjs > trisweep-d-130.log 2>&1
+SEED=33 node trisweep31.mjs > trisweep-d-33.log 2>&1
+MOBILE=1 SEED=130 node trisweep31.mjs > trisweep-m-130.log 2>&1
+SEEDS=4711,22 node boattrace33.mjs > boattrace33-r35.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-boats.txt; SEEDS=22,58,4711,9001 node boats33.mjs > boats33.log 2>&1
+SEEDS=22,58,8086 T=120 node boats31.mjs > boats31-overlap.log 2>&1
+node bus-stop33.mjs > bus-stop33.log 2>&1
+SEEDS=130,22,33,58 node water31.mjs > water-d-r35.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr35- node hud-probe34.mjs > fr-m-22.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr35- node hud-probe34.mjs > fr-m-58.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr35- node hud-probe34.mjs > fr-m-130.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+node pad-people23.mjs > pad-people.log 2>&1
+node traffic-det29.mjs > traffic-det35.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-medal.txt; LINE=low SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-low-a.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-perf2.txt; UNCAP=1 node perf-harbour35.mjs > perf-harbour-d.log 2>&1
+UNCAP=1 MOBILE=1 node perf-harbour35.mjs > perf-harbour-m.log 2>&1
+UNCAP=1 PORT=5192 node perf-harbour35.mjs > perf-harbour-d-r34c.log 2>&1
+PORT=5192 SEEDS=22 SHOTS=0 node boats33.mjs > boats33-r34c-22.log 2>&1
+SEEDS=22 SHOTS=0 node boats33.mjs > boats33-r35-22-rerun.log 2>&1
+END

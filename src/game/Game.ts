@@ -400,11 +400,11 @@ export class Game {
     const t0 = performance.now();
     try {
       // the loader (GLTFLoader) is its own chunk, fetched after the first frame
-      const { loadStreetAssets, loadModelParts } = await import('../world/StreetAssets');
-      // round 31: the boats and marina docks load with the street assets
-      const [a, boatParts] = await Promise.all([loadStreetAssets(), loadModelParts('boats.glb').catch(() => null)]);
+      const { loadStreetAssets, loadBoatAssets } = await import('../world/StreetAssets');
+      // round 31: the boats and marina docks load with the street assets (round 35: plus their baked textures)
+      const [a, boatSet] = await Promise.all([loadStreetAssets(), loadBoatAssets().catch(() => null)]);
       const added = this.env.applyAssets(a);
-      if (boatParts) added.push(this.env.applyBoats(boatParts));
+      if (boatSet) added.push(this.env.applyBoats(boatSet.parts, boatSet.tex));
       this.assetGroup.name = 'street-assets';
       for (const o of added) this.assetGroup.add(o);
       for (const t of Object.values(a.tex)) this.renderer.initTexture(t);
@@ -2146,6 +2146,8 @@ export class Game {
       // boats ride this one). waterAt above stays the raw sum before any fade.
       waterShown: (x: number, z: number) => { const c = this.env.focusCam; return surfaceHeight(x, z, this.time, Math.hypot(x - c.x, z - c.z), this.env.water.lite); },
       waterOn: (on: boolean) => { this.env.water.mesh.visible = on; }, // round 31 perf switches
+      // round 35: hull caps as drawn ('depth', the default), shown in magenta ('show', a probe mask) or left out ('off')
+      boatCaps: (mode: 'depth' | 'show' | 'off') => this.env.boats?.capMode(mode),
       boatsOn: (on: boolean) => { if (this.env.boats) { this.env.boats.group.visible = on; for (const c of this.env.boats.colliders) c.on = on; } },
       // round 32: the boat collider boxes as the collision world sees them, and the crash counter for the boat probe
       boatColliders: () => this.world.dynamic.map((c) => ({ ...c })),

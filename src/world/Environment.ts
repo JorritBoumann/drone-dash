@@ -628,8 +628,8 @@ export class Environment {
   }
 
   /** Round 31: build the boats and the marina from boats.glb (lazy, with the street assets). */
-  applyBoats(parts: ModelParts): THREE.Object3D {
-    this.boats = new Boats(parts, this.water, this.seed);
+  applyBoats(parts: ModelParts, tex?: Map<string, THREE.Texture>): THREE.Object3D {
+    this.boats = new Boats(parts, this.water, this.seed, tex);
     this.boats.update(0, 0, this.focusCam);
     return this.boats.group;
   }

@@ -1,0 +1,5669 @@
+[
+ {
+  "seed": 130,
+  "mood": "golden",
+  "tag": "r35",
+  "mobile": false,
+  "caps": true,
+  "kinds": [
+   "sail",
+   "rib",
+   "ferry",
+   "sail-moored",
+   "row-moored",
+   "rib-moored"
+  ],
+  "views": [
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 683100,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     13.75397796076938,
+     -0.3004,
+     198.93899999995952
+    ],
+    "B": {
+     "x": 13.754,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": 0.0496
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 654290,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     18.542985307145855,
+     -0.22179999999999994,
+     196.93901836599855
+    ],
+    "B": {
+     "x": 13.543,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": 0.0282
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 271,
+    "inHull0": 14299,
+    "lidNonWater": 13,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     14.334991918942027,
+     2.3047,
+     195.13900367319025
+    ],
+    "B": {
+     "x": 13.335,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": 0.0047
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 84239,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 79,
+    "inHull0": 3369,
+    "lidNonWater": 3,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     13.118998530718025,
+     8.2838,
+     193.33899996326525
+    ],
+    "B": {
+     "x": 13.129,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0162
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 11820,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 403200,
+    "inHull": 36,
+    "inHull0": 36,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     4.41799779613428,
+     0.8651000000000001,
+     193.5389687777526
+    ],
+    "B": {
+     "x": 12.918,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0349
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 403200,
+    "inHull": 78,
+    "inHull0": 78,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     21.204002203865723,
+     0.8492000000000001,
+     192.3390312222474
+    ],
+    "B": {
+     "x": 12.704,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0508
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 711124,
+    "inHull": 1332,
+    "inHull0": 1332,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     12.469974287564277,
+     1.7351,
+     199.93899999995276
+    ],
+    "B": {
+     "x": 12.47,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0649
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 8094,
+    "inHull0": 9436,
+    "lidNonWater": 1,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     11.95899256176169,
+     0.6247999999999999,
+     194.96399889802478
+    ],
+    "B": {
+     "x": 12.259,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0752
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 8012,
+    "distinct": 24,
+    "view": "very-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 52678,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     11.650999265361678,
+     0.8164000000000001,
+     193.1389985307166
+    ],
+    "B": {
+     "x": 12.051,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0836
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 165704,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     11.480990357839977,
+     -0.6663,
+     195.56399816337972
+    ],
+    "B": {
+     "x": 11.981,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0863
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 460879,
+    "inHull": 338,
+    "inHull0": 338,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     18.566991516376383,
+     0.8024000000000001,
+     198.7006595969803
+    ],
+    "B": {
+     "x": 11.653,
+     "z": 192.939,
+     "yaw": -1.5708,
+     "heave": -0.0976
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "sun-behind-sail"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 670622,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -52.59999999983809,
+     -0.32520000000000004,
+     172.50004407846123
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0248
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 649976,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -50.59996326784103,
+     -0.22369999999999995,
+     177.5000293855059
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0263
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 130,
+    "inHull0": 12204,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -48.799992653530424,
+     2.3272,
+     173.5000161620755
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0272
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 28872,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 2,
+    "inHull0": 2984,
+    "lidNonWater": 19,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.00000007345331,
+     8.3281,
+     172.49000293856434
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0281
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 13634,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 402560,
+    "inHull": 18,
+    "inHull0": 18,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.20006244447057,
+     0.9284000000000001,
+     164.00000440807548
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0284
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 403840,
+    "inHull": 27,
+    "inHull0": 27,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -45.999937555529435,
+     0.9299000000000001,
+     180.99999559192452
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0299
+    },
+    "camInHull": 0,
+    "leak": 260,
+    "leakMax": 260,
+    "leak0": 260,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 711124,
+    "inHull": 124,
+    "inHull0": 124,
+    "lidNonWater": 0,
+    "lidOuterWater": 5,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -53.599999999811104,
+     1.8308,
+     172.50005142487146
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0308
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 438,
+    "inHull0": 2583,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -48.62500220386842,
+     0.7315999999999999,
+     172.20001487648875
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0316
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 40803,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.800002938558684,
+     0.9324000000000001,
+     172.10000146929283
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0324
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 136338,
+    "distinct": 24,
+    "view": "inside-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -49.22500367313427,
+     -0.5469,
+     172.00001928434028
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0331
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 481011,
+    "inHull": 128,
+    "inHull0": 128,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -39.68600848362362,
+     0.9338000000000001,
+     178.2616595969803
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0338
+    },
+    "camInHull": 0,
+    "leak": 117,
+    "leakMax": 90,
+    "leak0": 117,
+    "distinct": 25,
+    "view": "sun-behind-sail"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 484530,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -167.298206120072,
+     -0.35,
+     -209.27284728685697
+    ],
+    "B": {
+     "x": -167.734,
+     "z": -215.257,
+     "yaw": -1.4981,
+     "heave": 0
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 450730,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -162.98939439440346,
+     -0.09290000000000004,
+     -211.6450586459365
+    ],
+    "B": {
+     "x": -168.307,
+     "z": -215.212,
+     "yaw": -1.4869,
+     "heave": 0.1571
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 424,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -168.08806531587834,
+     2.4416,
+     -213.0330837839998
+    ],
+    "B": {
+     "x": -169.31,
+     "z": -215.118,
+     "yaw": -1.4673,
+     "heave": 0.1416
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 209440,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -169.9165984020601,
+     8.4276,
+     -214.64853428796516
+    ],
+    "B": {
+     "x": -169.953,
+     "z": -215.047,
+     "yaw": -1.4547,
+     "heave": 0.1276
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 237919,
+    "inHull": 445,
+    "inHull0": 445,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -178.05514357617358,
+     1.0016,
+     -213.3975676318682
+    ],
+    "B": {
+     "x": -170.595,
+     "z": -214.968,
+     "yaw": -1.4421,
+     "heave": 0.1016
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 236472,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -163.80956853585488,
+     0.9566000000000001,
+     -216.5447909503559
+    ],
+    "B": {
+     "x": -171.249,
+     "z": -214.879,
+     "yaw": -1.4293,
+     "heave": 0.0566
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 282720,
+    "inHull": 256,
+    "inHull0": 256,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -170.44673010129495,
+     1.8373,
+     -207.92216463572908
+    ],
+    "B": {
+     "x": -171.463,
+     "z": -214.848,
+     "yaw": -1.4251,
+     "heave": 0.0373
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 2633,
+    "inHull0": 2633,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -172.40636717737627,
+     0.6251999999999999,
+     -212.57126036889994
+    ],
+    "B": {
+     "x": -172.456,
+     "z": -214.692,
+     "yaw": -1.4055,
+     "heave": -0.0748
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -173.44334887378213,
+     0.7476,
+     -214.3154442400936
+    ],
+    "B": {
+     "x": -173.085,
+     "z": -214.583,
+     "yaw": -1.3931,
+     "heave": -0.1524
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -173.68809318715893,
+     -0.7986,
+     -211.72215904822798
+    ],
+    "B": {
+     "x": -173.707,
+     "z": -214.468,
+     "yaw": -1.3808,
+     "heave": -0.2186
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 23,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 326690,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.59999999983809,
+     -0.35,
+     169.80004407846124
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0
+    },
+    "camInHull": 1,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 337680,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -44.59996326784103,
+     -0.2769,
+     174.80002938550592
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0269
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 10128,
+    "lidNonWater": 61,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.799992653530424,
+     2.2736,
+     170.8000161620755
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0264
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 146440,
+    "inHull": 0,
+    "inHull0": 3820,
+    "lidNonWater": 17,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.00000007345331,
+     8.2732,
+     169.79000293856436
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0268
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 23905,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 184932,
+    "inHull": 80,
+    "inHull0": 80,
+    "lidNonWater": 3,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.20005362877832,
+     0.8721000000000001,
+     162.5000044080431
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0279
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 186662,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 20,
+    "lidOuterWater": 63,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -39.99994637122168,
+     0.8701000000000001,
+     177.0999955919569
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0299
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 226416,
+    "inHull": 108,
+    "inHull0": 108,
+    "lidNonWater": 19,
+    "lidOuterWater": 179,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.599999999811104,
+     1.7673,
+     169.80005142487147
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0327
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 576,
+    "inHull0": 2839,
+    "lidNonWater": 80,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.39000220387476,
+     0.6639999999999999,
+     169.50001315008237
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.036
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 104647,
+    "lidNonWater": 27,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -40.800002938558684,
+     0.8603000000000001,
+     169.40000146929285
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0397
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.990003673140606,
+     -0.6236,
+     169.3000175579339
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0436
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 362124,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.59999999983809,
+     -0.2329,
+     169.80004407846124
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1171
+    },
+    "camInHull": 1,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 355572,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -44.59996326784103,
+     -0.10579999999999995,
+     174.80002938550592
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1442
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 11162,
+    "lidNonWater": 59,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.799992653530424,
+     2.4614000000000003,
+     170.8000161620755
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1614
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 154119,
+    "inHull": 0,
+    "inHull0": 4083,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.00000007345331,
+     8.4749,
+     169.79000293856436
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1749
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 25371,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 192304,
+    "inHull": 71,
+    "inHull0": 71,
+    "lidNonWater": 6,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.20005362877832,
+     1.0862,
+     162.5000044080431
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1862
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 192304,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 17,
+    "lidOuterWater": 13,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -39.99994637122168,
+     1.0946000000000002,
+     177.0999955919569
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1946
+    },
+    "camInHull": 0,
+    "leak": 4,
+    "leakMax": 4,
+    "leak0": 4,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 232484,
+    "inHull": 261,
+    "inHull0": 261,
+    "lidNonWater": 6,
+    "lidOuterWater": 20,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.599999999811104,
+     2.0000999999999998,
+     169.80005142487147
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.2001
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 831,
+    "inHull0": 3835,
+    "lidNonWater": 73,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.39000220387476,
+     0.9023999999999999,
+     169.50001315008237
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.2024
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 94195,
+    "lidNonWater": 71,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -40.800002938558684,
+     1.1014000000000002,
+     169.40000146929285
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.2014
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.990003673140606,
+     -0.3829,
+     169.3000175579339
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1971
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 370928,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     169.8000000003562,
+     -0.35,
+     -156.72909697261474
+    ],
+    "B": {
+     "x": 183,
+     "z": -156.729,
+     "yaw": -3.1416,
+     "heave": 0
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 362773,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     174.19991918972516,
+     -0.3313,
+     -146.03606464870666
+    ],
+    "B": {
+     "x": 183,
+     "z": -157.036,
+     "yaw": -3.1416,
+     "heave": -0.0813
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     178.15998383802813,
+     5.874600000000001,
+     -155.37203555668475
+    ],
+    "B": {
+     "x": 183,
+     "z": -157.572,
+     "yaw": -3.1416,
+     "heave": -0.0254
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 150912,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     182.6000000734749,
+     19.1207,
+     -157.92700293856382
+    ],
+    "B": {
+     "x": 183,
+     "z": -157.917,
+     "yaw": -3.1416,
+     "heave": 0.0207
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 120191,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     182.40013370468193,
+     2.8945000000000007,
+     -176.497004407355
+    ],
+    "B": {
+     "x": 183,
+     "z": -158.297,
+     "yaw": -3.1416,
+     "heave": 0.0745
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 120191,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     183.59986629531807,
+     2.9409000000000005,
+     -140.44899559264502
+    ],
+    "B": {
+     "x": 183,
+     "z": -158.649,
+     "yaw": -3.1416,
+     "heave": 0.1209
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 266900,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     167.60000000041558,
+     4.9569,
+     -158.9941131347172
+    ],
+    "B": {
+     "x": 183,
+     "z": -158.994,
+     "yaw": -3.1416,
+     "heave": 0.1569
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "side"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     180.81500220398203,
+     0.8792999999999999,
+     -159.6390160518982
+    ],
+    "B": {
+     "x": 183,
+     "z": -159.339,
+     "yaw": -3.1416,
+     "heave": 0.1793
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "very-close"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     180.21500367328025,
+     -0.39390000000000003,
+     -160.1830204597389
+    ],
+    "B": {
+     "x": 183,
+     "z": -159.683,
+     "yaw": -3.1416,
+     "heave": 0.1861
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "waterline-close"
+   }
+  ],
+  "sweep": {
+   "sail": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 16,
+    "leakPx": 0,
+    "inHull": 8,
+    "inHull0": 16,
+    "lidNonWater": 8,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 0,
+     "inHull": 394
+    },
+    "heave": [
+     -0.1665,
+     0.2182
+    ]
+   },
+   "sail-moored": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 16,
+    "leakPx": 0,
+    "inHull": 8,
+    "inHull0": 16,
+    "lidNonWater": 6,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 0,
+     "inHull": 299
+    },
+    "heave": [
+     -0.1473,
+     0.1404
+    ]
+   },
+   "rib": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 3,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 4,
+    "lidNonWater": 4,
+    "lidOuterWater": 0,
+    "worst": null,
+    "heave": [
+     -0.1531,
+     0.2137
+    ]
+   },
+   "row": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 16,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "worst": null,
+    "heave": [
+     -0.0996,
+     0.1394
+    ]
+   },
+   "row-moored": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 1,
+    "inHull0": 16,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 6,
+     "inHull": 17
+    },
+    "heave": [
+     -0.2005,
+     0.2377
+    ]
+   },
+   "ferry": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "worst": null,
+    "heave": [
+     -0.144,
+     0.1724
+    ]
+   }
+  },
+  "errs": []
+ },
+ {
+  "seed": 22,
+  "mood": "morning",
+  "tag": "r35",
+  "mobile": false,
+  "caps": true,
+  "kinds": [
+   "sail",
+   "rib",
+   "ferry",
+   "sail-moored",
+   "row-moored",
+   "rib-moored"
+  ],
+  "views": [
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 683100,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -198.7169999998381,
+     -0.514,
+     9.87295592153876
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 9.873,
+     "yaw": -3.1416,
+     "heave": -0.164
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 654290,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -196.7170367319431,
+     -0.44439999999999996,
+     14.662970614224248
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 9.663,
+     "yaw": -3.1416,
+     "heave": -0.1944
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 193,
+    "inHull0": 14077,
+    "lidNonWater": 59,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -194.91700734635086,
+     2.1026,
+     10.591983837870561
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 9.592,
+     "yaw": -3.1416,
+     "heave": -0.1974
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 61930,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 18,
+    "inHull0": 2619,
+    "lidNonWater": 55,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -193.11699992652512,
+     8.0981,
+     9.394997061436188
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 9.405,
+     "yaw": -3.1416,
+     "heave": -0.2019
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 10729,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 403840,
+    "inHull": 35,
+    "inHull0": 35,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -193.31693755549708,
+     0.7003,
+     0.5779955923832475
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 9.078,
+     "yaw": -3.1416,
+     "heave": -0.1997
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 403840,
+    "inHull": 60,
+    "inHull0": 60,
+    "lidNonWater": 3,
+    "lidOuterWater": 30,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -192.11706244450295,
+     0.7062,
+     17.371004407616752
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 8.871,
+     "yaw": -3.1416,
+     "heave": -0.1938
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 711124,
+    "inHull": 448,
+    "inHull0": 448,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -199.71699999981112,
+     1.6147,
+     8.656948575128553
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 8.657,
+     "yaw": -3.1416,
+     "heave": -0.1853
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 3166,
+    "inHull0": 5378,
+    "lidNonWater": 24,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -194.7419977960223,
+     0.5246999999999999,
+     8.145985123527428
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 8.446,
+     "yaw": -3.1416,
+     "heave": -0.1753
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 23,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 51287,
+    "lidNonWater": 22,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -192.91699706143055,
+     0.7362000000000001,
+     7.831998530728752
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 8.232,
+     "yaw": -3.1416,
+     "heave": -0.1638
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 155365,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -195.3419963267241,
+     -0.7397,
+     7.6609807156867
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 8.161,
+     "yaw": -3.1416,
+     "heave": -0.1597
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 23,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 469507,
+    "inHull": 616,
+    "inHull0": 616,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -199.0233721339583,
+     0.7624000000000001,
+     14.2540334454848
+    ],
+    "B": {
+     "x": -192.717,
+     "z": 7.833,
+     "yaw": -3.1416,
+     "heave": -0.1376
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "sun-behind-sail"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 674040,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -52.59999999983809,
+     -0.3307,
+     172.50004407846123
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0193
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 652133,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -50.59996326784103,
+     -0.2224,
+     177.5000293855059
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0276
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 125,
+    "inHull0": 12278,
+    "lidNonWater": 50,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -48.799992653530424,
+     2.3285,
+     173.5000161620755
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0285
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 28906,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 4,
+    "inHull0": 2952,
+    "lidNonWater": 63,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.00000007345331,
+     8.3295,
+     172.49000293856434
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0295
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 13552,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 403840,
+    "inHull": 24,
+    "inHull0": 24,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.20006244447057,
+     0.9304000000000001,
+     164.00000440807548
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0304
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 404471,
+    "inHull": 38,
+    "inHull0": 38,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -45.999937555529435,
+     0.9312000000000001,
+     180.99999559192452
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0312
+    },
+    "camInHull": 0,
+    "leak": 324,
+    "leakMax": 324,
+    "leak0": 324,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 711124,
+    "inHull": 120,
+    "inHull0": 120,
+    "lidNonWater": 1,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -53.599999999811104,
+     1.8321,
+     172.50005142487146
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0321
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 533,
+    "inHull0": 2757,
+    "lidNonWater": 28,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -48.62500220386842,
+     0.7327999999999999,
+     172.20001487648875
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0328
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 41963,
+    "lidNonWater": 9,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.800002938558684,
+     0.9335000000000001,
+     172.10000146929283
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0335
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 140128,
+    "distinct": 24,
+    "view": "inside-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -49.22500367313427,
+     -0.5459,
+     172.00001928434028
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0341
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 473102,
+    "inHull": 170,
+    "inHull0": 170,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -52.906372133958286,
+     0.9347000000000001,
+     178.9210334454848
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0347
+    },
+    "camInHull": 0,
+    "leak": 469,
+    "leakMax": 469,
+    "leak0": 469,
+    "distinct": 25,
+    "view": "sun-behind-sail"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 485572,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     162.51297796076938,
+     -0.36960000000000004,
+     207.6100000000405
+    ],
+    "B": {
+     "x": 162.513,
+     "z": 213.61,
+     "yaw": 1.5708,
+     "heave": -0.0196
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 446736,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     158.51998530721335,
+     -0.2604,
+     209.61001836605251
+    ],
+    "B": {
+     "x": 163.52,
+     "z": 213.61,
+     "yaw": 1.5708,
+     "heave": -0.0104
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     163.15951772589705,
+     2.3078,
+     211.4134164101113
+    ],
+    "B": {
+     "x": 164.167,
+     "z": 213.61,
+     "yaw": 1.5742,
+     "heave": 0.0078
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 210035,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     164.82835745749117,
+     8.3316,
+     213.20288910602287
+    ],
+    "B": {
+     "x": 164.825,
+     "z": 213.603,
+     "yaw": 1.5874,
+     "heave": 0.0316
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 238422,
+    "inHull": 294,
+    "inHull0": 294,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     173.05082789208117,
+     0.9539000000000001,
+     212.7635499517159
+    ],
+    "B": {
+     "x": 165.472,
+     "z": 213.589,
+     "yaw": 1.6005,
+     "heave": 0.0539
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 237919,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     158.55054305823458,
+     0.9674,
+     214.4889022862437
+    ],
+    "B": {
+     "x": 166.118,
+     "z": 213.565,
+     "yaw": 1.6135,
+     "heave": 0.0674
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 281976,
+    "inHull": 219,
+    "inHull0": 219,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     166.37427590631236,
+     1.867,
+     206.54385733935845
+    ],
+    "B": {
+     "x": 166.764,
+     "z": 213.533,
+     "yaw": 1.6265,
+     "heave": 0.067
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 1869,
+    "inHull0": 1869,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     167.15331656047974,
+     0.7636999999999999,
+     211.40677168454692
+    ],
+    "B": {
+     "x": 166.98,
+     "z": 213.521,
+     "yaw": 1.6309,
+     "heave": 0.0637
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "very-close"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     168.3656443323496,
+     0.9339000000000001,
+     213.2185192990318
+    ],
+    "B": {
+     "x": 167.983,
+     "z": 213.45,
+     "yaw": 1.6512,
+     "heave": 0.0339
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "inside-close"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     168.8719971405833,
+     -0.5660000000000001,
+     210.65913521233227
+    ],
+    "B": {
+     "x": 168.626,
+     "z": 213.394,
+     "yaw": 1.6642,
+     "heave": 0.014
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 22,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 329954,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.59999999983809,
+     -0.3661,
+     169.80004407846124
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0161
+    },
+    "camInHull": 1,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 336518,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -44.59996326784103,
+     -0.2766,
+     174.80002938550592
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0266
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 10226,
+    "lidNonWater": 135,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.799992653530424,
+     2.2725,
+     170.8000161620755
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0275
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 146440,
+    "inHull": 0,
+    "inHull0": 3822,
+    "lidNonWater": 65,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.00000007345331,
+     8.2707,
+     169.79000293856436
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0293
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 23780,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 184932,
+    "inHull": 70,
+    "inHull0": 70,
+    "lidNonWater": 17,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.20005362877832,
+     0.8679000000000001,
+     162.5000044080431
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0321
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 185796,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 39,
+    "lidOuterWater": 46,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -39.99994637122168,
+     0.8647000000000001,
+     177.0999955919569
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0353
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 225780,
+    "inHull": 176,
+    "inHull0": 176,
+    "lidNonWater": 21,
+    "lidOuterWater": 147,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.599999999811104,
+     1.7610999999999999,
+     169.80005142487147
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0389
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 1171,
+    "inHull0": 3340,
+    "lidNonWater": 214,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.39000220387476,
+     0.6571999999999999,
+     169.50001315008237
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0428
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 106968,
+    "lidNonWater": 171,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -40.800002938558684,
+     0.8532000000000001,
+     169.40000146929285
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0468
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.990003673140606,
+     -0.6308,
+     169.3000175579339
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0508
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 23,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 362124,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.59999999983809,
+     -0.19300000000000006,
+     169.80004407846124
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.157
+    },
+    "camInHull": 1,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 355572,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -44.59996326784103,
+     -0.07890000000000003,
+     174.80002938550592
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1711
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 11090,
+    "lidNonWater": 138,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.799992653530424,
+     2.483,
+     170.8000161620755
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.183
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 154119,
+    "inHull": 0,
+    "inHull0": 4028,
+    "lidNonWater": 60,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.00000007345331,
+     8.4921,
+     169.79000293856436
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1921
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 24302,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 192304,
+    "inHull": 43,
+    "inHull0": 43,
+    "lidNonWater": 30,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.20005362877832,
+     1.0986000000000002,
+     162.5000044080431
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1986
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 192304,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 28,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -39.99994637122168,
+     1.102,
+     177.0999955919569
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.202
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 232484,
+    "inHull": 243,
+    "inHull0": 243,
+    "lidNonWater": 29,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.599999999811104,
+     2.0021,
+     169.80005142487147
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.2021
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 719,
+    "inHull0": 4310,
+    "lidNonWater": 186,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.39000220387476,
+     0.8983999999999999,
+     169.50001315008237
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1984
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 89355,
+    "lidNonWater": 143,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -40.800002938558684,
+     1.0966,
+     169.40000146929285
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1966
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.990003673140606,
+     -0.3973,
+     169.3000175579339
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1827
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 370928,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -169.8,
+     -0.2167,
+     -28.759
+    ],
+    "B": {
+     "x": -183,
+     "z": -28.759,
+     "yaw": 0,
+     "heave": 0.1333
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 362773,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -174.2,
+     -0.03739999999999999,
+     -39.222
+    ],
+    "B": {
+     "x": -183,
+     "z": -28.222,
+     "yaw": 0,
+     "heave": 0.2126
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -178.16,
+     6.1019000000000005,
+     -30.076999999999998
+    ],
+    "B": {
+     "x": -183,
+     "z": -27.877,
+     "yaw": 0,
+     "heave": 0.2019
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "into-hull"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 150912,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -182.6,
+     19.287300000000002,
+     -27.520999999999997
+    ],
+    "B": {
+     "x": -183,
+     "z": -27.531,
+     "yaw": 0,
+     "heave": 0.1873
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 120191,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -182.4,
+     2.9896000000000003,
+     -8.986
+    ],
+    "B": {
+     "x": -183,
+     "z": -27.186,
+     "yaw": 0,
+     "heave": 0.1696
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 120191,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -183.6,
+     2.9694000000000003,
+     -45.04
+    ],
+    "B": {
+     "x": -183,
+     "z": -26.84,
+     "yaw": 0,
+     "heave": 0.1494
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 266900,
+    "inHull": 16,
+    "inHull0": 16,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -167.6,
+     4.9277,
+     -26.493
+    ],
+    "B": {
+     "x": -183,
+     "z": -26.493,
+     "yaw": 0,
+     "heave": 0.1277
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -180.815,
+     0.8059999999999999,
+     -25.851
+    ],
+    "B": {
+     "x": -183,
+     "z": -26.151,
+     "yaw": 0,
+     "heave": 0.106
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "very-close"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -180.215,
+     -0.49539999999999995,
+     -25.306
+    ],
+    "B": {
+     "x": -183,
+     "z": -25.806,
+     "yaw": 0,
+     "heave": 0.0846
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "waterline-close"
+   }
+  ],
+  "sweep": {
+   "sail": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 16,
+    "leakPx": 0,
+    "inHull": 8,
+    "inHull0": 16,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 7,
+     "inHull": 374
+    },
+    "heave": [
+     -0.1449,
+     0.1612
+    ]
+   },
+   "sail-moored": {
+    "frames": 24,
+    "leak": 1,
+    "leak0": 16,
+    "leakPx": 879,
+    "inHull": 8,
+    "inHull0": 16,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 0,
+     "inHull": 274
+    },
+    "heave": [
+     -0.1575,
+     0.1301
+    ]
+   },
+   "rib": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 3,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 7,
+    "lidNonWater": 7,
+    "lidOuterWater": 0,
+    "worst": null,
+    "heave": [
+     0.0023,
+     0.2599
+    ]
+   },
+   "row": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 16,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "worst": null,
+    "heave": [
+     -0.0997,
+     0.1316
+    ]
+   },
+   "row-moored": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 1,
+    "inHull0": 16,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 6,
+     "inHull": 9
+    },
+    "heave": [
+     -0.216,
+     0.2399
+    ]
+   },
+   "ferry": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 7,
+    "inHull0": 7,
+    "lidNonWater": 1,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 1,
+     "inHull": 23
+    },
+    "heave": [
+     -0.0665,
+     0.2242
+    ]
+   }
+  },
+  "errs": []
+ },
+ {
+  "seed": 33,
+  "mood": "dusk",
+  "tag": "r35",
+  "mobile": false,
+  "caps": true,
+  "kinds": [
+   "sail",
+   "rib",
+   "ferry",
+   "sail-moored",
+   "row-moored",
+   "rib-moored"
+  ],
+  "views": [
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 683100,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -63.97002203923062,
+     -0.36030000000000006,
+     200.52199999995952
+    ],
+    "B": {
+     "x": -63.97,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": -0.0103
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "low-side"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 654290,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -59.20301469285415,
+     -0.2525,
+     198.52201836599855
+    ],
+    "B": {
+     "x": -64.203,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": -0.0025
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 158,
+    "inHull0": 13413,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -63.41400808105797,
+     2.3029,
+     196.72200367319024
+    ],
+    "B": {
+     "x": -64.414,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0029
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 77300,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 72,
+    "inHull0": 2841,
+    "lidNonWater": 8,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -64.63400146928197,
+     8.3058,
+     194.92199996326525
+    ],
+    "B": {
+     "x": -64.624,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0058
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 11974,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 402560,
+    "inHull": 7,
+    "inHull0": 7,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -73.33700220386572,
+     0.9066000000000001,
+     195.12196877775258
+    ],
+    "B": {
+     "x": -64.837,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0066
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 402560,
+    "inHull": 44,
+    "inHull0": 44,
+    "lidNonWater": 0,
+    "lidOuterWater": 4,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -56.54799779613428,
+     0.9061000000000001,
+     193.9220312222474
+    ],
+    "B": {
+     "x": -65.048,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0061
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 709845,
+    "inHull": 782,
+    "inHull0": 782,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -65.25802571243572,
+     1.8051,
+     201.52199999995275
+    ],
+    "B": {
+     "x": -65.258,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0051
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 5318,
+    "inHull0": 8228,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -65.76800743823831,
+     0.7044999999999999,
+     196.54699889802478
+    ],
+    "B": {
+     "x": -65.468,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0045
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 13210,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 50814,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -66.07900073463833,
+     0.9052000000000001,
+     194.7219985307166
+    ],
+    "B": {
+     "x": -65.679,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0052
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 156865,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -66.39000964216002,
+     -0.572,
+     197.14699816337972
+    ],
+    "B": {
+     "x": -65.89,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.008
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 23,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "sail",
+    "moving": true,
+    "roll": 0,
+    "box": 452251,
+    "inHull": 18,
+    "inHull0": 18,
+    "lidNonWater": 1,
+    "lidOuterWater": 5,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -73.18416106851521,
+     0.9095000000000001,
+     189.15167510289893
+    ],
+    "B": {
+     "x": -65.962,
+     "z": 194.522,
+     "yaw": -1.5708,
+     "heave": 0.0095
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "sun-behind-sail"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 665028,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -52.59999999983809,
+     -0.32330000000000003,
+     172.50004407846123
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0267
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 22,
+    "view": "low-side"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 647100,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -50.59996326784103,
+     -0.22179999999999994,
+     177.5000293855059
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0282
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 145,
+    "inHull0": 12225,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -48.799992653530424,
+     2.3291,
+     173.5000161620755
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0291
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 28673,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 2,
+    "inHull0": 2952,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.00000007345331,
+     8.33,
+     172.49000293856434
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.03
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 13461,
+    "distinct": 24,
+    "view": "above"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 401931,
+    "inHull": 29,
+    "inHull0": 29,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.20006244447057,
+     0.9309000000000001,
+     164.00000440807548
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0309
+    },
+    "camInHull": 0,
+    "leak": 1,
+    "leakMax": 1,
+    "leak0": 1,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 402560,
+    "inHull": 36,
+    "inHull0": 36,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -45.999937555529435,
+     0.9318000000000001,
+     180.99999559192452
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0318
+    },
+    "camInHull": 0,
+    "leak": 359,
+    "leakMax": 359,
+    "leak0": 359,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 711124,
+    "inHull": 142,
+    "inHull0": 142,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -53.599999999811104,
+     1.8325,
+     172.50005142487146
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0325
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 23,
+    "view": "side"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 629,
+    "inHull0": 2859,
+    "lidNonWater": 46,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -48.62500220386842,
+     0.7332,
+     172.20001487648875
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0332
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 42337,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.800002938558684,
+     0.9339000000000001,
+     172.10000146929283
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0339
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 141076,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -49.22500367313427,
+     -0.5455,
+     172.00001928434028
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.0345
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "sail",
+    "moving": false,
+    "roll": 0,
+    "box": 484606,
+    "inHull": 317,
+    "inHull0": 317,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -53.82216106851521,
+     0.935,
+     167.12967510289894
+    ],
+    "B": {
+     "x": -46.6,
+     "z": 172.5,
+     "yaw": 3.1416,
+     "heave": 0.035
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "sun-behind-sail"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 484530,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -3.66602203923062,
+     -0.35,
+     -209.36200000004047
+    ],
+    "B": {
+     "x": -3.666,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "low-side"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 450730,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     0.6859853071458554,
+     -0.15340000000000004,
+     -211.36198163400144
+    ],
+    "B": {
+     "x": -4.314,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.0966
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -3.9610080810579738,
+     2.4526,
+     -213.16199632680974
+    ],
+    "B": {
+     "x": -4.961,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.1526
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 211338,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -5.618001469281973,
+     8.488,
+     -214.96200003673474
+    ],
+    "B": {
+     "x": -5.608,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.188
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 241839,
+    "inHull": 287,
+    "inHull0": 287,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -13.49600220387179,
+     1.0954000000000002,
+     -214.76202791636283
+    ],
+    "B": {
+     "x": -5.896,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.1954
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 235971,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     0.6980022038717897,
+     1.0805000000000002,
+     -215.96197208363716
+    ],
+    "B": {
+     "x": -6.902,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.1805
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 279720,
+    "inHull": 273,
+    "inHull0": 273,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -7.549025712435724,
+     1.9447,
+     -208.36200000004723
+    ],
+    "B": {
+     "x": -7.549,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.1447
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 23,
+    "view": "side"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 3123,
+    "inHull0": 3123,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -8.495007713728693,
+     0.7995999999999999,
+     -213.2620011019757
+    ],
+    "B": {
+     "x": -8.195,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.0996
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -9.249000734638322,
+     0.9545000000000001,
+     -215.16200146928338
+    ],
+    "B": {
+     "x": -8.849,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.0545
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "rib",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -10.010009917650406,
+     -0.5634,
+     -212.66200183662076
+    ],
+    "B": {
+     "x": -9.51,
+     "z": -215.362,
+     "yaw": -1.5708,
+     "heave": 0.0166
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 21,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 322728,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.59999999983809,
+     -0.35,
+     169.80004407846124
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0
+    },
+    "camInHull": 1,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 332400,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -44.59996326784103,
+     -0.2777,
+     174.80002938550592
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0277
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 10131,
+    "lidNonWater": 3,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.799992653530424,
+     2.2702999999999998,
+     170.8000161620755
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0297
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 144838,
+    "inHull": 0,
+    "inHull0": 3802,
+    "lidNonWater": 9,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.00000007345331,
+     8.2677,
+     169.79000293856436
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0323
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 23882,
+    "distinct": 24,
+    "view": "above"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 183210,
+    "inHull": 77,
+    "inHull0": 77,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.20005362877832,
+     0.8645,
+     162.5000044080431
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0355
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 184932,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 3,
+    "lidOuterWater": 73,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -39.99994637122168,
+     0.8608000000000001,
+     177.0999955919569
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0392
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 225070,
+    "inHull": 229,
+    "inHull0": 229,
+    "lidNonWater": 0,
+    "lidOuterWater": 150,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.599999999811104,
+     1.7569,
+     169.80005142487147
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0431
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 1765,
+    "inHull0": 3832,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.39000220387476,
+     0.6529999999999999,
+     169.50001315008237
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.047
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 108267,
+    "lidNonWater": 26,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -40.800002938558684,
+     0.8493,
+     169.40000146929285
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0507
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.990003673140606,
+     -0.6339,
+     169.3000175579339
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": -0.0539
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 23,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 362124,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -46.59999999983809,
+     -0.18420000000000003,
+     169.80004407846124
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1658
+    },
+    "camInHull": 1,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 355572,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -44.59996326784103,
+     -0.06539999999999996,
+     174.80002938550592
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1846
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 11030,
+    "lidNonWater": 4,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.799992653530424,
+     2.4935,
+     170.8000161620755
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1935
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 154119,
+    "inHull": 0,
+    "inHull0": 3994,
+    "lidNonWater": 7,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.00000007345331,
+     8.4994,
+     169.79000293856436
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1994
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 23979,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 192304,
+    "inHull": 35,
+    "inHull0": 35,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -41.20005362877832,
+     1.1023,
+     162.5000044080431
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.2023
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 192304,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 1,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -39.99994637122168,
+     1.1025,
+     177.0999955919569
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.2025
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 232484,
+    "inHull": 247,
+    "inHull0": 247,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -47.599999999811104,
+     1.9973999999999998,
+     169.80005142487147
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1974
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 782,
+    "inHull0": 4709,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.39000220387476,
+     0.8898999999999999,
+     169.50001315008237
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1899
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "very-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 86364,
+    "lidNonWater": 1,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -40.800002938558684,
+     1.0792000000000002,
+     169.40000146929285
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1792
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "inside-close"
+   },
+   {
+    "kind": "row",
+    "moving": false,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     -42.990003673140606,
+     -0.4145,
+     169.3000175579339
+    ],
+    "B": {
+     "x": -40.6,
+     "z": 169.8,
+     "yaw": 3.1416,
+     "heave": 0.1655
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "waterline-close"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 370928,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     169.8000000003562,
+     -0.34950000000000003,
+     -112.52609697261472
+    ],
+    "B": {
+     "x": 183,
+     "z": -112.526,
+     "yaw": -3.1416,
+     "heave": 0.0005
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-side"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 362773,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     174.19991918972516,
+     -0.20890000000000003,
+     -102.06306464870666
+    ],
+    "B": {
+     "x": 183,
+     "z": -113.063,
+     "yaw": -3.1416,
+     "heave": 0.0411
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "low-quarter"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     178.15998383802813,
+     5.9541,
+     -111.21003555668477
+    ],
+    "B": {
+     "x": 183,
+     "z": -113.41,
+     "yaw": -3.1416,
+     "heave": 0.0541
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "into-hull"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 150912,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     182.6000000734749,
+     19.1733,
+     -113.76500293856381
+    ],
+    "B": {
+     "x": 183,
+     "z": -113.755,
+     "yaw": -3.1416,
+     "heave": 0.0733
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "above"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 120191,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     182.40013370468193,
+     2.9138000000000006,
+     -132.304004407355
+    ],
+    "B": {
+     "x": 183,
+     "z": -114.104,
+     "yaw": -3.1416,
+     "heave": 0.0938
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "bow"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 120191,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     183.59986629531807,
+     2.9298000000000006,
+     -96.247995592645
+    ],
+    "B": {
+     "x": 183,
+     "z": -114.448,
+     "yaw": -3.1416,
+     "heave": 0.1098
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "stern"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 266900,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     167.60000000041558,
+     4.9171,
+     -114.79411313471718
+    ],
+    "B": {
+     "x": 183,
+     "z": -114.794,
+     "yaw": -3.1416,
+     "heave": 0.1171
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 25,
+    "view": "side"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     180.81500220398203,
+     0.8119999999999999,
+     -115.47801605189821
+    ],
+    "B": {
+     "x": 183,
+     "z": -115.178,
+     "yaw": -3.1416,
+     "heave": 0.112
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "very-close"
+   },
+   {
+    "kind": "ferry",
+    "moving": true,
+    "roll": 0,
+    "box": 919601,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "magN": 0,
+    "flat": 0,
+    "cam": [
+     180.21500367328025,
+     -0.4841,
+     -116.02302045973893
+    ],
+    "B": {
+     "x": 183,
+     "z": -115.523,
+     "yaw": -3.1416,
+     "heave": 0.0959
+    },
+    "camInHull": 0,
+    "leak": 0,
+    "leakMax": 0,
+    "leak0": 0,
+    "distinct": 24,
+    "view": "waterline-close"
+   }
+  ],
+  "sweep": {
+   "sail": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 16,
+    "leakPx": 0,
+    "inHull": 8,
+    "inHull0": 16,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 1,
+     "inHull": 312
+    },
+    "heave": [
+     -0.1475,
+     0.1379
+    ]
+   },
+   "sail-moored": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 16,
+    "leakPx": 0,
+    "inHull": 8,
+    "inHull0": 16,
+    "lidNonWater": 5,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 0,
+     "inHull": 286
+    },
+    "heave": [
+     -0.1589,
+     0.1348
+    ]
+   },
+   "rib": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 2,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 6,
+    "lidNonWater": 1,
+    "lidOuterWater": 1,
+    "worst": null,
+    "heave": [
+     -0.2463,
+     0.1773
+    ]
+   },
+   "row": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 16,
+    "lidNonWater": 16,
+    "lidOuterWater": 0,
+    "worst": null,
+    "heave": [
+     -0.0989,
+     0.1526
+    ]
+   },
+   "row-moored": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 1,
+    "inHull0": 16,
+    "lidNonWater": 15,
+    "lidOuterWater": 0,
+    "worst": {
+     "k": 6,
+     "inHull": 14
+    },
+    "heave": [
+     -0.2226,
+     0.2399
+    ]
+   },
+   "ferry": {
+    "frames": 24,
+    "leak": 0,
+    "leak0": 0,
+    "leakPx": 0,
+    "inHull": 0,
+    "inHull0": 0,
+    "lidNonWater": 0,
+    "lidOuterWater": 0,
+    "worst": null,
+    "heave": [
+     -0.239,
+     0.1371
+    ]
+   }
+  },
+  "errs": []
+ }
+]

@@ -1,0 +1,4 @@
+ %CPU COMM
+  6.7 /usr/sbin/coreaudiod
+  6.1 /System/Library/DriverExtensions/com.apple.DriverKit-AppleBCMWLAN.dext/com.apple.DriverKit-AppleBCMWLAN
+  3.3 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer

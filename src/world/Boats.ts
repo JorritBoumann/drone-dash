@@ -15,13 +15,55 @@ import { MAX_PIERS, MAX_WAKES, SHORE, WATER_Y, type Water, shoreDistance, waveFa
  */
 
 type Kind = 'sail' | 'rib' | 'ferry' | 'row';
+
+/** Round 35: depth-only lid material for the hull caps (no colour, writes depth). */
+const CAP_MATERIAL = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.DoubleSide });
+CAP_MATERIAL.name = 'boat-cap';
+/** Round 35: hull caps draw only while a boat of their kind is this close to the camera (m). */
+const CAP_RANGE = 160;
+const CAP_SHOW = new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide, fog: false, toneMapped: false });
+
+/**
+ * Round 35: boat material. The albedo is a texture baked in Blender (Poly Haven wood grain, painted bands, a wet band
+ * at the waterline, sail cloth panels, rope and metal tones, ambient occlusion). The vertex colour carries per-part
+ * flags: r = sail cloth, g = metalness, b = roughness. Sail cloth lets the sun through softly when it is behind the sail.
+ */
+function boatMaterial(map: THREE.Texture | null, gain = 1): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ map, color: map ? 0xffffff : 0xb08a66, roughness: 1, metalness: 1 });
+  // the bake holds ambient occlusion; the gain lifts the varnished wood back to the round 31 palette brightness (not
+  // the sail cloth, and never past an albedo of 0.9)
+  m.name = 'boat35';
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 flags;\nvarying vec3 vFlags;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlags = flags;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vFlags;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+diffuseColor.rgb = min(diffuseColor.rgb * mix(${gain.toFixed(3)}, 1.0, step(0.5, vFlags.r)), vec3(0.9));`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(vFlags.b, 0.04, 1.0);')
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = clamp(vFlags.g, 0.0, 1.0);')
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+#if NUM_DIR_LIGHTS > 0
+  if (vFlags.r > 0.5) {
+    // sail cloth: light from behind shows through (soft, stronger looking toward the sun); bases clamped for pow()
+    vec3 sl = directionalLights[0].direction;
+    float back = clamp(-dot(normal, sl), 0.0, 1.0);
+    float toward = clamp(dot(-normalize(vViewPosition), sl), 0.0, 1.0);
+    reflectedLight.directDiffuse += diffuseColor.rgb * directionalLights[0].color * back * (0.22 + 0.55 * pow(toward, 4.0)) * RECIPROCAL_PI;
+  }
+#endif`);
+  };
+  m.customProgramCacheKey = () => `boat35-${gain}`;
+  return m;
+}
 /** Model name in boats.glb, hull length / beam (m), how deep the keel sits below the waterline, sailboat heel. */
-const KIND: Record<Kind, { model: string; len: number; beam: number; draft: number; heel: number; scale: number }> = {
-  sail: { model: 'boat_sail', len: 7.0, beam: 2.85, draft: 0.42, heel: 0.13, scale: 1 },
-  rib: { model: 'boat_rib', len: 5.2, beam: 3.0, draft: 0.34, heel: 0, scale: 1 },
+const KIND: Record<Kind, { model: string; len: number; beam: number; draft: number; heel: number; scale: number; gain: number }> = {
+  sail: { model: 'boat_sail', len: 7.0, beam: 2.85, draft: 0.42, heel: 0.13, scale: 1, gain: 1.0 },
+  rib: { model: 'boat_rib', len: 5.2, beam: 3.0, draft: 0.34, heel: 0, scale: 1, gain: 1.0 },
   // round 32: the CC0 cruise-ship model shrunk to a 14.4 m harbour bus (it read as a toy liner at 20 m)
-  ferry: { model: 'boat_ferry', len: 14.4, beam: 3.17, draft: 0.9, heel: 0, scale: 0.72 },
-  row: { model: 'boat_row', len: 4.6, beam: 2.38, draft: 0.32, heel: 0, scale: 1 },
+  ferry: { model: 'boat_ferry', len: 14.4, beam: 3.17, draft: 0.9, heel: 0, scale: 0.72, gain: 1 },
+  row: { model: 'boat_row', len: 4.6, beam: 2.38, draft: 0.32, heel: 0, scale: 1, gain: 1.0 },
 };
 const KINDS: Kind[] = ['sail', 'rib', 'ferry', 'row'];
 
@@ -118,6 +160,9 @@ export class Boats {
   private readonly lp = new THREE.Vector3();
   private docks: THREE.InstancedMesh | null = null;
   private readonly meshes = new Map<Kind, THREE.InstancedMesh>();
+  /** Round 35: depth-only hull caps of the open boats (sharing the boat's instance matrices). */
+  readonly caps = new Map<Kind, THREE.InstancedMesh>();
+  private capsOn = true;
   private readonly tmp = { x: 0, z: 0, tx: 0, tz: 0 };
   private readonly m = new THREE.Matrix4();
   private readonly q = new THREE.Quaternion();
@@ -127,9 +172,8 @@ export class Boats {
   private readonly sc = new THREE.Vector3(1, 1, 1);
   private readonly up = new THREE.Vector3(0, 1, 0);
 
-  constructor(parts: ModelParts, private readonly water: Water, seed: number) {
+  constructor(parts: ModelParts, private readonly water: Water, seed: number, tex?: Map<string, THREE.Texture>) {
     this.group.name = 'boats';
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.04 });
     const count = new Map<Kind, number>();
     for (const l of LANES) for (const [k] of l.boats) count.set(k, (count.get(k) ?? 0) + 1);
     count.set(SHUTTLE.kind, (count.get(SHUTTLE.kind) ?? 0) + 1);
@@ -137,14 +181,36 @@ export class Boats {
     for (const k of KINDS) {
       const g = parts.get(KIND[k].model)?.get('all');
       if (!g || !count.get(k)) continue;
-      const im = new THREE.InstancedMesh(g, mat, count.get(k)!);
+      // round 35: the colour attribute carries flags (sail cloth, metalness, roughness), the look is the baked texture
+      if (g.getAttribute('color') && !g.getAttribute('flags')) {
+        g.setAttribute('flags', g.getAttribute('color'));
+        g.deleteAttribute('color');
+      }
+      const im = new THREE.InstancedMesh(g, boatMaterial(tex?.get(KIND[k].model) ?? null, KIND[k].gain), count.get(k)!);
       im.castShadow = true;
       im.receiveShadow = true;
       im.frustumCulled = false;
       im.name = `boats-${k}`;
       this.meshes.set(k, im);
       this.group.add(im);
+      // round 35: the hull cap. A lid over the open hull at the gunwale, drawn depth-only after the boats (renderOrder 1)
+      // and before the water (renderOrder 2), with the boat's own instance matrices: the sea can never draw inside the
+      // hull, whatever the swell and the boat's pitch and roll do. The deck and everything in the hull keep their colour
+      // (they are drawn before the lid, which writes no colour).
+      const cg = parts.get(KIND[k].model)?.get('cap');
+      if (cg) {
+        const cap = new THREE.InstancedMesh(cg, CAP_MATERIAL, count.get(k)!);
+        cap.instanceMatrix = im.instanceMatrix;
+        cap.renderOrder = 1;
+        cap.frustumCulled = false;
+        cap.castShadow = false;
+        cap.receiveShadow = false;
+        cap.name = `boats-cap-${k}`;
+        this.caps.set(k, cap);
+        this.group.add(cap);
+      }
     }
+    water.mesh.renderOrder = 2;
     const used = new Map<Kind, number>();
     const take = (k: Kind) => { const i = used.get(k) ?? 0; used.set(k, i + 1); return i; };
     // a per-city start offset on each lane (the same for every boat on a lane, so their spacing holds)
@@ -193,6 +259,15 @@ export class Boats {
       PIERS.forEach(([px, side], k) => { if (k < MAX_PIERS) water.piers[k].set(px, side * (SHORE + PIER_LEN / 2), PIER_HALF_W, PIER_LEN / 2); });
       // the docks are solid too (static, deck at PIER_TOP)
       for (const [px, side] of PIERS) this.colliders.push({ x: px, z: side * (SHORE + PIER_LEN / 2), s: 0, c: 1, hx: PIER_HALF_W, hz: PIER_LEN / 2, y0: -4, y1: PIER_TOP, soft: false, on: true, vx: 0, vz: 0 });
+    }
+  }
+
+  /** Round 35 test hook: the hull caps as drawn ('depth'), in magenta for a probe mask ('show'), or off ('off'). */
+  capMode(mode: 'depth' | 'show' | 'off'): void {
+    this.capsOn = mode !== 'off';
+    for (const c of this.caps.values()) {
+      c.visible = mode !== 'off';
+      c.material = mode === 'show' ? CAP_SHOW : CAP_MATERIAL;
     }
   }
 
@@ -287,8 +362,11 @@ export class Boats {
       const hPort = this.surf(b.x + px * hb, b.z + pz * hb, time, cam), hStb = this.surf(b.x - px * hb, b.z - pz * hb, time, cam);
       b.water = WATER_Y + hc;
       b.heave = hc;
-      b.y = WATER_Y + hc - K.draft;
-      b.pitch = Math.atan2(hBow - hStern, hl * 2) + (b.kind === 'rib' && b.moving ? 0.06 : 0);
+      // round 35: a speedboat under way trims bow-up about its stern (it rises onto the plane) instead of about its
+      // middle, so the stern never squats under the swell and the sea stays outside the tubes
+      const trim = b.kind === 'rib' && b.moving ? 0.06 : 0;
+      b.y = WATER_Y + hc - K.draft + Math.sin(trim) * hl;
+      b.pitch = Math.atan2(hBow - hStern, hl * 2) + trim;
       // sailboats heel away from the wind (towards the island side on their lane) and sway a little
       const heel = K.heel ? K.heel * b.dir + Math.sin(time * 0.7 + b.s * 0.01) * 0.025 : 0;
       b.roll = Math.atan2(hPort - hStb, hb * 2) + heel;
@@ -311,6 +389,9 @@ export class Boats {
     // camera (the sun's shadow box covers the city round the drone; out there it cost draws and triangles for nothing)
     const R2 = SHADOW_FAR * SHADOW_FAR;
     for (const [k, m] of this.meshes) m.castShadow = this.boats.some((b) => b.kind === k && (b.x - cam.x) ** 2 + (b.z - cam.z) ** 2 < R2);
+    // round 35: a hull cap only matters where the sea inside a hull could show: off while every boat of its kind is over
+    // CAP_RANGE from the camera (saves its draw call over the city). capMode('off') keeps them off.
+    if (this.capsOn) for (const [k, c] of this.caps) c.visible = this.boats.some((b) => b.kind === k && (b.x - cam.x) ** 2 + (b.z - cam.z) ** 2 < CAP_RANGE * CAP_RANGE);
     if (this.docks) this.docks.castShadow = PIERS.some(([px, side]) => (px - cam.x) ** 2 + (side * (SHORE + PIER_LEN / 2) - cam.z) ** 2 < R2);
   }
 

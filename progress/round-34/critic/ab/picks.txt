@@ -1,0 +1,13 @@
+Round 34 critic blind picks, written before opening .key.json. "better" = the side I judge better looking.
+water-1: A(top) weak (more sparkle; bottom is more even fine ripple, both fine)
+water-2: B(bottom) clear (top has soft smeared streaks in the lower left)
+water-3: B(bottom) clear (top smears into soft radial streaks in the bottom third)
+water-4: tie (the same glint view)
+water-5: tie (the same glint view)
+water-6: B(bottom) clear (top has smeared patches in the lower left)
+street-1: tie (no visible difference)
+street-2: tie
+street-3: tie
+street-4: tie
+street-5: tie
+street-6: tie

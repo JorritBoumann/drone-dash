@@ -1,0 +1,13 @@
+# Round 33 builder blind picks, written before opening .key.json. Better side (A = left, B = right) or tie.
+street-01 tie   (no visible difference at full view)
+street-02 tie
+street-03 tie
+street-04 tie
+street-05 tie
+street-06 tie
+water-01 B      (dusk low: crisper ripples and glints in the near and mid field)
+water-02 tie    (noon cruise: same)
+water-03 tie    (marina: same)
+water-04 B      (golden low: small crisp ripples at the bottom, the other is smoother)
+water-05 B      (dusk glint 14 m: defined ripples and a stronger glint path, the other a soft glow)
+water-06 A      (golden glint 14 m: finer glitter, the other has broader smoother ripples)

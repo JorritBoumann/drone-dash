@@ -10,6 +10,7 @@ import { Traffic } from './Traffic';
 import { Pedestrians } from './Pedestrians';
 import { lotHash } from './BuildingDetail';
 import { StreetProps } from './StreetProps';
+import { SHADOW_FAR, shadowSubset } from './shadowSubset';
 import type { StreetAssetSet } from './StreetAssets';
 
 export const PALETTE = {
@@ -399,9 +400,15 @@ export class Environment {
 
   private createLamps(): THREE.Object3D[] {
     const lamps = this.layout.lamps;
+    // round 33: 66 triangles a pole (was 88): no caps where nothing can see them (the pole's ends sit in the base and
+    // the arm, the base's bottom on the pavement), and 7 sides instead of 8
+    const base = new THREE.CylinderGeometry(0.22, 0.26, 0.5, 7, 1, true).translate(0, 0.25, 0);
+    const baseTop = new THREE.CircleGeometry(0.22, 7).rotateX(-Math.PI / 2).rotateY(Math.PI / 2).translate(0, 0.5, 0);
     const pole = mergeGeometries([
-      colored(new THREE.CylinderGeometry(0.09, 0.14, 6, 8).translate(0, 3, 0), '#39424c'),
-      colored(new THREE.CylinderGeometry(0.22, 0.26, 0.5, 8).translate(0, 0.25, 0), '#39424c'),
+      colored(new THREE.CylinderGeometry(0.09, 0.14, 5.6, 7, 1, true).translate(0, 3.2, 0), '#39424c'),
+      colored(base, '#39424c'),
+      colored(baseTop, '#39424c'),
+      colored(new THREE.CircleGeometry(0.09, 7).rotateX(-Math.PI / 2).translate(0, 6.0, 0), '#39424c'),
       coloredBox(0.1, 0.1, 1.6, 0, 6.0, 0.75, '#39424c'),
       coloredBox(0.36, 0.14, 0.62, 0, 5.98, 1.5, '#2c333b'),
     ])!;
@@ -422,15 +429,51 @@ export class Environment {
       this.dummy.position.set(l.x + off.x, 0.25 + off.y, l.z + off.z);
       this.dummy.updateMatrix();
       head.setMatrixAt(i, this.dummy.matrix);
-      this.props.push({
+      const rec: PropRec = {
         x: l.x + off.x * 0.5, y: 0, z: l.z + off.z * 0.5, r: 1.1, top: 6.6, hidden: false,
         parts: [{ mesh: poleMesh, index: i, matrix: poleMatrix }, { mesh: head, index: i, matrix: this.dummy.matrix.clone() }],
-      });
+      };
+      this.props.push(rec);
+      this.lampRecs.push(rec);
     });
     poleMesh.castShadow = true;
+    shadowSubset(poleMesh);
+    this.lampPoles = poleMesh;
     poleMesh.name = 'lamp-poles';
     head.name = 'lamp-heads';
     return [poleMesh, head];
+  }
+
+  private readonly lampRecs: PropRec[] = [];
+  private lampPoles: THREE.InstancedMesh | null = null;
+  private pines: THREE.InstancedMesh | null = null;
+  private lampAt = new THREE.Vector3(1e9, 0, 0);
+  /**
+   * Round 33: lamps are written nearest first (re-sorted when the camera has moved 12 m), so the shadow pass draws only
+   * the poles round the camera (see shadowSubset). The occlusion pass keeps working: each lamp's part indices move with it.
+   */
+  private sortLamps(cam: THREE.Vector3): void {
+    const pole = this.lampPoles;
+    if (!pole || Math.hypot(cam.x - this.lampAt.x, cam.z - this.lampAt.z) < 12) return;
+    this.lampAt.copy(cam);
+    const d = this.lampRecs.map((r) => (r.x - cam.x) ** 2 + (r.z - cam.z) ** 2);
+    const order = this.lampRecs.map((_, i) => i).sort((a, b) => d[a] - d[b]);
+    const R2 = SHADOW_FAR * SHADOW_FAR;
+    let near = 0;
+    const dirty = new Set<THREE.InstancedMesh>();
+    order.forEach((li, k) => {
+      const rec = this.lampRecs[li];
+      if (d[li] < R2) near = k + 1;
+      for (const part of rec.parts) {
+        part.index = k;
+        part.mesh.setMatrixAt(k, rec.hidden ? ZERO : part.matrix);
+        dirty.add(part.mesh);
+      }
+    });
+    pole.userData.shadowCount = near;
+    // round 33: the pines (fixed instance slots) cast all or nothing: nothing while no pine is in shadow range
+    if (this.pines) this.pines.userData.shadowCount = this.layout.trees.some((t) => t.pine && (t.x - cam.x) ** 2 + (t.z - cam.z) ** 2 < R2) ? undefined : 0;
+    for (const m of dirty) m.instanceMatrix.needsUpdate = true;
   }
 
   private createTrees(): THREE.Object3D[] {
@@ -439,7 +482,7 @@ export class Environment {
     const pines = trees.filter((t) => t.pine);
 
     const trunkMat = new THREE.MeshStandardMaterial({ color: '#6b4a36', roughness: 0.9 });
-    const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.14, 0.22, 2.6, 6).translate(0, 1.3, 0), trunkMat, trees.length);
+    const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.14, 0.22, 2.6, 6, 1, true).translate(0, 1.3, 0), trunkMat, trees.length);
 
     // Faceted, slightly lumpy canopy
     const canopyGeo = new THREE.IcosahedronGeometry(1, 1);
@@ -511,9 +554,12 @@ export class Environment {
       m.receiveShadow = true;
     }
     this.blobCanopy = canopy;
+    shadowSubset(canopy);
     trunk.name = 'tree-trunks';
     canopy.name = 'tree-canopies';
     pine.name = 'tree-pines';
+    shadowSubset(pine);
+    this.pines = pine;
     return [trunk, canopy, pine];
   }
 
@@ -538,7 +584,7 @@ export class Environment {
     this.groundMat.color.set('#c9c2ba');
     this.groundMat.needsUpdate = false;
     // street furniture
-    this.streetProps = new StreetProps(this.layout.props, a.props, this.mobile ? 60 : 80);
+    this.streetProps = new StreetProps(this.layout.props, a.props, this.mobile ? 55 : 66); // round 33: was 60 / 80
     added.push(this.streetProps.mesh);
     // trees: round street trees and park trees become one of two species near the camera; pines stay
     const species = ['tree_round', 'tree_oak'];
@@ -611,17 +657,23 @@ export class Environment {
       if (st === 1 && !steep && d2 > TREE_FULL * TREE_FULL && dx * fx + dz * fz < TREE_CONE * Math.sqrt(d2)) st = 0;
       if (st !== t.state) { t.state = st; changed = true; }
     }
-    if (!changed) return;
+    // round 33: and when the camera has moved 15 m (the blob canopies' shadow set, nearest first, follows the camera)
+    if (!changed && Math.hypot(cam.x - this.lodCam.x, cam.z - this.lodCam.z) < 15) return;
     this.lodCam.copy(cam);
     const n = [0, 0];
     const dirty = new Set<THREE.InstancedMesh>();
     // the blob canopies are compacted (only far trees drawn); trunks share one mesh with the pines, so they are zeroed
     let nb = 0;
     const bc = this.blobCanopy;
+    const R2 = SHADOW_FAR * SHADOW_FAR;
+    const blobNear = (t: (typeof this.treeLod)[number]) => (t.rec.x - cam.x) ** 2 + (t.rec.z - cam.z) ** 2 < R2;
+    // round 33: the blob canopies inside the shadow range first (only those cast: see shadowSubset), then the rest
+    if (bc) for (const t of this.treeLod) if (t.state === 0 && blobNear(t)) for (const p of t.blob) if (p.mesh === bc) { bc.setMatrixAt(nb, p.matrix); bc.setColorAt(nb, t.color); nb++; }
+    if (bc) bc.userData.shadowCount = nb;
     for (const t of this.treeLod) {
       for (const p of t.blob) {
         if (p.mesh === bc) {
-          if (t.state === 0) { bc.setMatrixAt(nb, p.matrix); bc.setColorAt(nb, t.color); nb++; }
+          if (t.state === 0 && !blobNear(t)) { bc.setMatrixAt(nb, p.matrix); bc.setColorAt(nb, t.color); nb++; }
           continue;
         }
         p.mesh.setMatrixAt(p.index, t.state === 0 ? p.matrix : ZERO); dirty.add(p.mesh);
@@ -667,11 +719,13 @@ export class Environment {
 
   private createSkyline(rng: () => number): THREE.InstancedMesh {
     const count = 140;
-    const mesh = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
-      new THREE.MeshLambertMaterial({ color: '#b49aa0' }),
-      count,
-    );
+    // round 33: no bottom face (it sits below the sea, 10 triangles a block instead of 12)
+    const boxG = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+    const idx = boxG.index!.array, keep: number[] = [];
+    for (const gr of boxG.groups) if (gr.materialIndex !== 3) for (let k = gr.start; k < gr.start + gr.count; k++) keep.push(idx[k]);
+    boxG.setIndex(keep);
+    boxG.clearGroups();
+    const mesh = new THREE.InstancedMesh(boxG, new THREE.MeshLambertMaterial({ color: '#b49aa0' }), count);
     let n = 0;
     // three distant clusters across the bay
     const clusters = [
@@ -768,6 +822,7 @@ export class Environment {
     }
     for (const m of dirty) m.instanceMatrix.needsUpdate = true;
     this.hiddenProps = this.props.reduce((n, p) => n + (p.hidden ? 1 : 0), 0);
+    this.sortLamps(cam);
     this.updateTreeLod(cam);
   }
 

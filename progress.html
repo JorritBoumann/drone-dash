@@ -16,7 +16,419 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-17 23:57 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-18 01:53 UTC.</p>
+<section><h2>round 33</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 33 critic report
+
+**Verdict:** Pass. The harbour bus now runs all day. The render cost fell by about a quarter with no visible loss. The close glint water is crisp again. One miss by a hair: the draw-call peak is 125, and the target was under 125.
+
+Build tested: the uncommitted round 33 work on top of commit 46b183d. Control: an untouched export of commit 46b183d (round 32). My servers ran on 5191 (round 33) and 5192 (round 32) and are stopped. The owner's server on 5188 was left alone. Every browser ran alone, one job at a time, from `critic-scripts/queue33.sh` and `jobs33.txt`. I did not read the round 33 builder notes. I read the diffs only to learn what to test.
+
+New scripts in `progress/round-33/critic-scripts/`:
+
+- `bus-stop33.mjs`: 700 s per seed, fixed step. Logs every bus stop, its length and pier.
+- `cruise33.mjs`: fast flight at cruise height (24 m, 20 m/s, 60 Hz fixed step, every frame drawn) along two avenues. Logs frame change, pops, triangles, draw calls, detail chunks. Shots for the blind A/B.
+- `cruise33b.mjs`: the same flight with a 32 x 18 tile grid, to catch small local pops.
+- `boats33.mjs`: `boats32.mjs` plus peak drone speed for 1 s after a boat contact.
+- `boattrace33.mjs`, `boattrace33b.mjs`: frame-by-frame trace of a boat running into a parked drone (b also logs the distance to the city edge).
+- `ab33.py`: blind A/B, 3 sets of 6 pairs. `crash-classify-v-r32c.mjs`: the crash bot pointed at the round 32 control.
+- Changed copies: `art27.mjs` and `water31.mjs` take PORT for the control, `water31.mjs` writes `water33-r33-*` and `water33-r32c-*`, `contrast31.py` reads them.
+
+## Machine load (read first)
+
+BTLEServer used 96 to 100% of one core in every check (`cpu-*.txt`). The headless browser still ran at 120 Hz vsync (median 8.3 ms). All wall-clock timings are marked contaminated. Every verdict on bus, boats, water, budgets, camera and pops comes from fixed-step probes.
+
+## Results per item
+
+### Harbour bus: pass
+
+| Seed | Stops in 700 s | Piers | Stop length |
+|---|---|---|---|
+| 22 | 4 | -36, 40, -36, 40 | 9.0 to 9.25 s |
+| 58 | 4 | -36, 40, -36, 40 | 9.0 to 9.25 s |
+| 4711 | 4 | -36, 40, -36, 40 | 9.0 to 9.25 s |
+| 9001 | 4 | 40, -36, 40, -36 | 9.0 s |
+
+It alternates piers every time. The longest stop is 9.25 s against a limit of 11 s. It sails at 4.6 m/s and creeps under 0.3 m/s for only 2.75 s a run. `wake32.mjs` saw it leave a pier and sail on.
+
+### Budget: triangles pass, draw calls miss by one
+
+Full spot sweep (`trisweep31.mjs`), 1,920 water and marina spots in each:
+
+| Run | Max triangles | Max draw calls | Round 32 |
+|---|---|---|---|
+| Desktop 22 | 429k | 123 | 566k |
+| Desktop 130 | **444k** | **125** | 588k, 144 |
+| Desktop 33 | 433k | 122 | |
+| iPhone 130 | 408k | 106 | 524k, 128 |
+| Water spots only | 348k | n/a | 463k |
+
+Triangles: 444k, target under 480k. Pass. Draw calls: 125 at one city spot (desktop 130, x -60, z 90, 3 m high, facing west), target under 125. A miss by one call. Everywhere else it is at most 123. Street runs peak at 122 (desktop rush) and 103 (iPhone). Fast cruise peaks at 121. One more merged draw clears it.
+
+### Blind A/B against round 32: pass
+
+Picks were written to `critic/ab/picks.txt` before I opened `.key.json`. Top or bottom was random per pair.
+
+| Set | New wins | Ties | Old wins | Result |
+|---|---|---|---|---|
+| Street (art27 views, desktop and phone) | 0 | 6 | 0 | 6 of 6, pass |
+| Water | 3 | 2 | 1 | 5 of 6, pass |
+| Fast cruise (24 m, 20 m/s) | 0 | 6 | 0 | 6 of 6, pass |
+
+- Street and cruise pairs look the same. I found no missing far building, no missing far shadow and no thinner city.
+- Popping in motion: `cruise33.mjs` found 0 frame pops in 12 passes on both builds. Frame change is the same on both (median 11.2 against 11.2, golden). `cruise33b.mjs` tile pops are equal too (desktop 130: 2,887 against 2,950, phone 22: 6,445 against 6,432). Detail chunks now change 18 to 19 times a pass (round 32: 14 to 15), but that does not show as pops.
+- The cut was large. In the art views the round 33 frame draws 22 to 25% fewer triangles and 22 to 26 fewer draw calls. The detail chunks near the drone at 14 to 16 m dropped from 12 to 6, with no visible change in the shots.
+
+### Water: pass, one soft spot left
+
+`contrast31.py`, desktop game camera:
+
+| Mood | Cruise | Low | Ratio | Round 32 control |
+|---|---|---|---|---|
+| Golden 130 | 18.2 | 35.1 | 0.52 | 0.52 |
+| Morning 22 | 16.6 | 30.1 | 0.55 | 0.55 |
+| Dusk 33 | 16.7 | 40.6 | 0.41 | 0.42 |
+| Noon 58 | 16.8 | 31.2 | 0.54 | 0.55 |
+
+All marks met (cruise at most 0.6 of low, low at least 25, cruise at least 15).
+
+- **Glint views at 14 m: fixed.** Fine contrast in the near water doubled (golden 8.4 to 16.8, dusk 11.0 to 20.8). The new glint views won both blind pairs. The sun path is glitter again, not a soft glow (`water33-r33-130-glint.jpg`).
+- **Low views at 1 m: better, not solved.** The golden 1 m view won its pair. The dusk 1 m view lost (weak pick). In the golden low view the bottom third still smears into soft radial streaks (`water33-r33-130-g-low.jpg`). Near-band contrast moved only 8.3 to 8.6 (dusk 10.4 to 12.3).
+- **Flat frames with bloom on:** 0 flat, 0 black pixels, at least 39 colours of 49, over 4 moods and 8 views.
+- **Grid snap:** snap frames change the same as other frames (for example cruise 6.06 against 6.08).
+
+### Boats: pass
+
+`boats33.mjs`, seeds 22, 58, 4711, 9001, 156 approaches:
+
+- 0 frames inside a hull. 0 frames within 0.4 m of a mast. 0 stuck. 0 pushed down.
+- **Low bus hits block like a wall.** 16 of 16 bus rams charged exactly one crash. The highest the drone rose after a 1 m hit was 1.81 m. No hop over the cabin (round 32: one hop to 4.3 m).
+- **Bus wake toward a low sun.** Golden sunward views: 2.12, 1.54, 1.12. Dusk: 6.62, 2.40, 2.92. 5 of 6 are at least 1.3 (round 32: 0.93 and 0.67 in golden). In the shot the wake reads as a bright line behind the bus (`wake32-130-sunward-ferry.jpg`). The 1.12 view looks along the glitter path.
+- **Sideways throw: no boat throws the drone above the cap.** A bus that hits a parked drone gives it 5.3 m/s at most. The bus moves at 4.6 m/s, so the cap is 6.6 m/s. The big sailboat number from round 32 (8.5 m/s, now 9.8 on seed 4711) is not the boat. `boattrace33b.mjs` shows the drone sitting 197 m out, past the soft city edge, and the edge spring pulls it inward. The probe parks the drone there. The round 32 control gives the same trace.
+- **New find, not a regression: the bus snaps the drone sideways.** The bus bow pushes a parked drone. Then the drone jumps 0.55 m sideways in a single frame. This happens 3 or 4 times, about every 10 frames (33 m/s for one frame). Its real speed stays near 5 m/s. Round 32 does the same. On screen this can look like a stutter. **A human player must judge it.**
+
+## Regressions
+
+- **Flat-frame probe, bloom on: pass.** 943 frames, 0 flat, 0 errors.
+- **Crash-classify, 8 seeds: pass, 0 pad lips.** 12 m: 55 crashes in 493 s (6.7 a minute), 12 near the target, closest 6.2 m below a top. 20 m: 40 in 648 s (3.7 a minute), 15 near, closest 2.6 m below a top. 0 hop-like crashes. The 12 m rate is the highest so far (round 32: 5.2). But the same bot on the round 32 control today gave 5.9 a minute and 1 hop-like crash. The bot is not fully repeatable, so I count this as noise.
+- **Alley camera: pass.** cam-clip30 desktop 22 no orbit, cam-clip24 desktop 22 and 58, iPhone 22 no orbit: 0 hidden, 0 in solid, 0 pops over 1 m, about 6,930 frames each.
+- **climb30: pass.** 0 jumps over 1 m (max 0.89 desktop, 0.90 phone), 0 frames in solid, closest camera 5.4 m, max drone share 39.2%.
+- **People probe: pass.** 0 people on active pads (48 legs, 1,536 samples).
+- **Traffic overlap: pass.** 0 pair frames in all 6 runs.
+- **Phone HUD probe: pass.** iPhone 22, 58, 130: marker on controls 0, drone under pills 0, pops on the drone 0%. Desktop 22: pops cover the drone in 22.6% of pop samples (round 32: 29.6%). Still open.
+- **Chimes with pops: pass.** 34 of 34 chimes had the pop shown within 0.3 s.
+- **Medal gate, breakdown exact on all 6 runs: pass.** Street: 6,274 Gold, 3,457 Silver, 6,612 Gold (total 16,343, round 32: all Silver, 15,473 total). Strict delivery share 66%. Lazy: 1,086 / 1,145 / 1,040, all Bronze, total 3,271. No lazy run near Silver. The street bot now reaches Gold on 2 seeds. Worth a human look at the medal pace.
+- **Exploits: pass.** No-delivery farm 0 on 22, 58, 130. Carry farm 0.25, 0 and 0.24 of honest points a minute. Honest 4,559 / 4,892 / 6,859, the same as round 32.
+- **First load: pass.** Production build 3.0 MB without source maps (JS 952 KB), 7.3 MB with maps. Type check clean. The JS chunk is now over Vite's 900 KB warning line.
+- **No long task after Play: pass.** 0 long tasks, 0 new shader programs in 3 runs (2 desktop, 1 iPhone).
+
+## Budgets and CPU-load notes
+
+| Check | Result |
+|---|---|
+| Triangles, full sweep | Max 444k desktop, 408k iPhone (round 32: 588k, 524k). Fixed step, not affected by load. |
+| Draw calls | Max 125 desktop sweep, 106 iPhone. Street run 122 / 103 (round 32: 146). |
+| First load | 3.0 MB. |
+| Street frame time, 12 s (contaminated, 120 Hz vsync, BTLEServer 99%) | Desktop p95 9.1 / 9.2 ms (normal / rush), max 10.3. iPhone p95 9.7 / 9.6 ms, max 10.4. 0 frames over 20 ms. |
+| HUD runs, 80 s (contaminated) | Only frames over 20 ms: the probe ending at 80.5 s, as before. |
+
+Headroom is back: 136k triangles and about 25 draw calls under the old 600k and 150 limits.
+
+## Whole game after 33 rounds
+
+The bot finds no gap left that clearly limits the game. Flight, camera, city, water, boats, scoring, medals, exploits, phone layout and budgets all pass. The open bot items are small. One draw call is over target. Pops cover the drone on desktop. The water at 1 m in golden hour is soft. The bus snap is possibly visible.
+
+So in what a bot can measure, **only polish remains.** The real gate is a human playing. No person played a full run in many rounds. Feel decides the rest: crash fairness, near-miss thrill, the slipstream chain, medal pace, and touch controls.
+
+## Ranked list
+
+1. **Human playtest (needs a human player).** Desktop and phone, using the guide below. Everything else waits on this.
+2. **Medal pace (needs a human player).** The street bot now reaches Gold on 2 of 3 seeds. Is Gold too easy, or just right for a good player?
+3. **Desktop pops cover the drone** in 22.6% of pop samples (seed 22). Test: under 2% on desktop seeds 22, 58, 130.
+4. **Bus snaps a parked drone 0.55 m sideways in one frame,** 3 or 4 times per contact. Test: in `boattrace33.mjs`, no single-frame move is over 0.15 m beyond the drone's own speed. **A human player must judge how visible it is.**
+5. **Draw calls 125 at one spot.** Test: full sweep under 125 on desktop 22, 130, 33.
+6. **Golden water at 1 m** still smears in the bottom third. Test: blind A/B of golden and dusk g-low against round 33, new wins or ties both, cruise ratio stays at most 0.6.
+7. **JS chunk 952 KB,** over Vite's warning line. Not a load problem yet (3.0 MB total).
+
+## Human playtest guide (15 minutes)
+
+Play on a laptop first (10 minutes), then on a phone turned sideways (5 minutes). Write one line per point.
+
+1. **First minute.** Start a fresh run without reading anything. Do you know where to go and what to do within 30 seconds? Note anything you had to guess.
+2. **Crashes.** Fly low and fast between buildings for 2 minutes. After each crash, ask: did I deserve that? Count the crashes that felt unfair, and say where they happened (pad edge, corner, alley, tunnel).
+3. **Slipstream chain.** Hug walls to build a chain, then deliver. Do you notice the bonus build up and pay out? Does it make you want to take more risk? Do the pops ever hide your drone?
+4. **Medals.** Play one full run to the end. Which medal did you get, and did it feel earned? Do you want to try once more for the next one?
+5. **Harbour.** Fly out over the water near the piers at low height. Does the water look good up close and from cruise height? Let the harbour bus run into your hovering drone. Does the push look smooth, or does the drone jump?
+6. **Fast cruise.** Fly high and fast across the whole city. Do buildings, trees or people pop in or out? Does the city look full?
+7. **Phone.** On the phone: are the stick and buttons comfortable? Do your thumbs hide anything important? In rush hour, with many pops on the screen, does the game stay smooth?
+8. **One word.** At the end, describe the game in one word, and name the one thing to change first.
+
+## Screenshots (progress/round-33/critic/), 56 files
+
+- **Blind A/B:** `ab/street-1.jpg` to `ab/street-6.jpg`, `ab/water-1.jpg` to `ab/water-6.jpg`, `ab/cruise-1.jpg` to `ab/cruise-6.jpg`. Top or bottom is random. Picks in `ab/picks.txt` (written first), key in `ab/.key.json`.
+- **City, round 33:** `art27-d-hour-130-street.jpg`, `art27-d-hour-130-mid.jpg` (compare `art27c-d-hour-130-mid.jpg`, round 32), `art27-m-morning-22-cruise.jpg`.
+- **Fast cruise:** `cruise33-r33-130-ns-1.jpg`, `cruise33-r33-22-ew-1.jpg`, `cruise33-r33-m-22-ns-2.jpg` (compare `cruise33-r32c-m-22-ns-2.jpg`).
+- **Water, glint:** `water33-r33-130-glint.jpg`, `water33-r33-33-glint.jpg` (crisp). Round 32: `water33-r32c-130-glint.jpg`.
+- **Water, low:** `water33-r33-130-g-low.jpg` (soft bottom third), `water33-r33-33-g-low.jpg`. Round 32: `water33-r32c-130-g-low.jpg`, `water33-r32c-33-g-low.jpg`.
+- **Water, cruise and phone:** `water33-r33-130-g-cruise.jpg`, `water33-r33-58-g-cruise.jpg`, `water33-r33-m-22-g-cruise.jpg`, `water33-r33-m-22-g-low.jpg`.
+- **Wakes and bus:** `wake32-130-sunward-ferry.jpg`, `wake32-130-sunward-rib.jpg`, `wake32-33-sunward-ferry.jpg`, `bus32-130-at-pier.jpg`, `bus32-130-from-promenade.jpg`.
+- **Boats:** `boats33-22-bus-ram.jpg`, `boats33-22-bus-hits-drone.jpg`, `boats33-22-sail-low.jpg`, `boats33-22-moored-rib-low.jpg`.
+- **Crashes near a target:** `N-alt12-seed91-t40.3-near.jpg`, `N-alt20-seed130-t45.2-near.jpg`.
+- **Medals:** `M-low-seed22-pass2.jpg`, `M-low-seed130-pass3.jpg` (Gold), `M-low-c10-seed58-pass1.jpg` (lazy Bronze).
+- **Camera:** `cam-clip-22-6-alley.jpg`, `cam-clip-22-m-noorbit-6-alley.jpg`.
+- **HUD:** `raw/fr33-d-22-h04-low-payout-pop.jpg` (desktop pop over the drone), `raw/fr33-m-22-h04-low-payout-pop.jpg`, `raw/fr33-d-22-h08-end.jpg`.
+
+The other 280 shots from the probes are in the session scratchpad, not in the project.
+</pre></details><details><summary>builder.md</summary><pre># Drone Dash: round 33 builder notes
+
+Build: the round 33 work, not committed, on top of 46b183d (round 32). My dev server ran on port 5190. It is stopped.
+For the A/B renders, a copy of the round 32 commit ran on port 5192 (git archive into my scratchpad). It is stopped too.
+I did not touch the owner's server on 5188. Every browser job ran alone, one at a time.
+The regression batch is in `builder-scripts/queue33.sh` and `jobs33.txt`.
+
+Machine load: BTLEServer used 99 to 100% of one core all session (`cpu-*.txt`).
+The headless browser still ran at the 120 Hz vsync (median 8.3 ms). All wall-clock numbers are contaminated.
+The verdicts below come from fixed-step probes. The medal gate, HUD and perf runs are real time.
+
+Scripts: I copied the critic's round 31 and 32 scripts into `builder-scripts/`.
+I changed only the port (5190) and the output folders (`../builder-shots/`, `ab/`).
+Small extras: `bus-stop32.mjs` takes STEPS and prints a summary line. `water31.mjs` names files `water33-&lt;NAME&gt;-...`.
+`art27.mjs` takes PORT and NAME. `contrast31.py` reads the round 33 tags.
+New scripts:
+
+- `breakdown33.mjs`: triangles and draws per mesh at a spot.
+- `slabverify33.mjs`: checks the city shadow slab (see part 2).
+- `ab33.py`: blind pairs. It writes the key before any judging.
+- `geo33.mjs`: instance counts.
+- `slabcheck33.mjs`: a pixel diff. Not usable: two renders of the same frame already differ.
+
+## 1. Harbour bus stall: fixed
+
+**Cause.** `Boats.stepShuttle` braked on `sqrt(2 a (left - 0.05))`.
+So the speed got to 0 at 5 cm before the stop. But the bus counted as "arrived" only under 2 cm.
+The bus parked at speed 0 with 5 cm to go. Each step was 0, and the 9 s dwell never started.
+
+**Fix.** The brake curve now aims at the stop itself.
+While the bus has way to go, its speed stays at 0.25 m/s or more (`SHUTTLE.creep`).
+Within 0.1 m of the stop, the bus is alongside (`SHUTTLE.arrive`).
+
+**Test**: `bus-stop32.mjs`, fixed 0.5 s steps, seeds 22, 58, 4711 and 9001.
+
+| Run | Stops per seed | Piers | Longest stop | Stalls |
+|---|---|---|---|---|
+| 300 s | 2, one at each pier | in turn | 9 to 9.5 s | 0 (on seed 22, the second stop is in its dwell at 300 s) |
+| 700 s | 4, two at each pier | in turn | 9 s | 0 |
+
+"Both piers at least 3 times in 300 s" is not possible on this route.
+The bus lane is 1,583 m long. At 4.6 m/s one loop takes 344 s.
+The two piers are half a loop apart (about 790 m). The time between stops is 165 to 175 s.
+The critic's round 32 bar passes on all 4 seeds: 700 s, at least 4 stops per seed, never more than 15 s at speed 0.
+For 3 visits in 300 s, the bus needs about 9 m/s, a third pier, or a turn-round shuttle. I did not change the route.
+
+## 2. Budget: triangles and draw calls
+
+| Check | Round 32 (critic) | Round 33 | Target |
+|---|---|---|---|
+| Full sweep, desktop seed 130 | 588k, 144 draws | **449k, 122 draws** | under 480k, under 125 |
+| Full sweep, desktop seed 22 | 566k | **426k, 121 draws** | |
+| Full sweep, iPhone seed 130 | 524k, 128 draws | **408k, 106 draws** | |
+| Water and marina spots (1,920 per run), max | 463k | 350k | |
+| Street run (perf-street), desktop max | 146 draws | **122 draws** (395k) | |
+| Street run, iPhone max | | 103 draws (358k) | |
+
+The sweep is `trisweep31.mjs`, not changed (3,256 spots, water and marina included).
+Worst spot: seed 130 at (-90, 3, 0). Before: 554k and 140 draws. After: 419k and 115 draws.
+See `breakdown-before.log` and `breakdown-after.log`.
+
+What changed:
+
+- **The shadow pass draws only what the shadow map holds.** The sun's shadow box is ±75 m round the drone.
+  Before, every instanced mesh drew all its instances into it.
+  The new `shadowSubset` writes instances nearest first. The shadow pass draws only the first `shadowCount`.
+  It uses `onBeforeShadow` and `onAfterShadow` on the mesh. A count of 0 skips the draw.
+  Users: lamp poles (115 m), blob tree canopies (115 m), street props (45 m), far people (to 40 m) and pines.
+  The lamps sort again after 12 m of camera travel. Each lamp's part indices move with it, so the occlusion pass still works.
+  When a boat or a dock is within 115 m, it casts a shadow. Further out, it casts none.
+- **City shadow slab.** I sort the merged city mesh one time, by the distance across the sun's direction.
+  The shadow pass draws only the slab that the shadow camera can reach.
+  The slab is ±75 m plus half the widest triangle.
+  Long faces that point at the sky, and the 4 cm diagonal paint strips, are not in the slab.
+  For this material, the shadow pass culls faces that point at the sky. So this change has no effect on shadows.
+  The promenade edge boxes are now in 40 m pieces, so they sort into the slab.
+  Check: `slabverify33.mjs`, 8 seeds, 338 spots each, exact triangle-to-plane test.
+  Result: 0 left-out triangles inside the shadow frustum.
+  City cost at the worst spot: 113k before, 93k after.
+- **People.** The low-detail figure starts at 24 m (was 40 m). Far people still cast shadows to 40 m, as before.
+  Far limbs are boxes with open ends (about 150 triangles a figure).
+  The near head is 8x6 (was 9x7). Skirt and cap have 8 sides.
+  The near shadow skips the small parts (hands, shoes, nose, phone, strap, brim, bun, hips). A draw range does this.
+- **Lamps.** 66 triangles a pole (was 88): no hidden caps, 7 sides.
+- **Building detail.** Draw distance 74 m on desktop and 62 m on the phone (was 95 m and 75 m).
+- **Street props.** Range 66 m on desktop and 55 m on the phone (was 80 m and 60 m). Shadows only within 45 m.
+- **Skyline.** The blocks have no bottom face now. They stay, in one draw.
+- **Draw calls.** The 4 rotors are one mesh. The vertex shader turns each blade (no shadow).
+  The 4 blur discs are one mesh in one pass. The red, green and white nav lights share one material.
+  The duct lips and motor caps cast no shadow. The parcel is one mesh with vertex colours (was 6 meshes, 7 draws).
+  Car wheels cast no shadow. They are inside the shadow of the body.
+  The drone was 34 draws. Now it is 19.
+
+**Blind A/B, round 32 against round 33.** `ab33.py` picks sides with SystemRandom and shuffles the order.
+It wrote the key to `builder-shots/ab/.key.json` before any judging.
+I wrote `ab/picks.txt` before I opened the key. Each side of a pair is 640 px wide.
+
+- Street set (art27): golden street, shopfront and people, morning street and shopfront, phone golden street.
+  **6 ties, 0 losses. Pass.** I saw no difference in any pair.
+- Water set (golden and dusk g-low and 14 m glint, noon cruise, golden marina): **2 wins, 2 ties, 2 losses.**
+  That is 4 of 6. **It fails the 5-of-6 bar.** I picked round 32 for dusk g-low and dusk glint.
+  After I opened the key, I compared these two at full size. This check is not blind, so it does not count.
+  At full size, round 33 has the crisper ripples and glitter in both.
+  At half size, the larger, smoother shapes of round 32 looked more defined.
+  The critic must judge these again at full size.
+
+## 3. Leftovers
+
+**(A) Hazy close water at a low sun.** Two changes in `Water.ts`:
+
+- A fine near layer: ripples about 2 m across, from a third detail-texture sample.
+  It shows only near the camera, where one pixel covers less than a few cm.
+- The calm-with-height blend now goes from 6 m to 20 m of camera height (was 4 m to 15 m).
+  The 14 m glint views keep their glitter. The game camera at cruise (29 m) does not change.
+
+`contrast31.py`:
+
+| Mood | Cruise | Low | Ratio |
+|---|---|---|---|
+| Golden 130 | 18.2 | 35.1 | 0.52 |
+| Morning 22 | 16.6 | 30.1 | 0.55 |
+| Dusk 33 | 16.7 | 40.6 | 0.41 |
+| Noon 58 | 16.8 | 31.2 | 0.54 |
+
+All marks pass: ratio at most 0.6, low at least 25, cruise at least 15.
+Open issue: the soft radial streaks at the bottom of the golden g-low frame are still there.
+They are not the city's shadows: half the shadow on the water changed nothing, and I removed that change.
+I did not find the cause in the time box. The near layer puts crisp ripples on top of them.
+
+**(B) Sailboat hull kick: not fixed.** I added a cap on the boat's push.
+After the push, the drone moves no faster than the boat speed plus 2 m/s, or its own speed before the hit.
+I measured no change from the cap, because the 6.5 to 8.6 m/s does not come from the boat.
+The inner sailboat lane is about 195 m from the centre. That is 3 m past the soft city bound (192 m).
+The boat pushes the parked drone 6 to 12 m further out. Then the bound's spring (`over * 6` m/s²) throws it back.
+I tried a cap on the spring's return speed (4 m/s and 5.5 m/s). The speed went down to 5.2 to 6.6 m/s.
+But in 2 ram runs the drone then slid over a low hull for more than 2 s (the probe's "stuck"). I removed that change.
+A slower slide off the bow (2x, not 5x) made the bus push the drone for longer. I removed that change too.
+Next step: move the inner sailboat lane inside the bound (d about 26). Then run boats31 again for lane overlap.
+
+**(C) Low bus hit hops over the cabin: fixed.** The rule "boats are never a ledge hop" missed one case.
+That case is the belly on the hull's top edge (contact normal 0.35 to 0.7 up). The rule now applies there too.
+A hull taller than a step is a wall.
+`boats32.mjs`: 16 of 16 bus ram hits charged exactly one Crash, and 0 hops.
+Round 32: 15 of 16, with one hop to 4.3 m.
+
+**(D) Bus wake toward a golden-hour sun: better, but not 1.3 in all views.**
+
+- A large hull now makes more foam than its speed gives, and its trail lasts longer.
+- In the glitter path of a low sun, a wake's foam trail gets a minimum brightness.
+  The minimum follows how directly the view looks down the glitter path. It stays under the bloom threshold.
+  A stronger first version glowed like a laser beam. I removed it.
+
+`water31b.mjs`, golden-hour views toward the sun (trail brightness over open water):
+
+| Boat | Round 32 | Round 33 |
+|---|---|---|
+| Bus | 1.79 / 0.93 / 0.67 | **2.15 / 1.49 / 1.07** |
+| Rib | 0.96 / 1.28 / 1.66 | 1.15 / 2.17 / 2.72 |
+| Sail | 0.69 / 0.82 / 1.31 | 1.11 / 1.60 / 1.71 |
+
+The last bus view stays under 1.3. There the open water ahead of the bow is 190 to 200 of 255.
+For 1.3, the trail needs to be brighter than white.
+All dusk views were 2.4 or more, but I measured them with the stronger first version.
+I did not measure dusk again after the change. Shot: `wake32-130-sunward-ferry.jpg`.
+
+## Regressions (all on the final code)
+
+| Check | Result |
+|---|---|
+| Flat frames, bloom on (`acceptance-probe.mjs`) | 938 frames, 0 flat, 0 errors: pass |
+| Crash-classify 12 m, seeds 22, 58, 130 | 21 crashes, 0 hop-like, **0 pad lips** |
+| Crash-classify 20 m | 12 crashes, 0 hop-like, **0 pad lips** |
+| boats32 (4 seeds, 156 approaches) | 0 frames inside a hull, 0 near a mast, 0 stuck, 0 drop: pass |
+| boats31 (22, 58, 9001) | 0 hull overlaps, 0 hulls on a dock, moving hulls 17.4 m from the wall: pass |
+| cam-clip30 (22, no orbit), cam-clip24 (22, 58) | 0 hidden, 0 in solid, 0 pops over 1 m: pass |
+| climb30, desktop and phone | 0 jumps over 1.8 m (max 0.90 m), 0 frames in solid: pass |
+| People probe | 0 people on active pads (48 legs): pass |
+| Traffic overlap | 0 pair frames on 22, 58, 130: pass |
+| Phone HUD probe (22, 58, 130) | marker on controls 0, drone under pills 0, pops on the drone 0%, 0% and 0.44% (one medal-pop sample on 130) |
+| Medal gate, street (22, 58, 130) | Silver, Silver, Silver. Breakdown exact on all 3. Scores 4,259 / 3,054 / 5,890 |
+| No-delivery farm | 0 points on 22, 58, 130: pass |
+| Production build | `npm run build` is clean. 2.78 MB without source maps (7.3 MB with): pass |
+| Street frame time (contaminated) | p95 9.4 to 9.6 ms, desktop and phone, 0 frames over 20 ms |
+
+Medal note: round 32 scored 5,892 / 3,745 / 5,836. These runs are real time on a loaded machine.
+On seed 22 the bot made 3 drops, not 4.
+
+Not run this round: cam-clip24 on the phone, the desktop HUD pops probe, the lazy medal runs, capfarm, boats31 at 400 s.
+Note: cam-clip30 saved two `-hidden` shots while it lined up. These are outside the measured passes. The passes report occ 0.
+
+I kept the bloom clamps in `ObjectiveMarker.ts` (not touched) and every debug hook that the bots use.
+`triBreakdown` now also gives the draws per mesh.
+New hook `shadowSlab(on?)`: it gives the slab stats and turns the slab on or off for comparisons.
+
+## Files changed
+
+- `src/world/Boats.ts`: bus arrival fix. Boat and dock shadows only within range.
+- `src/world/shadowSubset.ts` (new): `shadowSubset`, `shadowSlab` with its check hook, shadow radii.
+- `src/world/Environment.ts`: lamp geometry and sort, canopy shadow subset, open trunks, pines, skyline, prop range.
+- `src/world/StreetProps.ts`: props nearest first, shadows within 45 m.
+- `src/world/Pedestrians.ts`: LOD at 24 m, far shadows to 40 m, near shadow draw range.
+- `src/world/StreetKit.ts`: lighter people figures, small parts last.
+- `src/world/Traffic.ts`: wheels cast no shadow.
+- `src/world/CityGenerator.ts`: promenade edge in 40 m pieces.
+- `src/world/Water.ts`: near ripple layer, calm-with-height range, bus wake foam and glitter-path trail minimum.
+- `src/entities/Drone.ts`: merged rotors, discs, nav lights and parcel. Fewer shadow casters.
+  Boat edge hits are walls. Boat push cap.
+- `src/game/Game.ts`: detail distance, city shadow slab, debug hooks.
+- `src/vite-env.d.ts`: type for the new hook.
+
+## Screenshots (`builder-shots/`, 58 JPEGs)
+
+- `ab/street-01..06.jpg`, `ab/water-01..06.jpg`, `ab/picks.txt`, `ab/.key.json`.
+- `water33-r32-*` and `water33-r33-*`: golden and dusk g-low and glint, round 32 against round 33.
+- `wake32-130-sunward-*`, `bus32-130-*` (the bus at its pier, then under way again), `tris33-*-worst.jpg`.
+- Camera, crash and HUD probe shots: `cam-clip*`, `N-*`, `M-*`, `raw/fr33-*`.
+</pre></details><div class="grid"><figure><a href="progress/round-33/critic/M-low-c10-seed58-pass1.webp"><img loading="lazy" src="progress/round-33/critic/M-low-c10-seed58-pass1.webp" alt="M-low-c10-seed58-pass1.webp"></a><figcaption>M-low-c10-seed58-pass1.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/M-low-seed130-pass3.webp"><img loading="lazy" src="progress/round-33/critic/M-low-seed130-pass3.webp" alt="M-low-seed130-pass3.webp"></a><figcaption>M-low-seed130-pass3.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/M-low-seed22-pass2.webp"><img loading="lazy" src="progress/round-33/critic/M-low-seed22-pass2.webp" alt="M-low-seed22-pass2.webp"></a><figcaption>M-low-seed22-pass2.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/N-alt12-seed91-t40.3-near.webp"><img loading="lazy" src="progress/round-33/critic/N-alt12-seed91-t40.3-near.webp" alt="N-alt12-seed91-t40.3-near.webp"></a><figcaption>N-alt12-seed91-t40.3-near.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/N-alt20-seed130-t45.2-near.webp"><img loading="lazy" src="progress/round-33/critic/N-alt20-seed130-t45.2-near.webp" alt="N-alt20-seed130-t45.2-near.webp"></a><figcaption>N-alt20-seed130-t45.2-near.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/art27-d-hour-130-mid.webp"><img loading="lazy" src="progress/round-33/critic/art27-d-hour-130-mid.webp" alt="art27-d-hour-130-mid.webp"></a><figcaption>art27-d-hour-130-mid.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/art27-d-hour-130-street.webp"><img loading="lazy" src="progress/round-33/critic/art27-d-hour-130-street.webp" alt="art27-d-hour-130-street.webp"></a><figcaption>art27-d-hour-130-street.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/art27-m-morning-22-cruise.webp"><img loading="lazy" src="progress/round-33/critic/art27-m-morning-22-cruise.webp" alt="art27-m-morning-22-cruise.webp"></a><figcaption>art27-m-morning-22-cruise.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/art27c-d-hour-130-mid.webp"><img loading="lazy" src="progress/round-33/critic/art27c-d-hour-130-mid.webp" alt="art27c-d-hour-130-mid.webp"></a><figcaption>art27c-d-hour-130-mid.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/boats33-22-bus-hits-drone.webp"><img loading="lazy" src="progress/round-33/critic/boats33-22-bus-hits-drone.webp" alt="boats33-22-bus-hits-drone.webp"></a><figcaption>boats33-22-bus-hits-drone.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/boats33-22-bus-ram.webp"><img loading="lazy" src="progress/round-33/critic/boats33-22-bus-ram.webp" alt="boats33-22-bus-ram.webp"></a><figcaption>boats33-22-bus-ram.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/boats33-22-moored-rib-low.webp"><img loading="lazy" src="progress/round-33/critic/boats33-22-moored-rib-low.webp" alt="boats33-22-moored-rib-low.webp"></a><figcaption>boats33-22-moored-rib-low.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/boats33-22-sail-low.webp"><img loading="lazy" src="progress/round-33/critic/boats33-22-sail-low.webp" alt="boats33-22-sail-low.webp"></a><figcaption>boats33-22-sail-low.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/bus32-130-at-pier.webp"><img loading="lazy" src="progress/round-33/critic/bus32-130-at-pier.webp" alt="bus32-130-at-pier.webp"></a><figcaption>bus32-130-at-pier.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/bus32-130-from-promenade.webp"><img loading="lazy" src="progress/round-33/critic/bus32-130-from-promenade.webp" alt="bus32-130-from-promenade.webp"></a><figcaption>bus32-130-from-promenade.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/cam-clip-22-6-alley.webp"><img loading="lazy" src="progress/round-33/critic/cam-clip-22-6-alley.webp" alt="cam-clip-22-6-alley.webp"></a><figcaption>cam-clip-22-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/cam-clip-22-m-noorbit-6-alley.webp"><img loading="lazy" src="progress/round-33/critic/cam-clip-22-m-noorbit-6-alley.webp" alt="cam-clip-22-m-noorbit-6-alley.webp"></a><figcaption>cam-clip-22-m-noorbit-6-alley.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/cruise33-r32c-m-22-ns-2.webp"><img loading="lazy" src="progress/round-33/critic/cruise33-r32c-m-22-ns-2.webp" alt="cruise33-r32c-m-22-ns-2.webp"></a><figcaption>cruise33-r32c-m-22-ns-2.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/cruise33-r33-130-ns-1.webp"><img loading="lazy" src="progress/round-33/critic/cruise33-r33-130-ns-1.webp" alt="cruise33-r33-130-ns-1.webp"></a><figcaption>cruise33-r33-130-ns-1.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/cruise33-r33-22-ew-1.webp"><img loading="lazy" src="progress/round-33/critic/cruise33-r33-22-ew-1.webp" alt="cruise33-r33-22-ew-1.webp"></a><figcaption>cruise33-r33-22-ew-1.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/cruise33-r33-m-22-ns-2.webp"><img loading="lazy" src="progress/round-33/critic/cruise33-r33-m-22-ns-2.webp" alt="cruise33-r33-m-22-ns-2.webp"></a><figcaption>cruise33-r33-m-22-ns-2.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/wake32-130-sunward-ferry.webp"><img loading="lazy" src="progress/round-33/critic/wake32-130-sunward-ferry.webp" alt="wake32-130-sunward-ferry.webp"></a><figcaption>wake32-130-sunward-ferry.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/wake32-130-sunward-rib.webp"><img loading="lazy" src="progress/round-33/critic/wake32-130-sunward-rib.webp" alt="wake32-130-sunward-rib.webp"></a><figcaption>wake32-130-sunward-rib.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/wake32-33-sunward-ferry.webp"><img loading="lazy" src="progress/round-33/critic/wake32-33-sunward-ferry.webp" alt="wake32-33-sunward-ferry.webp"></a><figcaption>wake32-33-sunward-ferry.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r32c-130-g-low.webp"><img loading="lazy" src="progress/round-33/critic/water33-r32c-130-g-low.webp" alt="water33-r32c-130-g-low.webp"></a><figcaption>water33-r32c-130-g-low.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r32c-130-glint.webp"><img loading="lazy" src="progress/round-33/critic/water33-r32c-130-glint.webp" alt="water33-r32c-130-glint.webp"></a><figcaption>water33-r32c-130-glint.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r32c-33-g-low.webp"><img loading="lazy" src="progress/round-33/critic/water33-r32c-33-g-low.webp" alt="water33-r32c-33-g-low.webp"></a><figcaption>water33-r32c-33-g-low.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-130-g-cruise.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-130-g-cruise.webp" alt="water33-r33-130-g-cruise.webp"></a><figcaption>water33-r33-130-g-cruise.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-130-g-low.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-130-g-low.webp" alt="water33-r33-130-g-low.webp"></a><figcaption>water33-r33-130-g-low.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-130-glint.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-130-glint.webp" alt="water33-r33-130-glint.webp"></a><figcaption>water33-r33-130-glint.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-33-g-low.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-33-g-low.webp" alt="water33-r33-33-g-low.webp"></a><figcaption>water33-r33-33-g-low.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-33-glint.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-33-glint.webp" alt="water33-r33-33-glint.webp"></a><figcaption>water33-r33-33-glint.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-58-g-cruise.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-58-g-cruise.webp" alt="water33-r33-58-g-cruise.webp"></a><figcaption>water33-r33-58-g-cruise.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-m-22-g-cruise.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-m-22-g-cruise.webp" alt="water33-r33-m-22-g-cruise.webp"></a><figcaption>water33-r33-m-22-g-cruise.webp</figcaption></figure>
+<figure><a href="progress/round-33/critic/water33-r33-m-22-g-low.webp"><img loading="lazy" src="progress/round-33/critic/water33-r33-m-22-g-low.webp" alt="water33-r33-m-22-g-low.webp"></a><figcaption>water33-r33-m-22-g-low.webp</figcaption></figure></div></section>
 <section><h2>round 32</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 32 critic report
 
 **Verdict:** Pass, with one new bug. The water now calms with height: the cruise to low ratio is 0.43 to 0.56 (round 31: 0.90 to 1.09). The grid pop is gone and boats are solid. But the new harbour bus stalls 5 cm short of its first pier and never moves again, on every seed, after 70 to 120 s.

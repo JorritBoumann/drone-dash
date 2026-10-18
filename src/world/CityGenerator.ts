@@ -470,10 +470,20 @@ export function generateCity(rng: Rng, blocks = 7, parks = 3, seed: number | nul
 
   // Waterfront promenade edge + low wall around the city perimeter.
   const e = half + 2;
-  gb.box(-e - 2, -1.5, -e - 2, e + 2, 0.5, -e, color('#cbbfa9'), Style.paving);
-  gb.box(-e - 2, -1.5, e, e + 2, 0.5, e + 2, color('#cbbfa9'), Style.paving);
-  gb.box(-e - 2, -1.5, -e, -e, 0.5, e, color('#cbbfa9'), Style.paving);
-  gb.box(e, -1.5, -e, e + 2, 0.5, e, color('#cbbfa9'), Style.paving);
+  // round 33: in pieces of at most 40 m, so the city's shadow pass can sort them into its slab (see shadowSlab)
+  const edgeColor = color('#cbbfa9');
+  const pieces = Math.ceil((2 * e + 4) / 40);
+  for (let k = 0; k < pieces; k++) {
+    const a = -e - 2 + ((2 * e + 4) * k) / pieces, b = -e - 2 + ((2 * e + 4) * (k + 1)) / pieces;
+    gb.box(a, -1.5, -e - 2, b, 0.5, -e, edgeColor, Style.paving);
+    gb.box(a, -1.5, e, b, 0.5, e + 2, edgeColor, Style.paving);
+  }
+  const piecesZ = Math.ceil((2 * e) / 40);
+  for (let k = 0; k < piecesZ; k++) {
+    const a = -e + (2 * e * k) / piecesZ, b = -e + (2 * e * (k + 1)) / piecesZ;
+    gb.box(-e - 2, -1.5, a, -e, 0.5, b, edgeColor, Style.paving);
+    gb.box(e, -1.5, a, e + 2, 0.5, b, edgeColor, Style.paving);
+  }
 
   // Round 18: keep alley mouths and the diagonal free of trees, lamp posts and other soft props.
   const inDiag = (x: number, z: number) => boulevards.some((b) => Math.abs(z - b.s * x - b.c) / Math.SQRT2 < b.halfWidth + 1.6);

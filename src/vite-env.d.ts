@@ -148,6 +148,7 @@ interface DroneDashApi {
   boatColliders?(): Array<{ x: number; z: number; s: number; c: number; hx: number; hz: number; y0: number; y1: number; soft: boolean; on: boolean }>;
   droneBox?(): { x: number; y: number; w: number; h: number; behind: boolean; shift: number };
   renderStats?(): { tris: number; calls: number };
+  shadowSlab?(on?: boolean): { triangles: number; sorted: number; skipped: number; margin: number; drawn: number; verify: { missed: number; skippedIn: number } | null };
   programs?(): string[];
   meshInfo?(name: string, n?: number): { count: number; visible: boolean; parent: string; first: number[][] } | null;
   triBreakdown?(min?: number): { all: number; parts: Array<{ name: string; tris: number }> };

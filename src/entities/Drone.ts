@@ -57,6 +57,8 @@ export class Drone {
   private readonly strobeMat: THREE.MeshStandardMaterial;
   private readonly accentMat: THREE.MeshPhysicalMaterial;
   private rotorAngle = 0;
+  /** Round 33: the rotor angle as a shader uniform (all four rotors are one mesh). */
+  private readonly rotorSpin = { value: 0 };
   private rotorSpeed = 40;
   private pitch = 0;
   private roll = 0;
@@ -99,9 +101,21 @@ export class Drone {
     const blade = new THREE.MeshStandardMaterial({ color: '#2b2f36', roughness: 0.35, metalness: 0.2 });
     this.statusMat = new THREE.MeshStandardMaterial({ color: '#111', emissive: '#38e8ff', emissiveIntensity: 3 });
     this.strobeMat = new THREE.MeshStandardMaterial({ color: '#111', emissive: '#ffffff', emissiveIntensity: 0 });
-    const red = new THREE.MeshStandardMaterial({ color: '#300', emissive: '#ff2a1a', emissiveIntensity: 3.5 });
-    const green = new THREE.MeshStandardMaterial({ color: '#030', emissive: '#22ff6a', emissiveIntensity: 3.5 });
-    const white = new THREE.MeshStandardMaterial({ color: '#222', emissive: '#fff4d8', emissiveIntensity: 3.5 });
+    // round 33: the red, green and white nav lights share one material (their emissive colour is a vertex attribute),
+    // so they merge into one mesh: 1 draw instead of 3
+    const navMat = new THREE.MeshStandardMaterial({ color: '#1c1c1c', emissive: '#ffffff', emissiveIntensity: 3.5 });
+    navMat.onBeforeCompile = (shader) => {
+      shader.vertexShader = 'attribute vec3 navcol;\nvarying vec3 vNavCol;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvNavCol = navcol;');
+      shader.fragmentShader = 'varying vec3 vNavCol;\n' + shader.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vNavCol;');
+    };
+    navMat.customProgramCacheKey = () => 'drone-nav';
+    const navGeo = (geo: THREE.BufferGeometry, hex: string) => {
+      const c = new THREE.Color(hex), a = new Float32Array(geo.getAttribute('position').count * 3);
+      for (let k = 0; k < a.length; k += 3) { a[k] = c.r; a[k + 1] = c.g; a[k + 2] = c.b; }
+      geo.setAttribute('navcol', new THREE.BufferAttribute(a, 3));
+      return geo;
+    };
+    const red = navMat, green = navMat, white = navMat;
 
     const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0, name = '') => {
       const m = new THREE.Mesh(geo, mat);
@@ -151,8 +165,8 @@ export class Drone {
     lens.rotateX(Math.PI / 2);
     add(lens, glass, 0, -0.1, -0.43, 'lens');
     // front headlights
-    add(new THREE.SphereGeometry(0.028, 8, 6), white, 0.13, 0.02, -0.47);
-    add(new THREE.SphereGeometry(0.028, 8, 6), white, -0.13, 0.02, -0.47);
+    add(navGeo(new THREE.SphereGeometry(0.028, 8, 6), '#fff4d8'), white, 0.13, 0.02, -0.47);
+    add(navGeo(new THREE.SphereGeometry(0.028, 8, 6), '#fff4d8'), white, -0.13, 0.02, -0.47);
     // strobe on top
     add(new THREE.SphereGeometry(0.03, 8, 6), this.strobeMat, 0, 0.27, 0.32, 'strobe');
 
@@ -179,6 +193,8 @@ export class Drone {
     const lipMat = shell.clone();
     lipMat.side = THREE.DoubleSide;
     this.blurMat = new THREE.MeshBasicMaterial({ color: '#d9e2ea', transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide });
+    this.blurMat.forceSinglePass = true; // round 33: one draw for the blur discs (a flat disc needs no back-then-front pass)
+    const rotorParts: THREE.BufferGeometry[] = [], discParts: THREE.BufferGeometry[] = [];
     motorPos.forEach((p, i) => {
       // arm from hull to motor
       const from = new THREE.Vector3(Math.sign(p.x) * 0.2, 0.02, Math.sign(p.z) * 0.28);
@@ -199,20 +215,44 @@ export class Drone {
         s.rotation.y = -a;
         this.body.add(s);
       }
-      // rotor (spins)
-      const rotor = new THREE.Mesh(rotorGeo, blade);
-      rotor.position.set(p.x, p.y + 0.13, p.z);
-      rotor.castShadow = true;
-      this.body.add(rotor);
-      this.rotors.push(rotor);
-      const disc = new THREE.Mesh(discGeo, this.blurMat);
-      disc.position.set(p.x, p.y + 0.135, p.z);
-      disc.renderOrder = 2;
-      this.body.add(disc);
-      this.blurDiscs.push(disc);
+      // rotor (spins) and blur disc: round 33, all four go into one mesh each (see below), so 2 draws instead of 12
+      const hubA = new Float32Array(rotorGeo.getAttribute('position').count * 4);
+      for (let k = 0; k < hubA.length; k += 4) { hubA[k] = p.x; hubA[k + 1] = p.y + 0.13; hubA[k + 2] = p.z; hubA[k + 3] = i % 2 === 0 ? 1 : -1; }
+      const rg = rotorGeo.clone().translate(p.x, p.y + 0.13, p.z);
+      rg.setAttribute('hub', new THREE.BufferAttribute(hubA, 4));
+      rotorParts.push(rg);
+      discParts.push(discGeo.clone().translate(p.x, p.y + 0.135, p.z));
       // nav light under each motor: port red, starboard green
-      add(new THREE.SphereGeometry(0.03, 8, 6), p.x < 0 ? red : green, p.x * 1.08, p.y - 0.07, p.z * 1.08);
+      add(navGeo(new THREE.SphereGeometry(0.03, 8, 6), p.x < 0 ? '#ff2a1a' : '#22ff6a'), p.x < 0 ? red : green, p.x * 1.08, p.y - 0.07, p.z * 1.08);
     });
+
+    {
+      // round 33: the four rotors are one mesh; each vertex turns about its own hub in the vertex shader (hub.w = spin
+      // direction). Rotor blades cast no shadow (a 1 cm blade at speed is a blur; the guards and hull still cast).
+      const rotorMat = blade.clone();
+      const spin = this.rotorSpin;
+      rotorMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uRotorAngle = spin;
+        shader.vertexShader = 'uniform float uRotorAngle;\nattribute vec4 hub;\n' + shader.vertexShader
+          .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+            float ra = uRotorAngle * hub.w; float rc = cos(ra), rs = sin(ra);
+            objectNormal = vec3(rc * objectNormal.x + rs * objectNormal.z, objectNormal.y, -rs * objectNormal.x + rc * objectNormal.z);`)
+          .replace('#include <begin_vertex>', `#include <begin_vertex>
+            vec3 rrel = transformed - hub.xyz;
+            transformed = hub.xyz + vec3(rc * rrel.x + rs * rrel.z, rrel.y, -rs * rrel.x + rc * rrel.z);`);
+      };
+      rotorMat.customProgramCacheKey = () => 'drone-rotor';
+      const rotors = new THREE.Mesh(mergeGeometries(rotorParts)!, rotorMat);
+      rotors.name = 'drone-rotors';
+      rotors.frustumCulled = false;
+      this.body.add(rotors);
+      this.rotors.push(rotors);
+      const discs = new THREE.Mesh(mergeGeometries(discParts)!, this.blurMat);
+      discs.name = 'drone-rotor-blur';
+      discs.renderOrder = 2;
+      this.body.add(discs);
+      this.blurDiscs.push(discs);
+    }
 
     // Landing skids
     for (const sx of [-0.2, 0.2]) {
@@ -226,31 +266,35 @@ export class Drone {
       }
     }
 
-    // Cargo: taped parcel on two cables
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.3, 0.38), new THREE.MeshStandardMaterial({ color: '#c9935a', roughness: 0.85 }));
-    box.position.y = -0.36;
+    // Cargo: taped parcel on two cables. Round 33: one vertex-coloured mesh (was 6 meshes and 7 draws)
+    const cargoPart = (g: THREE.BufferGeometry, hex: string, x: number, y: number, z: number) => {
+      const n = (g.index ? g.toNonIndexed() : g).translate(x, y, z);
+      n.deleteAttribute('uv');
+      const c = new THREE.Color(hex), col = new Float32Array(n.getAttribute('position').count * 3);
+      for (let k = 0; k < col.length; k += 3) { col[k] = c.r; col[k + 1] = c.g; col[k + 2] = c.b; }
+      n.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return n;
+    };
+    const cargoGeo = mergeGeometries([
+      cargoPart(new THREE.BoxGeometry(0.38, 0.3, 0.38), '#c9935a', 0, -0.36, 0),
+      cargoPart(new THREE.BoxGeometry(0.385, 0.305, 0.07), '#efe1b3', 0, -0.36, 0),
+      cargoPart(new THREE.BoxGeometry(0.07, 0.305, 0.385), '#efe1b3', 0, -0.36, 0),
+      cargoPart(new THREE.BoxGeometry(0.14, 0.1, 0.005), '#ffd2b8', 0.1, -0.33, 0.193),
+      cargoPart(new THREE.CylinderGeometry(0.008, 0.008, 0.22, 4), '#222222', -0.12, -0.11, 0),
+      cargoPart(new THREE.CylinderGeometry(0.008, 0.008, 0.22, 4), '#222222', 0.12, -0.11, 0),
+    ])!;
+    const box = new THREE.Mesh(cargoGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }));
     box.castShadow = true;
-    const tapeMat = new THREE.MeshStandardMaterial({ color: '#efe1b3', roughness: 0.6 });
-    const tape1 = new THREE.Mesh(new THREE.BoxGeometry(0.385, 0.305, 0.07), tapeMat);
-    tape1.position.y = -0.36;
-    const tape2 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.305, 0.385), tapeMat);
-    tape2.position.y = -0.36;
-    const label = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.005), new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ff6b2c', emissiveIntensity: 0.4 }));
-    label.position.set(0.1, -0.33, 0.193);
-    const cableMat = new THREE.MeshStandardMaterial({ color: '#222' });
-    for (const cx of [-0.12, 0.12]) {
-      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.22, 4), cableMat);
-      cable.position.set(cx, -0.11, 0);
-      this.cargo.add(cable);
-    }
-    this.cargo.add(box, tape1, tape2, label);
+    box.name = 'drone-cargo';
+    this.cargo.add(box);
     this.cargo.position.y = -0.22;
     this.cargo.visible = false;
     this.body.add(this.cargo);
 
     this.body.scale.setScalar(1.32);
     for (const m of [shell, carbon, this.accentMat]) addRim(m, m === carbon ? 0.55 : 0.75);
-    this.mergeStatic([white, red, green, this.statusMat, this.strobeMat]);
+    // round 33: the duct lips and motor caps cast no shadow either (they sit inside the guards' shadow)
+    this.mergeStatic([navMat, this.statusMat, this.strobeMat, lipMat, this.accentMat]);
   }
 
   /** Collapse all static hull parts into one mesh per material (keeps the hero cheap: ~12 draws). */
@@ -263,7 +307,7 @@ export class Drone {
       mesh.updateMatrix();
       const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
       g.applyMatrix4(mesh.matrix);
-      for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
+      for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'uv' && name !== 'navcol') g.deleteAttribute(name);
       if (!g.getAttribute('uv')) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.getAttribute('position').count * 2), 2));
       g.clearGroups();
       const mat = mesh.material as THREE.Material;
@@ -433,6 +477,7 @@ export class Drone {
     let brushed = this.brushing; // one glance per brush: while still touching the prop, the drone only slides
     let hardest = 0;
     const hStart = Math.hypot(v.x, v.z);
+    const v0x = v.x, v0z = v.z; // round 33: velocity before this frame's contacts (caps a boat's push)
     for (let s = 0; s < steps; s++) {
       p.addScaledVector(v, h);
       const depth = world.resolveSphere(p, F.radius, this.normal);
@@ -443,7 +488,8 @@ export class Drone {
         // the obstacle top is below the drone's middle (belly clipping an edge) or a skimmable low step
         const edge = this.normal.y > 0.35 && this.normal.y <= 0.7;
         let low = vn < 0 && (soft || edge || this.isLowLedge(world, p));
-        if (low && !soft && !edge && world.deepestDynamic) {
+        // round 33: also when the belly meets the hull's top edge (edge): a bus hit at 1 m used to hop over the cabin
+        if (low && !soft && world.deepestDynamic) {
           // round 32: a boat is never hopped like a ledge. A gunwale low enough to step over is free (like a kerb),
           // anything taller (a deckhouse, a hull side) is a wall and the crash rules apply.
           if (this.columnTop(world, p) - (p.y - F.radius) + 0.05 > F.stepUp) low = false;
@@ -543,6 +589,12 @@ export class Drone {
           v.x += b.c * k * h * 6;
           v.z -= b.s * k * h * 6;
         }
+        // round 33: cap what the boat adds, like a wall hit: the drone may leave the hull at the boat's own speed plus
+        // 2 m/s (sideways and outwards), or keep the speed it already had; a low sailboat hull threw it at 8.5 m/s
+        const cap = Math.hypot(b.vx, b.vz) + 2;
+        const lim = Math.max(cap, Math.hypot(v0x, v0z));
+        const hs = Math.hypot(v.x, v.z);
+        if (hs > lim) { v.x *= lim / hs; v.z *= lim / hs; }
       }
       // ground
       const floor = world.floorY + 0.85; // skids just above the sidewalk
@@ -654,9 +706,7 @@ export class Drone {
     const targetSpin = 55 + effort * 70;
     this.rotorSpeed += (targetSpin - this.rotorSpeed) * (1 - Math.exp(-5 * dt));
     this.rotorAngle += this.rotorSpeed * dt;
-    this.rotors.forEach((r, i) => {
-      r.rotation.y = (i % 2 === 0 ? 1 : -1) * this.rotorAngle;
-    });
+    this.rotorSpin.value = this.rotorAngle % (Math.PI * 2);
     this.blurMat.opacity = 0.08 + Math.min(0.18, (this.rotorSpeed - 50) / 500);
     this.blurMat.color.set(this.boosting ? '#9ff3ff' : '#d9e2ea');
     this.accentMat.emissiveIntensity = this.boosting ? 0.9 : 0;

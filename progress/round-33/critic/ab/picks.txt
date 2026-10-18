@@ -1,0 +1,20 @@
+Round 33 critic blind picks, written before opening .key.json. A = top image, B = bottom image.
+street-1: tie (same view, a van moved; no detail lost either side)
+street-2: tie
+street-3: tie
+street-4: tie
+street-5: tie (car and shadow positions differ only)
+street-6: tie
+water-1: A (crisper ripples and more glitter in the near water and the sun path; B softer)
+water-2: A (finer ripples right round the drone; B more blobby)
+water-3: B, weak (A's near water left of the drone smears into soft streaks; both have some radial streaks at the bottom)
+water-4: B (more fine ripples in the lower half; A's near water looks soft and hazy)
+water-5: tie
+water-6: tie (wake about the same)
+cruise-1: tie
+cruise-2: tie
+cruise-3: tie
+cruise-4: tie
+cruise-5: tie
+cruise-6: tie (a car differs only)
+No pair shows LOD popping, a missing far building, missing far shadows or a thinner city.

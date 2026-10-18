@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { DynBox } from '../systems/CollisionWorld';
 import type { ModelParts } from './StreetAssets';
+import { SHADOW_FAR } from './shadowSubset';
 import { MAX_PIERS, MAX_WAKES, SHORE, WATER_Y, type Water, shoreDistance, waveFade, waveHeight } from './Water';
 
 /**
@@ -51,7 +52,7 @@ const LANES: Array<{ d: number; dir: number; speed: number; gust: number; jitter
   { d: 74, dir: 1, speed: 2.3, gust: 0.35, jitter: 6, boats: [['sail', 0.82]] },
 ];
 /** Round 32: the harbour bus. Its lane runs inside the sailboats, just past the pier heads; it stops at each pier. */
-const SHUTTLE = { d: 19, dir: -1, speed: 4.6, accel: 0.42, dwell: 9, kind: 'ferry' as Kind };
+const SHUTTLE = { d: 19, dir: -1, speed: 4.6, accel: 0.42, dwell: 9, creep: 0.25, arrive: 0.1, kind: 'ferry' as Kind };
 
 /** Marina on the south wall (z = +SHORE): two docks, each two 8 m CC0 dock pieces long. */
 /** Round 32: piers as (x, side): side +1 = the south wall (the marina), -1 = the north wall (the harbour-bus landing). */
@@ -115,6 +116,7 @@ export class Boats {
   /** Round 32: every boat's hull / mast boxes plus the docks, updated each frame; Game hands them to the CollisionWorld. */
   readonly colliders: DynBox[] = [];
   private readonly lp = new THREE.Vector3();
+  private docks: THREE.InstancedMesh | null = null;
   private readonly meshes = new Map<Kind, THREE.InstancedMesh>();
   private readonly tmp = { x: 0, z: 0, tx: 0, tz: 0 };
   private readonly m = new THREE.Matrix4();
@@ -186,6 +188,7 @@ export class Boats {
       im.castShadow = true;
       im.receiveShadow = true;
       im.name = 'boats-docks';
+      this.docks = im;
       this.group.add(im);
       PIERS.forEach(([px, side], k) => { if (k < MAX_PIERS) water.piers[k].set(px, side * (SHORE + PIER_LEN / 2), PIER_HALF_W, PIER_LEN / 2); });
       // the docks are solid too (static, deck at PIER_TOP)
@@ -214,12 +217,15 @@ export class Boats {
     const target = this.stopS(b.next);
     // distance still to sail to the stop, along the boat's own direction
     const left = ((((target - b.s) * b.dir) % P) + P) % P;
-    const brake = Math.sqrt(2 * SHUTTLE.accel * Math.max(left - 0.05, 0));
-    const want = Math.min(SHUTTLE.speed, brake);
+    // Round 33: the brake curve used to reach speed 0 at 0.05 m short of the stop while arrival needed 0.02 m, so the
+    // bus parked 5 cm out and never started its dwell. Now the curve aims at the stop itself, the bus never drops below
+    // a slow creep while it still has way to go, and anything within ARRIVE counts as alongside.
+    const brake = Math.sqrt(2 * SHUTTLE.accel * left);
+    const want = Math.max(Math.min(SHUTTLE.speed, brake), SHUTTLE.creep);
     b.speed = want < b.speed ? want : Math.min(want, b.speed + SHUTTLE.accel * dt);
-    const step = Math.min(b.speed * dt, left);
+    const step = Math.min(Math.max(b.speed, SHUTTLE.creep) * dt, left);
     b.s += step * b.dir;
-    if (left - step < 0.02) {
+    if (left - step < SHUTTLE.arrive) {
       b.s = target;
       b.speed = 0;
       b.wait = SHUTTLE.dwell;
@@ -301,6 +307,11 @@ export class Boats {
     }
     w.uniforms.uWakeN.value = nw;
     for (const m of this.meshes.values()) m.instanceMatrix.needsUpdate = true;
+    // round 33: a boat kind (and the docks) casts a shadow only while one of them is inside the shadow range of the
+    // camera (the sun's shadow box covers the city round the drone; out there it cost draws and triangles for nothing)
+    const R2 = SHADOW_FAR * SHADOW_FAR;
+    for (const [k, m] of this.meshes) m.castShadow = this.boats.some((b) => b.kind === k && (b.x - cam.x) ** 2 + (b.z - cam.z) ** 2 < R2);
+    if (this.docks) this.docks.castShadow = PIERS.some(([px, side]) => (px - cam.x) ** 2 + (side * (SHORE + PIER_LEN / 2) - cam.z) ** 2 < R2);
   }
 
   /** Test hook data: every boat's pose, its water height and the hull box. */

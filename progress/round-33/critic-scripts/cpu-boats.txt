@@ -1,0 +1,3 @@
+ %CPU COMM
+100.0 /usr/sbin/BTLEServer
+ 12.8 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared

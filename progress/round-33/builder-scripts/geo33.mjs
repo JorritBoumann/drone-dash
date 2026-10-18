@@ -1,0 +1,10 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch({ channel: 'chromium' });
+const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+await page.goto('http://127.0.0.1:5190/?seed=130', { waitUntil: 'networkidle' }); await page.waitForTimeout(600);
+await page.evaluate(() => { const G = window.__GAME__; G.tune({ RUN: { startTime: 9999 } }); G.start(); G.manualRender(true); });
+await page.waitForFunction(() => window.__GAME__.assetsReady().on, null, { timeout: 30000 });
+const names = ['street-props-planter','street-props-bin','street-props-bikerack','street-props-bollard','street-props-table','street-props-chair','street-props-aboard','street-props-bench','street-props-hydrant','lamp-poles','tree-canopies','tree-trunks','tree-tree_round-canopies','tree-tree_oak-canopies','pedestrians','pedestrians-far','boats-sail','boats-docks','city','traffic-wheels','traffic-far-0','traffic-0'];
+const r = await page.evaluate((names) => { const G = window.__GAME__; G.place(-90, 3, 0, 0, 0); G.advance(0.5, true); return names.map((n) => [n, G.meshInfo(n, 0)?.count]); }, names);
+console.log(JSON.stringify(r));
+await browser.close();

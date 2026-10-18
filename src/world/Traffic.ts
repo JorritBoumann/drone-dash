@@ -138,7 +138,7 @@ export class Traffic {
     this.wheels = new THREE.InstancedMesh(buildWheelGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.08, flatShading: true }), this.wheelCap);
     this.wheels.name = 'traffic-wheels';
     this.wheels.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.wheels.castShadow = true;
+    this.wheels.castShadow = false; // round 33: the body's shadow covers the wheels' (one draw and ~5k triangles less)
     this.wheels.receiveShadow = false;
     this.wheels.frustumCulled = false;
     this.wheels.count = 0;

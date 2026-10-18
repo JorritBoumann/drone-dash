@@ -229,7 +229,7 @@ export class Water {
       color: mw.deep, roughness: 0.16, metalness: 0, envMapIntensity: 0.35,
     });
     this.material.onBeforeCompile = (shader) => this.patch(shader);
-    this.material.customProgramCacheKey = () => `water32-${lite ? 'lite' : 'full'}`;
+    this.material.customProgramCacheKey = () => `water33-${lite ? 'lite' : 'full'}`;
     this.mesh = new THREE.Mesh(geo, this.material);
     this.mesh.position.y = WATER_Y;
     this.mesh.receiveShadow = true;
@@ -288,7 +288,9 @@ vec3 skyRefl(vec3 d){
   // both tighter from above; a broad, slow swell layer and soft wind patches take over, so from above the bay reads as
   // big soft colour shapes with sparkle mostly in the glint path.
   float camH = max(cameraPosition.y - (${WATER_Y.toFixed(2)}), 0.3);
-  float hiK = smoothstep(4.0, 15.0, camH);
+  // round 33: the calm sets in from 6 m of camera height (was 4) and is full from 20 m (was 15): close low-sun views
+  // (14 m glint) keep more glitter; play height (game camera at 18 to 30 m) stays calm
+  float hiK = smoothstep(6.0, 20.0, camH);
   vec2 fwx = fwidth(wxz);
   float foot = max(fwx.x, fwx.y);
   float footS = mix(8.0, 1.0, hiK);
@@ -310,7 +312,13 @@ vec3 skyRefl(vec3 d){
   vec4 d2 = vec4(0.5, 0.5, 1.0, d1.w);
   if (kFine > 0.001) d2 = textureGrad(uDetail, uv2, uv2dx, uv2dy);
   dn += (d2.xy * 2.0 - 1.0) * mix(0.27, 0.22, hiK) * kFine;
-  foamN = foamN * 0.6 + mix(d1.w, d2.w, smoothstep(0.001, 0.05, kFine)) * 0.4;`}
+  foamN = foamN * 0.6 + mix(d1.w, d2.w, smoothstep(0.001, 0.05, kFine)) * 0.4;
+  // round 33: a fine near layer (ripples about 2 m across) right round the camera, where one pixel covers less than a
+  // few centimetres, so the water under a low drone stays crisp instead of smearing into soft streaks
+  float kNear = (1.0 - smoothstep(10.0, 40.0, camD)) * (1.0 - smoothstep(0.012, 0.06, foot));
+  vec2 uv3 = mat2(0.6, 0.8, -0.8, 0.6) * wxz * 0.47 + vec2(uTime * 0.035, uTime * 0.027);
+  vec2 uv3dx = dFdx(uv3), uv3dy = dFdy(uv3);
+  if (kNear > 0.001) { vec4 d3 = textureGrad(uDetail, uv3, uv3dx, uv3dy); dn += (d3.xy * 2.0 - 1.0) * 0.2 * kNear; }`}
   dn *= mix(1.0, mix(0.55, 1.05, wind) * uChop, hiK); // uChop: how breezy the mood's bay looks from above
   dn += dnB;
   // shore: shallow colour and lapping foam along the seawall, foam round the pier legs
@@ -327,6 +335,7 @@ vec3 skyRefl(vec3 d){
   }
   // boat wakes: a Kelvin V (19.5 deg arms) with a foam trail and bow wave
   vec2 wakeN = vec2(0.0);
+  float wakeFoam = 0.0;
   for (int i = 0; i < ${MAX_WAKES}; i++) {
     if (i >= uWakeN) break;
     vec4 a = uWakeA[i]; vec4 b = uWakeB[i];
@@ -338,6 +347,8 @@ vec3 skyRefl(vec3 d){
     float u = -dot(rel, fwd) - b.x * 0.75; // metres behind the stern
     float v = dot(rel, rgt);
     float spd = clamp(a.w / 8.0, 0.0, 1.0);
+    // round 33: a big hull churns more than its speed says (the 14 m harbour bus at 4.6 m/s left a faint trail)
+    float churn = clamp(spd + max(b.x - 4.0, 0.0) * 0.12, 0.0, 1.0);
     float len = 14.0 + a.w * 6.0;
     if (u > -b.x * 1.8 && u < len) {
       float uu = max(u, 0.0);
@@ -345,12 +356,14 @@ vec3 skyRefl(vec3 d){
       float armOff = abs(v) - (uu * 0.354 + b.y * 0.9);
       float armW = 0.35 + uu * 0.05;
       float arm = exp(-armOff * armOff / armW) * fade * step(0.0, u);
-      float trail = exp(-v * v / (b.y * b.y * (0.8 + uu * 0.12))) * exp(-uu / (4.0 + a.w * 2.6)) * step(0.0, u);
+      float trail = exp(-v * v / (b.y * b.y * (0.8 + uu * 0.12))) * exp(-uu / (4.0 + a.w * 2.6 + max(b.x - 4.0, 0.0) * 0.8)) * step(0.0, u);
       // bow wave: a short crescent round the front of the hull
       vec2 bow = rel - fwd * b.x * 0.55;
       float bowD = length(vec2(dot(bow, rgt), max(dot(bow, fwd), 0.0) * 1.6)) - b.y * 1.15;
       float bowF = (1.0 - smoothstep(0.0, 0.9, abs(bowD))) * step(dot(rel, fwd), b.x * 0.9) * step(-b.x * 0.6, dot(rel, fwd));
-      foam += (arm * (0.45 + 0.55 * foamN) * (0.25 + 0.75 * spd) + trail * (0.75 + 0.45 * foamN) * (0.35 + 0.65 * spd) + bowF * 0.6 * spd);
+      float wf = arm * (0.45 + 0.55 * foamN) * (0.25 + 0.75 * spd) + trail * (0.75 + 0.45 * foamN) * (0.35 + 0.65 * churn) + bowF * 0.6 * spd;
+      foam += wf;
+      wakeFoam += trail * (0.75 + 0.45 * foamN) * (0.35 + 0.65 * churn);
       // ripples along the arms tilt the surface
       wakeN += rgt * sign(v) * cos(armOff * 3.0) * exp(-armOff * armOff / (armW * 3.0)) * fade * 0.35 * spd * step(0.0, u);
     }
@@ -388,6 +401,12 @@ vec3 skyRefl(vec3 d){
       float wl = dot(refl * fres0 + reflectedLight.directSpecular, LW);
       float ol = dot(outgoingLight, LW);
       float need = min(wl * (1.0 + 1.5 * foam) + 0.05 * foam, 1.4);
+      // round 33: in the glitter path of a low sun the open water round a wake is bright everywhere, not only where this
+      // pixel sparkles: a wake's foam trail there gets a floor set by how squarely the view looks down the glitter path
+      vec3 R0 = reflect(-V, vec3(0.0, 1.0, 0.0));
+      float glare = smoothstep(0.4, 0.95, dot(R0, normalize(uSunDir))) * lowSun;
+      // (trail only, and under the bloom threshold, so it reads as bright froth, not a glowing beam)
+      need = max(need, glare * smoothstep(0.05, 0.4, wakeFoam) * 1.05);
       if (foam > 0.01 && ol < need) outgoingLight *= need / max(ol, 0.001);
     }
   }

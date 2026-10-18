@@ -19,7 +19,8 @@ import { propAudit, propPlacementAudit } from '../world/StreetProps';
 import { BuildingDetail } from '../world/BuildingDetail';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
 import { surfaceHeight, waveHeight as waveHeightAt } from '../world/Water';
-import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE } from '../world/Environment';
+import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE, SUN_DIR } from '../world/Environment';
+import { shadowSlab } from '../world/shadowSubset';
 import { radialTexture } from '../world/Textures';
 import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
 import { cityLook, cityUrl, dateLabel, readDaily, resolveCity, writeDaily, type CityLook, type CityPick } from './cities';
@@ -246,7 +247,7 @@ export class Game {
     const lit = [[0.22, 0.95], [0.07, 0.8], [0.36, 1.05], [0.05, 0.8]][this.look.mood] ?? [0.16, 0.95];
     this.cityMaterial.userData.uniforms!.uLitAmount.value = lit[0];
     this.cityMaterial.userData.uniforms!.uLitIntensity.value = lit[1];
-    this.detail = new BuildingDetail(this.layout, this.cityMaterial, this.seed, touch ? 75 : 95);
+    this.detail = new BuildingDetail(this.layout, this.cityMaterial, this.seed, touch ? 62 : 74); // round 33: was 75 / 95
     this.scene.add(this.detail.group);
 
     this.sky = createSky();
@@ -256,6 +257,8 @@ export class Game {
     this.bakeEnvironment();
 
     this.lighting = new LightingRig(this.scene, touch ? 1024 : QUALITY.shadowMapSize, QUALITY.shadowExtent, MOODS[this.look.mood]);
+    // round 33: the city's shadow pass draws only the slab of triangles the sun's shadow box can reach
+    shadowSlab(city, SUN_DIR, QUALITY.shadowExtent, () => this.lighting.sun.target.position);
     this.env = new Environment(this.layout, this.seed, this.look.mood, touch); // round 22: street life follows the mood
     this.env.viewCam = this.camera; // round 29: far people outside the view are not drawn
     this.scene.add(this.env.group);
@@ -2164,21 +2167,29 @@ export class Game {
       },
       // round 29: the last render's counts (the diagnostics object is published before the render, so it lags one frame)
       renderStats: () => ({ tris: this.triangles, calls: this.drawCalls }),
+      // round 33: the city's shadow slab (see shadowSlab): stats, and a switch to compare shadows with it off
+      shadowSlab: (on?: boolean) => {
+        const c = this.scene.getObjectByName('city') as THREE.Mesh;
+        if (on !== undefined) { c.userData.slabHooks ??= [c.onBeforeShadow, c.onAfterShadow]; [c.onBeforeShadow, c.onAfterShadow] = on ? c.userData.slabHooks : [() => {}, () => {}]; }
+        return { ...c.userData.slab, verify: c.userData.slabVerify?.() };
+      },
       // round 29: triangles per mesh at the current view (each visible mesh hidden in turn, one render each)
       triBreakdown: (min = 3000) => {
-        const tris = () => { this.render(); return this.renderer.info.render.triangles; };
-        const all = tris();
+        // round 33: also the draw calls each mesh costs
+        let calls = 0;
+        const tris = () => { this.render(); calls = this.renderer.info.render.calls; return this.renderer.info.render.triangles; };
+        const all = tris(), allCalls = calls;
         const meshes: THREE.Mesh[] = [];
         this.scene.traverseVisible((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
-        const out: Array<{ name: string; tris: number }> = [];
+        const out: Array<{ name: string; tris: number; calls: number }> = [];
         for (const m of meshes) {
           m.visible = false;
-          const d = all - tris();
+          const d = all - tris(), dc = allCalls - calls;
           m.visible = true;
-          if (d >= min) out.push({ name: m.name || m.parent?.name || m.type, tris: d });
+          if (d >= min || dc > 0) out.push({ name: m.name || ((m.parent?.name || m.parent?.parent?.name || '?') + '/' + (m.material as THREE.Material).type), tris: d, calls: dc });
         }
         tris();
-        return { all, parts: out.sort((a, b) => b.tris - a.tris) };
+        return { all, calls: allCalls, parts: out.sort((a, b) => b.tris - a.tris) };
       },
     };
     window.__THREE_GAME_TEST_HOOKS__ = {

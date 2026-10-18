@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { shadowSubset } from './shadowSubset';
 import { createSeededRandom, pick, range, type Rng } from '../core/random';
 import type { CityLayout } from './CityGenerator';
 import { PANTS, SHIRTS, buildPedGeometry, pedMaterial } from './StreetKit';
@@ -13,7 +14,9 @@ import { benchSpots } from './BuildingDetail';
  */
 
 /** Round 23: people further than this from the camera use the low-detail figure (m). */
-const LOD_NEAR = 40;
+const LOD_NEAR = 24;
+/** Round 33: low-detail people this close (m) still cast a shadow (LOD_NEAR was 40, so the shadows stay where they were). */
+const FAR_SHADOW = 40;
 /** Round 29: people closer than this (m) are always drawn; further out only in or near the camera's view (margin, m). */
 const PEOPLE_FULL = 14;
 const PEOPLE_MARGIN = 3.5;
@@ -100,7 +103,14 @@ export class Pedestrians {
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       m.setColorAt(0, new THREE.Color());
       m.instanceColor!.setUsage(THREE.DynamicDrawUsage);
-      m.castShadow = !far; // round 27: far people (40 m on) cast no shadow (the near ones do)
+      m.castShadow = true; // round 33: far people cast only within FAR_SHADOW (see shadowSubset); past it, none
+      if (far) shadowSubset(m);
+      else {
+        // round 33: near people's shadows skip the small details (hands, shoes, nose, phone, ...): see buildPedGeometry
+        const sv = (geo.userData.shadowVerts as number | undefined) ?? Infinity;
+        m.onBeforeShadow = () => { g.setDrawRange(0, sv); };
+        m.onAfterShadow = () => { g.setDrawRange(0, Infinity); };
+      }
       m.frustumCulled = false;
       m.count = 0;
       m.name = far ? 'pedestrians-far' : 'pedestrians';
@@ -402,7 +412,8 @@ export class Pedestrians {
       for (const w of turnBack) this.reverse(w, p);
     }
     // pose, reactions and the instance buffers
-    let k = 0, kf = 0;
+    let k = 0, kf = 0, kfb = 0;
+    const farCap = this.far.instanceMatrix.count;
     const fanim = this.fanim.array as Float32Array;
     const fpants = this.fpants.array as Float32Array;
     this.reacting = 0;
@@ -473,7 +484,8 @@ export class Pedestrians {
       // round 23: past LOD_NEAR the low-detail figure (no shoes, hands, neck, hips or back hair)
       const isFar = d > LOD_NEAR;
       const mesh = isFar ? this.far : this.near;
-      const j = isFar ? kf++ : k++;
+      // round 33: far people with a shadow fill the far mesh from the front, the others from the back (moved up after)
+      const j = !isFar ? k++ : d <= FAR_SHADOW ? kf++ : farCap - 1 - kfb++;
       const A = isFar ? fanim : anim, PA = isFar ? fpants : pants, EX = isFar ? fextra : extra;
       EX[j * 4] = w.outfit; EX[j * 4 + 1] = w.acc; EX[j * 4 + 2] = w.pose; EX[j * 4 + 3] = w.accent;
       if (w.pose === 3) this.sitting++; else if (w.pose === 1) this.phones++; else if (w.pose === 2) this.talking++;
@@ -486,6 +498,15 @@ export class Pedestrians {
       A[j * 4] = ph; A[j * 4 + 1] = p ? walk : 0.06 * Math.sin(w.phase * 0.7); A[j * 4 + 2] = rc; A[j * 4 + 3] = w.look;
       PA[j * 3] = w.pants.r; PA[j * 3 + 1] = w.pants.g; PA[j * 3 + 2] = w.pants.b;
     }
+    // round 33: close the gap between the far people with a shadow (front) and those without (back)
+    if (kfb) {
+      const from = farCap - kfb;
+      for (const [arr, w] of [[this.far.instanceMatrix.array, 16], [this.far.instanceColor!.array, 3], [fanim, 4], [fpants, 3], [fextra, 4]] as const) {
+        (arr as Float32Array).copyWithin(kf * w, from * w, farCap * w);
+      }
+    }
+    this.far.userData.shadowCount = kf;
+    kf += kfb;
     this.drawn = k + kf;
     this.drawnFar = kf;
     for (const [mesh, cnt, an, pa, ex] of [[this.near, k, this.ianim, this.ipants, this.iextra], [this.far, kf, this.fanim, this.fpants, this.fextra]] as const) {

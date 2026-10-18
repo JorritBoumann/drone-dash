@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PROP, PROP_NAMES, type CityLayout, type PropSpec } from './CityGenerator';
 import type { ModelParts } from './StreetAssets';
+import { SHADOW_NEAR, shadowSubset } from './shadowSubset';
 
 /**
  * Round 28: street furniture. CC0 models (Kay Lousberg, Kenney, Quaternius, CreativeTrio, Isa Lousberg via Poly Pizza)
@@ -53,6 +54,7 @@ export class StreetProps {
         // small, thin pieces cast no shadow (fewer shadow draws)
         m.castShadow = s.kind !== PROP.bollard && s.kind !== PROP.hydrant && s.kind !== PROP.chair && s.kind !== PROP.busstop;
         m.receiveShadow = true;
+        shadowSubset(m);
         k = { mesh: m, specs: [] };
         this.kinds.set(s.kind, k);
         this.mesh.add(m);
@@ -69,12 +71,21 @@ export class StreetProps {
     const r = this.range * (cam.y > 18 ? Math.max(0.35, 1 - (cam.y - 18) / 70) : 1);
     const r2 = r * r;
     let n = 0;
+    // round 33: the pieces within SHADOW_NEAR are written first, and only those cast a shadow (see shadowSubset)
+    const s2 = Math.min(SHADOW_NEAR * SHADOW_NEAR, r2);
     for (const k of this.kinds.values()) {
       let c = 0;
       for (const i of k.specs) {
         const s = this.specs[i];
         const dx = s.x - cam.x, dz = s.z - cam.z;
-        if (dx * dx + dz * dz < r2) k.mesh.setMatrixAt(c++, this.matrices[i]);
+        if (dx * dx + dz * dz < s2) k.mesh.setMatrixAt(c++, this.matrices[i]);
+      }
+      k.mesh.userData.shadowCount = c;
+      for (const i of k.specs) {
+        const s = this.specs[i];
+        const dx = s.x - cam.x, dz = s.z - cam.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 >= s2 && d2 < r2) k.mesh.setMatrixAt(c++, this.matrices[i]);
       }
       k.mesh.count = c;
       k.mesh.instanceMatrix.needsUpdate = true;

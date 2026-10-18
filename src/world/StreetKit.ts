@@ -58,6 +58,15 @@ function profile(pts: Array<[number, number]>, width: number, x = 0): THREE.Buff
   return g;
 }
 const box = (w: number, h: number, d: number, x: number, y: number, z: number) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+/** Round 33: a box without its top and bottom faces. */
+const sideBox = (w: number, h: number, d: number, x: number, y: number, z: number) => {
+  const g = new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+  const idx = g.index!.array, keep: number[] = [];
+  for (const gr of g.groups) if (gr.materialIndex !== 2 && gr.materialIndex !== 3) for (let k = gr.start; k < gr.start + gr.count; k++) keep.push(idx[k]);
+  g.setIndex(keep);
+  g.clearGroups();
+  return g;
+};
 
 const TYRE = '#1f2226';
 const TRIM_DARK = '#30353c';
@@ -352,50 +361,55 @@ function pedPart(g: THREE.BufferGeometry, part: number, limb: number, pivot: num
 
 const HIP = 0.9, KNEE = 0.5, SHOULDER = 1.47, ELBOW = 1.2, NECK = 1.55;
 
-/** Round 27: the near figure (far = false, ~330 triangles) or the far figure (~110 triangles). */
+/** Round 27: the near figure (far = false) or the far figure. Round 33: about 680 and 150 triangles (accessories included). */
 export function buildPedGeometry(far = false): THREE.BufferGeometry {
-  const P: THREE.BufferGeometry[] = [];
+  // round 33: P = parts that make the shadow, D = small details drawn after them (the shadow pass stops before D)
+  const P: THREE.BufferGeometry[] = [], D: THREE.BufferGeometry[] = [];
   // round 28: near figures get tapered round limbs, rounded hands and a smooth head (no boxes left but the shoes)
   const limb = (rt: number, rb: number, h: number, x: number, y: number, z: number, sz = 1) =>
     new THREE.CylinderGeometry(rt, rb, h, 6, 1).scale(1, 1, sz).translate(x, y, z);
   for (const s of [-1, 1]) {
     const L = s < 0 ? 0 : 1;
     if (far) {
-      P.push(pedPart(box(0.15, 0.42, 0.17, s * 0.092, 0.69, 0), 2, 1 + L, HIP)); // thigh
-      P.push(pedPart(box(0.125, 0.44, 0.14, s * 0.092, 0.29, -0.005), 6, 6 + L, KNEE)); // shin
-      P.push(pedPart(box(0.1, 0.31, 0.115, s * 0.245, 1.33, 0), 9, 3 + L, SHOULDER)); // upper arm (sleeve)
-      P.push(pedPart(box(0.088, 0.27, 0.1, s * 0.245, 1.065, 0), 10, 8 + L, ELBOW)); // forearm
+      // round 33: far limbs are open-ended boxes (8 triangles, no end caps: too small to see past 24 m)
+      P.push(pedPart(sideBox(0.15, 0.42, 0.17, s * 0.092, 0.69, 0), 2, 1 + L, HIP)); // thigh
+      P.push(pedPart(sideBox(0.125, 0.44, 0.14, s * 0.092, 0.29, -0.005), 6, 6 + L, KNEE)); // shin
+      P.push(pedPart(sideBox(0.1, 0.31, 0.115, s * 0.245, 1.33, 0), 9, 3 + L, SHOULDER)); // upper arm (sleeve)
+      P.push(pedPart(sideBox(0.088, 0.27, 0.1, s * 0.245, 1.065, 0), 10, 8 + L, ELBOW)); // forearm
     } else {
       P.push(pedPart(limb(0.083, 0.064, 0.44, s * 0.092, 0.69, 0), 2, 1 + L, HIP)); // thigh
       P.push(pedPart(limb(0.062, 0.047, 0.45, s * 0.092, 0.29, -0.005), 6, 6 + L, KNEE)); // shin
       P.push(pedPart(limb(0.056, 0.05, 0.32, s * 0.245, 1.33, 0), 9, 3 + L, SHOULDER)); // upper arm (sleeve)
       P.push(pedPart(limb(0.048, 0.04, 0.28, s * 0.245, 1.065, 0), 10, 8 + L, ELBOW)); // forearm
-      P.push(pedPart(box(0.1, 0.075, 0.25, s * 0.092, 0.04, 0.045), 4, 6 + L, KNEE)); // shoe
-      P.push(pedPart(new THREE.IcosahedronGeometry(0.048, 0).scale(0.8, 1.15, 0.95).translate(s * 0.245, 0.885, 0.005), 0, 8 + L, ELBOW)); // hand
+      D.push(pedPart(box(0.1, 0.075, 0.25, s * 0.092, 0.04, 0.045), 4, 6 + L, KNEE)); // shoe
+      D.push(pedPart(new THREE.IcosahedronGeometry(0.048, 0).scale(0.8, 1.15, 0.95).translate(s * 0.245, 0.885, 0.005), 0, 8 + L, ELBOW)); // hand
     }
   }
   // torso: shoulders wider than the waist
   P.push(pedPart(new THREE.CylinderGeometry(0.205, 0.165, 0.58, far ? 6 : 8).scale(1, 1, 0.6).translate(0, 1.25, 0), 9, 0, 0));
-  const ball = (r: number) => (far ? new THREE.IcosahedronGeometry(r, 0) : new THREE.SphereGeometry(r, 9, 7));
+  const ball = (r: number) => (far ? new THREE.IcosahedronGeometry(r, 0) : new THREE.SphereGeometry(r, 8, 6)); // round 33: was 9 x 7
   P.push(pedPart(ball(0.112).scale(0.93, 1.12, 1).translate(0, 1.68, 0.01), 0, 5, NECK)); // head
   P.push(pedPart(new THREE.IcosahedronGeometry(0.126, far ? 0 : 1).scale(1.0, 0.86, 1.02).translate(0, 1.718, -0.022), 3, 5, NECK, 8)); // hair cap
-  P.push(pedPart(new THREE.CylinderGeometry(0.19, 0.3, 0.44, far ? 6 : 10).scale(1, 1, 0.78).translate(0, 0.76, 0), 8, 0, 0, 1)); // dress skirt
+  P.push(pedPart(new THREE.CylinderGeometry(0.19, 0.3, 0.44, far ? 6 : 8).scale(1, 1, 0.78).translate(0, 0.76, 0), 8, 0, 0, 1)); // dress skirt
   if (!far) {
-    P.push(pedPart(box(0.34, 0.17, 0.21, 0, 0.92, 0), 2, 0, 0)); // hips
-    P.push(pedPart(limb(0.042, 0.048, 0.1, 0, 1.56, 0), 0, 5, NECK)); // neck
-    P.push(pedPart(box(0.03, 0.045, 0.035, 0, 1.665, 0.11), 0, 5, NECK)); // nose
+    D.push(pedPart(box(0.34, 0.17, 0.21, 0, 0.92, 0), 2, 0, 0)); // hips
+    D.push(pedPart(limb(0.042, 0.048, 0.1, 0, 1.56, 0), 0, 5, NECK)); // neck
+    D.push(pedPart(box(0.03, 0.045, 0.035, 0, 1.665, 0.11), 0, 5, NECK)); // nose
     P.push(pedPart(box(0.235, 0.3, 0.07, 0, 1.56, -0.095), 3, 5, NECK, 6)); // long hair
-    P.push(pedPart(new THREE.IcosahedronGeometry(0.058, 0).translate(0, 1.79, -0.11), 3, 5, NECK, 7)); // bun
-    P.push(pedPart(new THREE.CylinderGeometry(0.128, 0.132, 0.075, 10).translate(0, 1.795, -0.01), 5, 5, NECK, 2)); // cap
-    P.push(pedPart(box(0.2, 0.02, 0.13, 0, 1.765, 0.12), 5, 5, NECK, 2)); // cap brim
+    D.push(pedPart(new THREE.IcosahedronGeometry(0.058, 0).translate(0, 1.79, -0.11), 3, 5, NECK, 7)); // bun
+    P.push(pedPart(new THREE.CylinderGeometry(0.128, 0.132, 0.075, 8).translate(0, 1.795, -0.01), 5, 5, NECK, 2)); // cap
+    D.push(pedPart(box(0.2, 0.02, 0.13, 0, 1.765, 0.12), 5, 5, NECK, 2)); // cap brim
     P.push(pedPart(box(0.07, 0.25, 0.23, 0.225, 0.98, 0.02), 5, 0, 0, 3)); // shoulder bag
-    P.push(pedPart(box(0.025, 0.56, 0.04, 0, 0, 0).rotateZ(0.62).translate(0.0, 1.25, 0.115), 5, 0, 0, 3)); // bag strap (round 28: rotated about its own centre, it floated beside the person)
+    D.push(pedPart(box(0.025, 0.56, 0.04, 0, 0, 0).rotateZ(0.62).translate(0.0, 1.25, 0.115), 5, 0, 0, 3)); // bag strap (round 28: rotated about its own centre, it floated beside the person)
     P.push(pedPart(box(0.28, 0.36, 0.14, 0, 1.24, -0.17), 5, 0, 0, 4)); // backpack
-    P.push(pedPart(box(0.065, 0.115, 0.016, 0.245, 0.875, 0.06), 7, 9, ELBOW, 5)); // phone in the right hand
+    D.push(pedPart(box(0.065, 0.115, 0.016, 0.245, 0.875, 0.06), 7, 9, ELBOW, 5)); // phone in the right hand
     P.push(pedPart(new THREE.CylinderGeometry(0.2, 0.27, 0.46, 8).scale(1, 1, 0.72).translate(0, 0.77, 0), 5, 0, 0, 9)); // coat skirt
   }
-  const g = mergeGeometries(P)!;
-  for (const p of P) p.dispose();
+  const shadowVerts = P.reduce((n, p) => n + p.getAttribute('position').count, 0);
+  const all = [...P, ...D];
+  const g = mergeGeometries(all)!;
+  for (const p of all) p.dispose();
+  g.userData.shadowVerts = shadowVerts;
   return g;
 }
 

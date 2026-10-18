@@ -1,0 +1,74 @@
+ps -Ao pcpu,comm -r | head -3 > cpu-start.txt; PORT=5193 NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34c- node hud-probe28.mjs > fr-d-22-r33c.log 2>&1
+PORT=5193 NEW=1 DEV=desktop SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34c- node hud-probe28.mjs > fr-d-58-r33c.log 2>&1
+PORT=5193 NEW=1 DEV=desktop SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34c- node hud-probe28.mjs > fr-d-130-r33c.log 2>&1
+PORT=5193 SEEDS=4711,22 node boattrace33.mjs > boattrace33-r33c.log 2>&1
+PORT=5193 SEEDS=4711,22 node boattrace34.mjs > boattrace34-r33c.log 2>&1
+SEEDS=4711,22 node boattrace34.mjs > boattrace34-r34.log 2>&1
+NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34- node hud-probe28.mjs > fr-d-22.log 2>&1
+NEW=1 DEV=desktop SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34- node hud-probe28.mjs > fr-d-58.log 2>&1
+NEW=1 DEV=desktop SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34- node hud-probe28.mjs > fr-d-130.log 2>&1
+PORT=5193 SPOTS='[[130,-60,3,90,1.57]]' node breakdown34.mjs > bd-130-r33c.log 2>&1
+NEW=1 DEV=desktop SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34- node hud-probe28.mjs > fr-d-130.log 2>&1
+PORT=5193 SEED=130 node trisweep34.mjs > trisweep34-d-130-r33c.log 2>&1
+PORT=5193 SEED=22 node trisweep34.mjs > trisweep34-d-22-r33c.log 2>&1
+ps -Ao pcpu,comm -r | head -4 > cpu-recheck.txt; PORT=5193 NEW=1 DEV=desktop SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34c- node hud-probe28.mjs > fr-d-58-r33c-b.log 2>&1
+NEW=1 DEV=desktop SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34- node hud-probe28.mjs > fr-d-58-b.log 2>&1
+LABEL=base node waterlow34.mjs > wl.log 2>&1; LABEL=nod2 DBG=0,1,1,1 node waterlow34.mjs >> wl.log 2>&1; LABEL=nod3 DBG=1,0,1,1 node waterlow34.mjs >> wl.log 2>&1; LABEL=noswell DBG=1,1,0,1 node waterlow34.mjs >> wl.log 2>&1; LABEL=nod1 DBG=1,1,1,0 node waterlow34.mjs >> wl.log 2>&1
+LABEL=nod2 DBG=0,1,1,1 node waterlow34.mjs > wl.log 2>&1; LABEL=nod3 DBG=1,0,1,1 node waterlow34.mjs >> wl.log 2>&1; LABEL=noswell DBG=1,1,0,1 node waterlow34.mjs >> wl.log 2>&1; LABEL=nod1 DBG=1,1,1,0 node waterlow34.mjs >> wl.log 2>&1
+SEED=130 node trisweep34.mjs > trisweep34-d-130.log 2>&1
+SEED=22 node trisweep34.mjs > trisweep34-d-22.log 2>&1
+SEED=33 node trisweep34.mjs > trisweep34-d-33.log 2>&1
+SEEDS=130 LABEL=noboats BOATS=0 node waterlow34.mjs > wl2.log 2>&1; SEEDS=130 LABEL=nors RS=0 node waterlow34.mjs >> wl2.log 2>&1
+for c in 0.75,0.35 0.75,0.5 0.5,0.4 0.9,0.45; do PORT=5195 SEEDS=130,33 LABEL=n$c DBG=$c,1,1 node waterlow34.mjs >> wl3.log 2>&1; done
+PORT=5195 SEEDS=130 LABEL=flat DBG=1,0,0,0 node waterlow34.mjs > wl4.log 2>&1
+for c in 0.85,0.45,14,45 0.85,0.45,10,40 0.7,0.4,14,45; do PORT=5195 SEEDS=130,33 LABEL=m$c DBG=$c node waterlow34.mjs >> wl5.log 2>&1; done
+/private/tmp/claude-501/-Users-jorritboumann-projects-browser-game-lab/c70bfd6f-b51c-4910-b300-7e4c0c36b628/scratchpad/sync.sh; sleep 4; ps -Ao pcpu,comm -r | head -3 > cpu-final.txt
+SEED=22 node trisweep34.mjs > trisweep34-d-22-final.log 2>&1
+SEED=130 node trisweep34.mjs > trisweep34-d-130-final.log 2>&1
+SEED=33 node trisweep34.mjs > trisweep34-d-33-final.log 2>&1
+MOBILE=1 SEED=130 node trisweep34.mjs > trisweep34-m-130-final.log 2>&1
+node water31.mjs > water-d-r34.log 2>&1
+PORT=5193 GPU=0 node water31.mjs > water-d-r33c.log 2>&1
+node art27.mjs > art27-r34.log 2>&1
+PORT=5193 node art27.mjs > art27-r33c.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+SEEDS=22,58,4711,9001 node boats33.mjs > boats33.log 2>&1
+SEEDS=4711,22 node boattrace34.mjs > boattrace34-final.log 2>&1
+node bus-stop33.mjs > bus-stop33.log 2>&1
+DEV=desktop RUNS=2 node ff34.mjs > ff-d.log 2>&1
+DEV=iphone RUNS=1 node ff34.mjs > ff-m.log 2>&1
+ALT=12 SEEDS=11,22,33,44,7,58,91,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=11,22,33,44,7,58,91,130 node crash-classify-v.mjs > ccv20.log 2>&1
+node pad-people23.mjs > pad-people.log 2>&1
+node traffic-det29.mjs > traffic-det34.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 node farm-probe.mjs > farm-$s.log 2>&1; done
+NOORBIT=1 SEED=22 TOTAL=62 node cam-clip30.mjs > cam-clip30-22-noorbit.log 2>&1
+SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip24-22.log 2>&1
+SEED=58 TOTAL=62 node cam-clip24.mjs > cam-clip24-58.log 2>&1
+MOBILE=1 NOORBIT=1 SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip24-m-22-noorbit.log 2>&1
+node climb30.mjs > climb30-d.log 2>&1
+MOBILE=1 node climb30.mjs > climb30-m.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-perf.txt; node perf-street.mjs > perf-street-d.log 2>&1
+MOBILE=1 node perf-street.mjs > perf-street-m.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34f- node hud-probe28.mjs > fr-m-22.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34f- node hud-probe28.mjs > fr-m-58.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34f- node hud-probe28.mjs > fr-m-130.log 2>&1
+NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34f- node hud-probe28.mjs > fr-d-22-final.log 2>&1
+NEW=1 DEV=desktop SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34f- node hud-probe28.mjs > fr-d-58-final.log 2>&1
+NEW=1 DEV=desktop SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34f- node hud-probe28.mjs > fr-d-130-final.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-medal.txt; LINE=low SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-low-a.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > m-lazy-a.log 2>&1
+PORTS=4193,4194 RUNS=3 node firstload34.mjs > firstload34.log 2>&1
+/private/tmp/claude-501/-Users-jorritboumann-projects-browser-game-lab/c70bfd6f-b51c-4910-b300-7e4c0c36b628/scratchpad/sync.sh; sleep 4
+node water31.mjs > water-d-r34b.log 2>&1
+MOBILE=1 SEEDS=22,58 node water31.mjs > water-m-r34.log 2>&1
+node acceptance-probe.mjs > flat-b.log 2>&1
+PORT=5193 NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34c- node hud-probe28.mjs > fr-m-58-r33c.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr34g- node hud-probe28.mjs > fr-m-58-b.log 2>&1
+/private/tmp/claude-501/-Users-jorritboumann-projects-browser-game-lab/c70bfd6f-b51c-4910-b300-7e4c0c36b628/scratchpad/sync.sh; sleep 4
+node acceptance-probe.mjs > flat-c.log 2>&1
+DEV=desktop RUNS=2 node ff34.mjs > ff-d-c.log 2>&1
+DEV=iphone RUNS=1 node ff34.mjs > ff-m-c.log 2>&1
+SEEDS=130,33 node waterlow34.mjs > wl-final.log 2>&1
+PORTS=4193,4194 RUNS=3 node firstload34.mjs > firstload34-c.log 2>&1
+END

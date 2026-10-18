@@ -99,3 +99,9 @@ export function shadowSlab(mesh: THREE.Mesh, sun: THREE.Vector3, extent: number,
   };
   mesh.onAfterShadow = () => { g.setDrawRange(0, Infinity); };
 }
+
+/**
+ * Round 34: a layer the sun's shadow camera sees and the game cameras do not. A shadow proxy on it (one merged mesh
+ * standing in for several meshes' shadows) costs one draw in the shadow pass and none in the main pass.
+ */
+export const SHADOW_ONLY_LAYER = 2;

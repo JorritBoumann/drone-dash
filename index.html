@@ -6,6 +6,8 @@
     <meta name="theme-color" content="#f0a46b" />
     <link rel="icon" href="data:," />
     <title>Drone Dash</title>
+    <!-- Hide the unstyled HUD until styles.css applies (it arrives via JS in dev); styles.css reveals #app. -->
+    <style>html,body{margin:0;background:#f0a46b}#app{visibility:hidden}</style>
   </head>
   <body>
     <main id="app" data-state="title">

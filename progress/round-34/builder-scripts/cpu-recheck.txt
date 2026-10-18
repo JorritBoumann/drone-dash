@@ -1,0 +1,4 @@
+ %CPU COMM
+ 26.4 /Applications/Discord.app/Contents/Frameworks/Discord Helper.app/Contents/MacOS/Discord Helper
+ 17.7 /Applications/Brave Browser.app/Contents/Frameworks/Brave Browser Framework.framework/Versions/152.1.94.121/Helpers/Brave Browser Helper (Renderer).app/Contents/MacOS/Brave Browser Helper (Renderer)
+ 17.0 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer

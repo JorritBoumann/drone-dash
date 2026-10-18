@@ -1,0 +1,8 @@
+# Round 34 builder, blind picks written before opening .key.json. "better" = the side that looks better.
+water-1: B (bottom). Top smears into soft streaks in the bottom third; bottom has crisp ripples there.
+water-2: B (bottom). Same: top has radial streaks under the drone, bottom crisp ripples.
+water-3: tie (cannot tell them apart).
+water-4: A (top), weak. The glitter in the bottom part looks a little more defined on top.
+water-5: tie.
+water-6: tie.
+street-1: tie. street-2: tie. street-3: tie. street-4: tie. street-5: tie. street-6: tie. (No difference seen in shadows, trees or the drone.)

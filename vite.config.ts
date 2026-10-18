@@ -13,6 +13,18 @@ export default defineConfig(({ mode }) => {
       sourcemap: !single,
       chunkSizeWarningLimit: 900,
       assetsInlineLimit: single ? 100_000_000 : 4096,
+      // round 34: three.js in its own vendor chunk (cached across game updates), the post-processing passes in a second
+      // one; both load in parallel with the game code. The street assets and lil-gui stay lazy (dynamic imports).
+      rolldownOptions: single ? {} : {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: 'three', test: /[\\/]node_modules[\\/]three[\\/]build[\\/]/, priority: 20 },
+              { name: 'three-post', test: /[\\/]node_modules[\\/]three[\\/]examples[\\/]jsm[\\/](postprocessing|shaders)[\\/]/, priority: 10 },
+            ],
+          },
+        },
+      },
     },
   };
 });

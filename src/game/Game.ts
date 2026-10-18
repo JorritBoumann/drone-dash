@@ -781,6 +781,7 @@ export class Game {
     const altAboveGround = Math.max(0, dp.y - groundBelow - 0.85);
     this.cameraRig.update(realDt, d, this.world, altAboveGround, this.marker.position, this.viewIntent);
     this.updateTouchFraming(realDt);
+    this.updateDeskPop();
     this.env.updateOcclusion(this.camera.position, dp);
 
     // feedback: bumps
@@ -1734,6 +1735,27 @@ export class Game {
     if (this.touchShift < 0.5 && need === 0) this.touchShift = 0;
     if (this.touchShift > 0) this.camera.setViewOffset(w, h, 0, -this.touchShift, w, h);
     else if (this.camera.view) this.camera.clearViewOffset();
+  }
+
+  /**
+   * Round 34: desktop pop slot. The HUD keeps its centre pops just left of the drone; it gets the drone's screen box
+   * from here (centre projected, size from the distance, the same estimate as the touch framing), cheap per frame.
+   */
+  private updateDeskPop(): void {
+    if (this.state !== 'playing' || this.hud.isTouch) return;
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    const cam = this.camera;
+    cam.updateMatrixWorld();
+    const p = this.drone.group.position;
+    const v = this.tmp2.copy(p).project(cam);
+    if (v.z >= 1) { this.hud.setDroneScreen(w / 2, h / 2, 0, 0, false); return; }
+    const dist = Math.max(1, cam.position.distanceTo(p));
+    const f = h / 2 / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+    const elev = Math.asin(THREE.MathUtils.clamp((cam.position.y - p.y) / dist, -1, 1));
+    // the drone is about 3 m across (rotor tips) and 0.6 m tall
+    const hw = (f / dist) * 1.75 + 6;
+    const hh = (f / dist) * (1.55 * Math.abs(Math.sin(elev)) + 0.35 * Math.cos(elev)) + 6;
+    this.hud.setDroneScreen((v.x * 0.5 + 0.5) * w, (-v.y * 0.5 + 0.5) * h, hw, hh, true);
   }
 
   /**

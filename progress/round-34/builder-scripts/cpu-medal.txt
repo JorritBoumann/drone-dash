@@ -1,0 +1,3 @@
+ %CPU COMM
+ 29.8 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 24.3 /Applications/Discord.app/Contents/Frameworks/Discord Helper.app/Contents/MacOS/Discord Helper

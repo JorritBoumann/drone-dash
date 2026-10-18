@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { padGlyphTexture, radialTexture } from '../world/Textures';
 
 export type MarkerKind = 'pickup' | 'drop';
@@ -115,12 +116,12 @@ export class ObjectiveMarker {
     const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), this.parcelGlow);
     box.castShadow = true;
     const tape = new THREE.MeshStandardMaterial({ color: '#fff0c8', emissive: '#ffcf70', emissiveIntensity: 1.4 });
-    const t1 = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.72, 0.16), tape);
-    const t2 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.72, 0.92), tape);
+    // round 34: both tape bands in one mesh (one draw)
+    const t1 = new THREE.Mesh(mergeGeometries([new THREE.BoxGeometry(0.92, 0.72, 0.16), new THREE.BoxGeometry(0.16, 0.72, 0.92)])!, tape);
     const halo = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.04, 8, 48), new THREE.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false }));
     halo.rotation.x = Math.PI / 2;
     halo.name = 'halo';
-    this.parcel.add(box, t1, t2, halo);
+    this.parcel.add(box, t1, halo);
     this.group.add(this.parcel);
 
     // drop chevrons

@@ -31,7 +31,7 @@ html, body, #app {
 
 body { background: #f0b98a; }
 
-#app { position: relative; }
+#app { position: relative; visibility: visible; } /* index.html hides #app until this sheet applies */
 
 #game-canvas {
   display: block;
@@ -1443,3 +1443,13 @@ kbd {
 #app.touch .pop-tight .pop span { margin-top: 2px; padding: 2px 8px; font-size: 0.64rem; }
 #app.touch .pop-tight .event-pop strong, #app.touch .pop-tight .medal-pop strong { font-size: 1.25rem; }
 #app.touch .pop-tight .medal-pop .medal { width: 26px; height: 26px; }
+
+/* Round 34: on desktop the centre pops leave the drone too. Hud.deskPlace puts them just left of its screen box,
+   level with it, below the score panel and above the bottom meters (left / top / max-width set inline). */
+#app:not(.touch) .pop,
+#app:not(.touch) .slip-pop,
+#app:not(.touch) .medal-pop,
+#app:not(.touch) .event-pop {
+  white-space: normal;
+  text-align: center;
+}

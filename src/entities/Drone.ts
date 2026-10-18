@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SHADOW_ONLY_LAYER } from '../world/shadowSubset';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { FlightIntent } from '../core/InputController';
 import { FLIGHT } from '../game/config';
@@ -74,6 +75,13 @@ export class Drone {
   readonly guide = new THREE.Vector3();
   hasGuide = false;
   private guiding = false;
+  // round 34: a boat bow or stern carries the drone off to the side as a velocity (no position jump): direction, speed
+  // and the time it lasts after the last contact
+  private slideX = 0;
+  private slideZ = 0;
+  private slideV = 0;
+  private slideT = 0;
+  private slideCap = 0;
   private hopCarry = 0; // m/s of forward speed a ledge hop absorbed; handed back once the drone clears the ledge
   private readonly hopDir = new THREE.Vector3();
   private hopTop = 0; // top of the ledge being hopped; the carry is only handed back once the skids are above it
@@ -315,13 +323,29 @@ export class Drone {
       groups.get(mat)!.push(g);
       this.body.remove(mesh);
     }
+    // round 34: the parts that cast a shadow draw it as one merged proxy (shadow pass only): 4 shadow draws -> 1
+    const casters: THREE.BufferGeometry[] = [];
     for (const [mat, list] of groups) {
       const merged = mergeGeometries(list);
       if (!merged) continue;
       const m = new THREE.Mesh(merged, mat);
-      m.castShadow = !noShadow.includes(mat);
+      m.castShadow = false;
+      if (!noShadow.includes(mat)) {
+        const c = new THREE.BufferGeometry();
+        c.setAttribute('position', merged.getAttribute('position'));
+        casters.push(c);
+      }
       m.name = `drone-${mat.type}-${groups.size}`;
       this.body.add(m);
+    }
+    const shadowGeo = casters.length ? mergeGeometries(casters) : null;
+    if (shadowGeo) {
+      const proxy = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial({ colorWrite: false }));
+      proxy.castShadow = true;
+      proxy.receiveShadow = false;
+      proxy.layers.set(SHADOW_ONLY_LAYER);
+      proxy.name = 'drone-shadow';
+      this.body.add(proxy);
     }
   }
 
@@ -338,6 +362,7 @@ export class Drone {
     this.pitch = this.roll = 0;
     this.hop = 0;
     this.hopCarry = 0;
+    this.slideT = 0;
     this.hasGuide = false;
     this.group.rotation.set(0, yaw, 0);
     this.tilt.rotation.set(0, 0, 0);
@@ -353,6 +378,7 @@ export class Drone {
     this.prevVel.copy(this.velocity);
     this.hop = 0;
     this.hopCarry = 0;
+    this.slideT = 0;
     this.group.rotation.set(0, yaw, 0);
   }
 
@@ -467,6 +493,16 @@ export class Drone {
     const vResp = v.y < 0 && targetVy > v.y ? F.sinkBrakeResponse : F.climbResponse;
     v.y += (targetVy - v.y) * (1 - Math.exp(-vResp * dt));
 
+    // round 34: a boat's sideways carry, applied after the lateral grip so the grip does not eat it; it eases out
+    if (this.slideT > 0) {
+      this.slideT = Math.max(0, this.slideT - dt);
+      const want = this.slideV * Math.min(1, this.slideT / 0.12);
+      const along = v.x * this.slideX + v.z * this.slideZ;
+      if (along < want) { v.x += this.slideX * (want - along); v.z += this.slideZ * (want - along); }
+      const hs = Math.hypot(v.x, v.z);
+      if (hs > this.slideCap) { v.x *= this.slideCap / hs; v.z *= this.slideCap / hs; }
+    }
+
     // Sub-stepped integration so fast boosts never tunnel through thin walls
     const p = this.group.position;
     const travel = v.length() * dt;
@@ -579,20 +615,22 @@ export class Drone {
         const out = v.x * n.x + v.z * n.z;
         if (out < faceV + 0.6) { v.x += n.x * (faceV + 0.6 - out); v.z += n.z * (faceV + 0.6 - out); }
         const along = n.x * b.s + n.z * b.c; // contact normal along the boat's heading
-        if (Math.abs(along) > 0.6) {
-          const ox = p.x - b.x, oz = p.z - b.z, side = Math.sign(ox * b.c - oz * b.s) || 1;
-          const k = (faceV + 2) * side;
-          // a direct sideways slide (the drone's lateral grip would eat a pure velocity kick) plus some drift; contacts
-          // come only every few frames (the drone leaves the face faster than it moves), so each one slides a fair bit
-          p.x += b.c * k * h * 5;
-          p.z -= b.s * k * h * 5;
-          v.x += b.c * k * h * 6;
-          v.z -= b.s * k * h * 6;
-        }
         // round 33: cap what the boat adds, like a wall hit: the drone may leave the hull at the boat's own speed plus
         // 2 m/s (sideways and outwards), or keep the speed it already had; a low sailboat hull threw it at 8.5 m/s
         const cap = Math.hypot(b.vx, b.vz) + 2;
         const lim = Math.max(cap, Math.hypot(v0x, v0z));
+        if (Math.abs(along) > 0.6) {
+          // round 34: off a bow or stern the drone is carried sideways as a velocity that lasts a moment after each
+          // contact (round 32 slid the position 0.55 m in one frame, which read as a snap). The boat goes past.
+          const ox = p.x - b.x, oz = p.z - b.z, side = Math.sign(ox * b.c - oz * b.s) || 1;
+          this.slideX = b.c * side;
+          this.slideZ = -b.s * side;
+          this.slideV = Math.min(faceV + 2, lim);
+          this.slideT = 0.3;
+          this.slideCap = lim;
+          const sa = v.x * this.slideX + v.z * this.slideZ;
+          if (sa < this.slideV) { v.x += this.slideX * (this.slideV - sa); v.z += this.slideZ * (this.slideV - sa); }
+        }
         const hs = Math.hypot(v.x, v.z);
         if (hs > lim) { v.x *= lim / hs; v.z *= lim / hs; }
       }

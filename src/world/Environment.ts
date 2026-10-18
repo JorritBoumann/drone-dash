@@ -10,7 +10,7 @@ import { Traffic } from './Traffic';
 import { Pedestrians } from './Pedestrians';
 import { lotHash } from './BuildingDetail';
 import { StreetProps } from './StreetProps';
-import { SHADOW_FAR, shadowSubset } from './shadowSubset';
+import { SHADOW_FAR, shadowSubset, SHADOW_ONLY_LAYER } from './shadowSubset';
 import type { StreetAssetSet } from './StreetAssets';
 
 export const PALETTE = {
@@ -124,6 +124,7 @@ export class LightingRig {
     scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight(mood.sunLight, mood.sunIntensity);
     this.sun.castShadow = true;
+    this.sun.shadow.camera.layers.enable(SHADOW_ONLY_LAYER); // round 34: shadow proxies (see shadowSubset.ts)
     this.sun.shadow.mapSize.set(mapSize, mapSize);
     const cam = this.sun.shadow.camera;
     cam.left = -extent;
@@ -222,7 +223,7 @@ export class Environment {
   /** Round 28: CC0 street furniture (after the assets load) and the near-tree models (two species, distance LOD). */
   streetProps: StreetProps | null = null;
   private treeLod: Array<{ rec: PropRec; species: number; matrix: THREE.Matrix4; color: THREE.Color; blob: PropRec['parts']; state: number }> = [];
-  private treeNear: Array<{ trunk: THREE.InstancedMesh; canopy: THREE.InstancedMesh }> = [];
+  private treeNear: Array<{ trunk: THREE.InstancedMesh; canopy: THREE.InstancedMesh; shadow: THREE.InstancedMesh }> = [];
   private treeRange = 95;
   treesNear = [0, 0];
   readonly mobile: boolean;
@@ -611,11 +612,16 @@ export class Environment {
       const trunk = new THREE.InstancedMesh(trunkG, trunkMat, cap);
       const canopy = new THREE.InstancedMesh(canopyG, canopyMat, cap);
       canopy.setColorAt(0, new THREE.Color());
-      for (const m of [trunk, canopy]) { m.count = 0; m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false; }
+      // round 34: trunk and canopy cast their shadow as one proxy (shadow pass only, one draw instead of two)
+      const sg = mergeGeometries([trunkG, canopyG].map((g) => { const b = new THREE.BufferGeometry(); b.setAttribute('position', (g.index ? g.toNonIndexed() : g).getAttribute('position')); return b; }));
+      const shadow = new THREE.InstancedMesh(sg ?? trunkG, new THREE.MeshBasicMaterial({ colorWrite: false }), cap);
+      shadow.layers.set(SHADOW_ONLY_LAYER);
+      for (const m of [trunk, canopy, shadow]) { m.count = 0; m.castShadow = m === shadow; m.receiveShadow = m !== shadow; m.frustumCulled = false; }
       trunk.name = `tree-${species[sp]}-trunks`;
       canopy.name = `tree-${species[sp]}-canopies`;
-      this.treeNear.push({ trunk, canopy });
-      added.push(trunk, canopy);
+      shadow.name = `tree-${species[sp]}-shadow`;
+      this.treeNear.push({ trunk, canopy, shadow });
+      added.push(trunk, canopy, shadow);
     }
     this.pendingTreeLod = list;
     return added;
@@ -684,11 +690,12 @@ export class Environment {
       const k = n[t.species]++;
       near.trunk.setMatrixAt(k, t.matrix);
       near.canopy.setMatrixAt(k, t.matrix);
+      near.shadow.setMatrixAt(k, t.matrix);
       near.canopy.setColorAt(k, t.color);
     }
     this.treeNear.forEach((m, sp) => {
-      m.trunk.count = m.canopy.count = n[sp];
-      m.trunk.instanceMatrix.needsUpdate = m.canopy.instanceMatrix.needsUpdate = true;
+      m.trunk.count = m.canopy.count = m.shadow.count = n[sp];
+      m.trunk.instanceMatrix.needsUpdate = m.canopy.instanceMatrix.needsUpdate = m.shadow.instanceMatrix.needsUpdate = true;
       if (m.canopy.instanceColor) m.canopy.instanceColor.needsUpdate = true;
     });
     for (const m of dirty) m.instanceMatrix.needsUpdate = true;

@@ -290,6 +290,86 @@ export class Hud {
     return this.touchGeo;
   }
 
+  // round 34: desktop pop slot. Like the round 24 touch slot, the centre pops leave the drone: they sit just left of
+  // its screen box (Game.updateDeskPop feeds an estimate every frame), below the score panel and above the bottom
+  // meters and the view hint. The HUD boxes are measured every 300 ms, never per frame.
+  private deskDrone = { cx: 0, cy: 0, hw: 0, hh: 0, on: false };
+  private deskAt = -1e9;
+  private deskGeo: { w: number; h: number; upper: number; lower: number; left: number } | null = null;
+  private deskCur: { el: HTMLElement; x: number; y: number; t: number; ew: number; eh: number; mw: string } | null = null;
+  private readonly viewHintEl = document.getElementById('view-hint');
+
+  /** Round 34: the drone's screen box (CSS px, centre and half sizes) on desktop; `on` false when it is off screen. */
+  setDroneScreen(cx: number, cy: number, hw: number, hh: number, on: boolean): void {
+    const d = this.deskDrone;
+    d.cx = cx; d.cy = cy; d.hw = hw; d.hh = hh; d.on = on;
+  }
+
+  private deskLayout(w: number, h: number): { w: number; h: number; upper: number; lower: number; left: number } {
+    const now = performance.now();
+    const g = this.deskGeo;
+    if (g && now - this.deskAt < 300 && g.w === w && g.h === h) return g;
+    this.deskAt = now;
+    const R = (el: Element | null): DOMRect | null => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? r : null;
+    };
+    const score = R(this.hudScoreEl);
+    const bottom = R(this.hudBottomEl);
+    const hint = R(this.viewHintEl);
+    let lower = bottom ? bottom.top : h - 90;
+    if (hint && hint.left < w / 2) lower = Math.min(lower, hint.top);
+    // the edge marker (diamond and distance pill) sits on the left edge: the slot starts right of it
+    this.deskGeo = { w, h, upper: (score ? score.bottom : 90) + 10, lower: lower - 10, left: Math.max(score ? score.left : 18, 18) + 78 };
+    return this.deskGeo;
+  }
+
+  /** Round 34: where a desktop centre pop goes now (its centre, and the slot width), from the drone's screen box. */
+  private deskTarget(el: HTMLElement, size: { ew: number; eh: number; mw: string } | null): { x: number; y: number; ew: number; eh: number; mw: string } {
+    const w = window.innerWidth, h = window.innerHeight;
+    const g = this.deskLayout(w, h);
+    const d = this.deskDrone;
+    const cx = d.on ? d.cx : w / 2, cy = d.on ? d.cy : h * 0.55, hw = d.on ? d.hw : 90;
+    // right edge: clear of the drone (the pop scales to 1.15 as it pops in)
+    const r = Math.min(w / 2 - 110, cx - hw - 26);
+    const wid = Math.max(170, r - g.left);
+    // measured once when the pop shows (no layout read per frame); the width cap only changes in 40 px steps
+    const mw = `${Math.max(170, Math.floor(wid / 40) * 40)}px`;
+    if (!size || size.mw !== mw) {
+      el.style.maxWidth = mw;
+      size = { ew: el.offsetWidth, eh: el.offsetHeight, mw };
+    }
+    const ew = Math.min(size.ew, wid), eh = size.eh;
+    const x = Math.max(g.left + ew * 0.58, r - ew * 0.58);
+    // vertically level with the drone; room above for the rise as it fades, never into the score panel or the meters
+    const lo = g.upper + eh * 1.15, hi = g.lower - eh * 0.6;
+    const y = lo < hi ? Math.min(hi, Math.max(lo, cy)) : (g.upper + g.lower) / 2;
+    return { x, y, ew: size.ew, eh: size.eh, mw };
+  }
+
+  /** Round 34: place (or follow) the desktop centre pop that is up. */
+  private deskPlace(el: HTMLElement, fresh: boolean): void {
+    const c0 = this.deskCur;
+    const t = this.deskTarget(el, !fresh && c0 && c0.el === el ? c0 : null);
+    const now = performance.now();
+    const c = this.deskCur;
+    if (fresh || !c || c.el !== el) this.deskCur = { el, x: t.x, y: t.y, t: now, ew: t.ew, eh: t.eh, mw: t.mw };
+    else {
+      c.ew = t.ew; c.eh = t.eh; c.mw = t.mw;
+      // ease after the drone (it moves little on screen in the chase view); small moves are ignored
+      const k = 1 - Math.exp(-8 * Math.min(0.1, (now - c.t) / 1000));
+      c.t = now;
+      if (Math.abs(t.x - c.x) > 2 || Math.abs(t.y - c.y) > 12) {
+        c.x += (t.x - c.x) * k;
+        c.y += (t.y - c.y) * k;
+      }
+    }
+    const p = this.deskCur!;
+    el.style.left = `${p.x.toFixed(0)}px`;
+    el.style.top = `${p.y.toFixed(0)}px`;
+  }
+
   /** Round 24: a centre pop is on screen (the marker keeps out of the pop slot meanwhile). */
   get popShowing(): boolean {
     const a = this.cActive;
@@ -399,15 +479,24 @@ export class Hud {
     if (this.isTouch && this.popLower > 0) {
       const half = m.el.offsetHeight * 0.56;
       m.el.style.top = `${Math.min(this.popCy, this.popLower - half).toFixed(1)}px`;
-    } else m.el.style.top = '';
+      m.el.style.left = '';
+      m.el.style.maxWidth = '';
+    } else if (!this.isTouch) this.deskPlace(m.el, true);
+    else {
+      m.el.style.top = '';
+      m.el.style.left = '';
+      m.el.style.maxWidth = '';
+    }
     this.cActive = { kind: m.kind, el: m.el, shownAt: now, minMs: m.minMs, durMs: m.durMs };
   }
 
   /** Every frame: show the next queued centre message once the one up has been read. */
   tickCentre(): void {
-    if (!this.cQueue.length) return;
     const now = performance.now();
     const a = this.cActive;
+    // round 34: on desktop the pop that is up stays beside the drone
+    if (a && !this.isTouch && now - a.shownAt < a.durMs + 300) this.deskPlace(a.el, false);
+    if (!this.cQueue.length) return;
     if (a && now - a.shownAt < a.durMs && now - a.shownAt < a.minMs) return;
     while (this.cQueue.length) {
       const m = this.cQueue.shift()!;

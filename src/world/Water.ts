@@ -97,26 +97,45 @@ export const MAX_WAKES = 8;
 export const MAX_PIERS = 4;
 
 /** Tileable detail normal map (RGB) with a foam noise height in alpha, made in code (no file). */
-function detailNormalTexture(size: number): THREE.DataTexture {
-  const rng = createSeededRandom(31);
-  const waves = Array.from({ length: 18 }, () => {
-    let kx = 0, ky = 0;
-    while (kx === 0 && ky === 0) { kx = Math.round((rng() - 0.5) * 16); ky = Math.round((rng() - 0.5) * 16); }
-    const kl = Math.hypot(kx, ky);
-    return { kx, ky, a: (0.6 + rng()) / Math.sqrt(kl), p: rng() * 6.283 };
-  });
+function detailNormalTexture(size: number, near = false): THREE.DataTexture {
+  const rng = createSeededRandom(near ? 34 : 31);
+  // round 34: the near texture has many more, evenly turned short ripples (no few long crests that read as streaks)
+  const waves = near
+    ? Array.from({ length: 56 }, (_, i) => {
+      const ang = (i / 56) * Math.PI * 2 + rng() * 0.11;
+      const kr = 7 + rng() * 9;
+      let kx = Math.round(Math.cos(ang) * kr), ky = Math.round(Math.sin(ang) * kr);
+      if (kx === 0 && ky === 0) kx = 7;
+      const kl = Math.hypot(kx, ky);
+      return { kx, ky, a: (0.7 + rng() * 0.6) / kl, p: rng() * 6.283 };
+    })
+    : Array.from({ length: 18 }, () => {
+      let kx = 0, ky = 0;
+      while (kx === 0 && ky === 0) { kx = Math.round((rng() - 0.5) * 16); ky = Math.round((rng() - 0.5) * 16); }
+      const kl = Math.hypot(kx, ky);
+      return { kx, ky, a: (0.6 + rng()) / Math.sqrt(kl), p: rng() * 6.283 };
+    });
+  // round 34: sin(A + B) = sin A cos B + cos A sin B, with A from x and B from y: one row of sines per wave instead of a
+  // sine per pixel and wave (the 56-wave near texture would cost tens of ms at load)
   const h = new Float32Array(size * size);
-  for (let y = 0; y < size; y++) {
+  const sx = new Float32Array(size), cx = new Float32Array(size);
+  for (const w of waves) {
     for (let x = 0; x < size; x++) {
-      let v = 0;
-      for (const w of waves) v += w.a * Math.sin(((w.kx * x + w.ky * y) / size) * 6.2831853 + w.p);
-      h[y * size + x] = v;
+      const a = (w.kx * x / size) * 6.2831853 + w.p;
+      sx[x] = w.a * Math.sin(a);
+      cx[x] = w.a * Math.cos(a);
+    }
+    for (let y = 0; y < size; y++) {
+      const b = (w.ky * y / size) * 6.2831853;
+      const cb = Math.cos(b), sb = Math.sin(b);
+      const row = y * size;
+      for (let x = 0; x < size; x++) h[row + x] += sx[x] * cb + cx[x] * sb;
     }
   }
   let lo = Infinity, hi = -Infinity;
   for (const v of h) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
   const data = new Uint8Array(size * size * 4);
-  const s = 2.2;
+  const s = near ? 3.2 : 2.2;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const l = h[y * size + ((x - 1 + size) % size)], r = h[y * size + ((x + 1) % size)];
@@ -193,6 +212,7 @@ export class Water {
   readonly mesh: THREE.Mesh;
   private readonly material: THREE.MeshStandardMaterial;
   private readonly normalTex: THREE.DataTexture;
+  private readonly nearTex: THREE.DataTexture | null;
   readonly uniforms: Record<string, THREE.IUniform>;
   /** Wakes: (x, z, heading, speed) and (half length, half beam, sin heading, cos heading) per boat; count in uWakeN. */
   readonly wakeA: THREE.Vector4[] = Array.from({ length: MAX_WAKES }, () => new THREE.Vector4());
@@ -204,12 +224,14 @@ export class Water {
   constructor(mood: number, readonly lite: boolean) {
     const mw = MOOD_WATER[mood] ?? MOOD_WATER[0];
     this.normalTex = detailNormalTexture(lite ? 128 : 256);
+    this.nearTex = lite ? null : detailNormalTexture(256, true);
     this.snap = lite ? GRID.lite.step : GRID.full.step;
     const gp = lite ? GRID.lite : GRID.full;
     const geo = gridGeometry(gp.step, gp.grow, 1300, gp.uniform);
     this.uniforms = {
       uTime: { value: 0 },
       uDetail: { value: this.normalTex },
+      uNear: { value: this.nearTex ?? this.normalTex },
       uDeep: { value: new THREE.Color(mw.deep) },
       uShallow: { value: new THREE.Color(mw.shallow) },
       uFoamCol: { value: new THREE.Color(mw.foam) },
@@ -229,7 +251,7 @@ export class Water {
       color: mw.deep, roughness: 0.16, metalness: 0, envMapIntensity: 0.35,
     });
     this.material.onBeforeCompile = (shader) => this.patch(shader);
-    this.material.customProgramCacheKey = () => `water33-${lite ? 'lite' : 'full'}`;
+    this.material.customProgramCacheKey = () => `water34-${lite ? 'lite' : 'full'}`;
     this.mesh = new THREE.Mesh(geo, this.material);
     this.mesh.position.y = WATER_Y;
     this.mesh.receiveShadow = true;
@@ -260,6 +282,7 @@ ${GLSL_WAVES(lite)}
   vWaterW = (modelMatrix * vec4(transformed, 1.0)).xyz;`);
     shader.fragmentShader = `uniform float uTime;
 uniform sampler2D uDetail;
+uniform sampler2D uNear;
 uniform vec3 uDeep, uShallow, uFoamCol, uSkyTop, uSkyMid, uSkyHorizon, uSkySun, uSunDir;
 uniform float uRefl;
 uniform float uChop;
@@ -315,10 +338,14 @@ vec3 skyRefl(vec3 d){
   foamN = foamN * 0.6 + mix(d1.w, d2.w, smoothstep(0.001, 0.05, kFine)) * 0.4;
   // round 33: a fine near layer (ripples about 2 m across) right round the camera, where one pixel covers less than a
   // few centimetres, so the water under a low drone stays crisp instead of smearing into soft streaks
-  float kNear = (1.0 - smoothstep(10.0, 40.0, camD)) * (1.0 - smoothstep(0.012, 0.06, foot));
-  vec2 uv3 = mat2(0.6, 0.8, -0.8, 0.6) * wxz * 0.47 + vec2(uTime * 0.035, uTime * 0.027);
+  // round 34: reaches further (14 to 45 m, pixel footprint to 11 cm): the whole bottom third of a low view; only for a
+  // low camera (under 8 to 13 m), so the 14 m glint views keep their round 33 glitter
+  float kNear = (1.0 - smoothstep(14.0, 45.0, camD)) * (1.0 - smoothstep(0.02, 0.11, foot)) * (1.0 - smoothstep(8.0, 13.0, camH));
+  vec2 uv3 = mat2(0.6, 0.8, -0.8, 0.6) * wxz * 0.3 + vec2(uTime * 0.035, uTime * 0.027);
   vec2 uv3dx = dFdx(uv3), uv3dy = dFdy(uv3);
-  if (kNear > 0.001) { vec4 d3 = textureGrad(uDetail, uv3, uv3dx, uv3dy); dn += (d3.xy * 2.0 - 1.0) * 0.2 * kNear; }`}
+  // round 34: the near layer is its own texture of short ripples turned every way, and it takes over from the coarser
+  // layers right round the camera (their few long crests read as soft streaks in the bottom of a low view)
+  if (kNear > 0.001) { vec4 d3 = textureGrad(uNear, uv3, uv3dx, uv3dy); dn = mix(dn, (d3.xy * 2.0 - 1.0) * 0.45, kNear * 0.85); }`}
   dn *= mix(1.0, mix(0.55, 1.05, wind) * uChop, hiK); // uChop: how breezy the mood's bay looks from above
   dn += dnB;
   // shore: shallow colour and lapping foam along the seawall, foam round the pier legs

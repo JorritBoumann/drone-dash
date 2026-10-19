@@ -64,6 +64,7 @@ export class InputController {
   /** Fires the first time the player orbits or zooms the view in a run (hides the first-run hint). */
   onView: (() => void) | null = null;
   private readonly cleanups: Array<() => void> = [];
+  private readonly holdButtons: HTMLElement[] = [];
   /** Fires on keydown of Escape / P (pause toggle). */
   onPauseKey: (() => void) | null = null;
   /** Fires on any user gesture (used to unlock audio). */
@@ -187,6 +188,8 @@ export class InputController {
     };
     this.listen(stickEl, 'pointerup', release);
     this.listen(stickEl, 'pointercancel', release);
+    // round 41 (Codex audit 1): a stick that loses its pointer capture (app switch, OS gesture) lets go too
+    this.listen(stickEl, 'lostpointercapture', release);
 
     this.bindHold(upBtn, (v) => (this.touchUp = v));
     this.bindHold(downBtn, (v) => (this.touchDown = v));
@@ -274,6 +277,7 @@ export class InputController {
   }
 
   private bindHold(el: HTMLElement, set: (v: boolean) => void): void {
+    this.holdButtons.push(el);
     this.listen(el, 'pointerdown', (e) => {
       e.preventDefault();
       this.onGesture?.();
@@ -288,6 +292,7 @@ export class InputController {
     this.listen(el, 'pointerup', off);
     this.listen(el, 'pointercancel', off);
     this.listen(el, 'pointerleave', off);
+    this.listen(el, 'lostpointercapture', off);
   }
 
   private listen(target: EventTarget, type: string, fn: (e: Event) => void): void {
@@ -325,6 +330,29 @@ export class InputController {
     this.endDrag();
     this.viewYaw = this.viewPitch = this.viewZoom = 0;
     this.touchUp = this.touchDown = this.touchBoost = false;
+    // round 41 (Codex audit 1): blur, app switch or pause also lets go of the virtual stick and the touch buttons
+    this.releaseStick();
+    for (const el of this.holdButtons) el.classList.remove('is-pressed');
+  }
+
+  private releaseStick(): void {
+    const id = this.stick.id;
+    this.stick.id = null;
+    this.stick.x = 0;
+    this.stick.y = 0;
+    if (id !== null) {
+      try {
+        if (this.stickEl.hasPointerCapture(id)) this.stickEl.releasePointerCapture(id);
+      } catch {
+        /* already released */
+      }
+    }
+    this.updateKnob();
+  }
+
+  /** Test hook: the stick's state (pointer id, axes and the knob transform). */
+  stickState(): { id: number | null; x: number; y: number; knob: string; pressed: number } {
+    return { id: this.stick.id, x: this.stick.x, y: this.stick.y, knob: this.knobEl.style.transform, pressed: this.holdButtons.filter((b) => b.classList.contains('is-pressed')).length };
   }
 
   read(out: FlightIntent): FlightIntent {

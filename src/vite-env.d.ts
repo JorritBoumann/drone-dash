@@ -113,6 +113,10 @@ interface DroneDashApi {
   /** Round 40: the minimap (visible, radius in m) and probe data. */
   readonly minimap?: { visible: boolean; radius: number; draws: number; msMean: number; msMax: number; box: { l: number; t: number; r: number; b: number } | null; last: Record<string, number | boolean> | null };
   minimapToggle?(): void;
+  canvasHud?(reset?: boolean): Record<string, unknown>;
+  canvasHudOff?(off: boolean): void;
+  session?(): { completes: number; last: Record<string, unknown> | null; seed: number; mode: string };
+  stick?(): { id: number | null; x: number; y: number; knob: string; pressed: number };
   minimapStats?(reset?: boolean): { draws: number; msMean: number; msMax: number };
   /** Debug: move the drone (yaw 0 faces -z) and set its horizontal speed along the heading. */
   camCorridors(): Array<{ axis: "x" | "z"; c: number; hw: number; a0: number; a1: number; roofY: number }>;

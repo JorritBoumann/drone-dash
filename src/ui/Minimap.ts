@@ -1,3 +1,4 @@
+import { storeGet, storeSet } from '../core/storage';
 /**
  * Round 40: the minimap. A round, heading-up map (straight ahead is always up) of about `radius` metres round the drone.
  *
@@ -398,13 +399,16 @@ export class Minimap {
     // the CSS size and pixel ratio are read only after a resize (one listener for the page's life; see dispose)
     window.addEventListener('resize', this.onResize);
     try {
-      const v = window.localStorage.getItem(STORE_KEY);
+      const v = storeGet(STORE_KEY);
       if (v === '0') this.visible = false;
     } catch {
       /* storage unavailable: default on */
     }
     this.apply();
   }
+
+  /** Round 41: called after each redraw (the canvas HUD uploads this canvas as its minimap texture then). */
+  onDrawn: (() => void) | null = null;
 
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
@@ -423,7 +427,7 @@ export class Minimap {
   toggle(): void {
     this.visible = !this.visible;
     try {
-      window.localStorage.setItem(STORE_KEY, this.visible ? '1' : '0');
+      storeSet(STORE_KEY, this.visible ? '1' : '0');
     } catch {
       /* not remembered */
     }
@@ -483,6 +487,7 @@ export class Minimap {
     // marks keep a readable size on the small phone map (at least 85% of the desktop marks)
     frame.markScale = Math.max(0.85, css / 160);
     const r = drawMinimap(ctx, 0, 0, css, this.layer, frame);
+    this.onDrawn?.();
     const ms = performance.now() - t0;
     this.draws++;
     this.msSum += ms;

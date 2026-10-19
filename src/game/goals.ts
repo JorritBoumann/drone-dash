@@ -1,3 +1,4 @@
+import { storeGet, storeSet } from '../core/storage';
 import { GOALS } from './config';
 
 export type Tier = { name: string; score: number };
@@ -28,7 +29,7 @@ const BEST_TIER_KEY = 'drone-dash-best-tier-v1';
 
 export function readBestTier(): number {
   try {
-    return Math.max(0, Math.min(GOALS.tiers.length, Number(window.localStorage.getItem(BEST_TIER_KEY)) || 0));
+    return Math.max(0, Math.min(GOALS.tiers.length, Number(storeGet(BEST_TIER_KEY)) || 0));
   } catch {
     return 0;
   }
@@ -36,7 +37,7 @@ export function readBestTier(): number {
 
 export function writeBestTier(tier: number): void {
   try {
-    window.localStorage.setItem(BEST_TIER_KEY, String(tier));
+    storeSet(BEST_TIER_KEY, String(tier));
   } catch {
     /* storage unavailable */
   }

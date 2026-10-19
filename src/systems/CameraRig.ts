@@ -1,3 +1,4 @@
+import { storeGet, storeSet } from '../core/storage';
 import * as THREE from 'three';
 import { CAMERA, FLIGHT } from '../game/config';
 import type { Drone } from '../entities/Drone';
@@ -128,7 +129,7 @@ export class CameraRig {
 
   constructor(private readonly camera: THREE.PerspectiveCamera) {
     try {
-      const z = Number(localStorage.getItem(ZOOM_KEY));
+      const z = Number(storeGet(ZOOM_KEY));
       if (Number.isFinite(z)) this.zoom = this.wantZoom = THREE.MathUtils.clamp(z, ORBIT.zoomMin, ORBIT.zoomMax);
     } catch {
       /* storage blocked */
@@ -208,7 +209,7 @@ export class CameraRig {
     if (this.zoomDirty && (this.zoomIdle += dt) > 0.6) {
       this.zoomDirty = false;
       try {
-        localStorage.setItem(ZOOM_KEY, this.wantZoom.toFixed(3));
+        storeSet(ZOOM_KEY, this.wantZoom.toFixed(3));
       } catch {
         /* storage blocked */
       }

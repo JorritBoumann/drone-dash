@@ -1,3 +1,4 @@
+import { storeGet, storeSet } from '../core/storage';
 import { ARP_ORDER, BPM, FINAL_PROG, midi, OVER_PROG_MEDAL, OVER_PROG_NONE, RUN_ARP_ORDERS, RUN_BASS_VARIANTS, RUN_FORM, RUN_LEAD, RUN_LEAD_ORDER, STEP, TITLE_PLUCK, TITLE_PROG } from './music';
 
 export type MusicScene = 'off' | 'title' | 'run' | 'final' | 'over';
@@ -17,14 +18,14 @@ const FINAL_OUT = 12; // s left: a time bonus has to lift the clock this far bef
 
 function readMusicPref(): boolean {
   try {
-    return window.localStorage.getItem(MUSIC_KEY) !== '0';
+    return storeGet(MUSIC_KEY) !== '0';
   } catch {
     return true;
   }
 }
 function writeMusicPref(on: boolean): void {
   try {
-    window.localStorage.setItem(MUSIC_KEY, on ? '1' : '0');
+    storeSet(MUSIC_KEY, on ? '1' : '0');
   } catch {
     /* storage unavailable */
   }

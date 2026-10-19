@@ -66,7 +66,12 @@ export class Slipstream {
     this.since = 99;
   }
 
-  update(dt: number, p: THREE.Vector3, speed: number, world: CollisionWorld, narrow = false, van = false): SlipEvent {
+  /**
+   * `dt` is the scaled (slow motion) step: it moves the drone, so the meter fills by the draft distance it really flew.
+   * Round 41 (Codex review): `realDt` is the wall-clock step. The chain window, the grace before the meter drains, the
+   * drain and the draft clocks are elapsed time, so slow motion neither stretches nor shrinks them.
+   */
+  update(dt: number, p: THREE.Vector3, speed: number, world: CollisionWorld, narrow = false, van = false, realDt = dt): SlipEvent {
     const S = SLIPSTREAM;
     let q = 0;
     this.hug = 0;
@@ -87,11 +92,11 @@ export class Slipstream {
     const intro = this.payouts === 0 && speed > S.introMinSpeed;
     const qFill = intro ? Math.max(q, this.wall * S.introSpeedFloor) : q;
     this.rate = qFill > S.minQuality ? S.fill * qFill * speed * (1 + S.hugBonus * this.hug) : 0;
-    this.intensity += (q - this.intensity) * (1 - Math.exp(-6 * dt));
+    this.intensity += (q - this.intensity) * (1 - Math.exp(-6 * realDt));
     this.drafting = qFill > S.minQuality;
     let ev: SlipEvent = null;
-    if (this.draftClock >= 0) this.draftClock += dt;
-    this.sincePayout += dt;
+    if (this.draftClock >= 0) this.draftClock += realDt;
+    this.sincePayout += realDt;
     // a chain only climbs while payouts come quickly: a slow pass loses it
     if (this.chain > 0 && this.sincePayout > S.chainWindow) this.chain = 0;
     if (this.drafting) {
@@ -102,8 +107,8 @@ export class Slipstream {
       this.paceMetres += this.rate * dt;
       this.paceTime += dt;
     } else {
-      this.since += dt;
-      if (this.since > S.grace) this.level = Math.max(0, this.level - S.drain * dt);
+      this.since += realDt;
+      if (this.since > S.grace) this.level = Math.max(0, this.level - S.drain * realDt);
       if (this.since > S.chainReset) this.chain = 0;
     }
     if (this.level >= 1) {

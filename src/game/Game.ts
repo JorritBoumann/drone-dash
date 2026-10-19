@@ -1,3 +1,4 @@
+import { storeGet, storeSet } from '../core/storage';
 import * as THREE from 'three';
 import { InputController, type FlightIntent, type ViewIntent } from '../core/InputController';
 import { Loop } from '../core/Loop';
@@ -37,6 +38,8 @@ const MARK_COMMIT = 2;
 const MARK_AWAY = 20;
 const GATE_SAVE_SHARE = 0.08;
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
+import { completeSession, onPlatform, type SessionDetail } from '../core/platform';
+import { CanvasHud } from '../ui/CanvasHud';
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
@@ -71,14 +74,14 @@ const MEDAL_COLORS = [new THREE.Color('#e0955a'), new THREE.Color('#eef2f7'), ne
 
 function readBest(): number {
   try {
-    return Number(window.localStorage.getItem(BEST_KEY)) || 0;
+    return Number(storeGet(BEST_KEY)) || 0;
   } catch {
     return 0;
   }
 }
 function writeBest(v: number): void {
   try {
-    window.localStorage.setItem(BEST_KEY, String(v));
+    storeSet(BEST_KEY, String(v));
   } catch {
     /* storage unavailable */
   }
@@ -349,21 +352,28 @@ export class Game {
     this.input.onView = () => this.hud.viewUsed();
     // any press anywhere (title card included) starts the sound; the title loop plays from the first one
     for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(type, this.onAnyGesture, true);
-    this.hud.musicButton.addEventListener('click', this.onMusicButton);
+    this.onUi(this.hud.musicButton, 'click', this.onMusicButton);
     this.audio.setMusicScene('title');
     this.input.onPauseKey = () => {
       if (this.state === 'playing') this.pause();
       else if (this.state === 'paused') this.resume();
     };
-    this.hud.playButton.addEventListener('click', () => this.start());
-    this.hud.againButton.addEventListener('click', () => this.start());
-    this.hud.resumeButton.addEventListener('click', () => this.resume());
-    this.hud.restartButton.addEventListener('click', () => this.start());
-    this.hud.pauseButton.addEventListener('click', () => this.pause());
+    this.onUi(this.hud.playButton, 'click', () => this.start());
+    this.onUi(this.hud.againButton, 'click', () => this.start());
+    this.onUi(this.hud.resumeButton, 'click', () => this.resume());
+    this.onUi(this.hud.restartButton, 'click', () => this.start());
+    this.onUi(this.hud.pauseButton, 'click', () => this.pause());
     window.addEventListener('blur', this.onBlur);
     document.addEventListener('visibilitychange', this.onVisibility);
     window.addEventListener('keydown', this.onMenuKey);
     this.hud.setMusic(false, this.audio.musicEnabled);
+    // round 41: inside the Stateloop platform the HUD is drawn on the canvas, so recordings show it (see CanvasHud)
+    if (onPlatform(params)) {
+      const chud = new CanvasHud(this.hud.app, document.getElementById('minimap') as HTMLCanvasElement, () => this.renderer.getPixelRatio());
+      this.chud = chud;
+      this.hud.onCentre = (kind, main, sub, tone, el, dur) => chud.centre(kind, main, sub, tone, el, dur);
+      this.minimap.onDrawn = () => { chud.mapDirty = true; };
+    }
 
     this.hud.setBest(this.best, this.bestTier);
     this.hud.setCity(this.cityInfo());
@@ -373,9 +383,9 @@ export class Game {
       this.audio.click();
       window.location.href = cityUrl(mode);
     };
-    this.hud.cityNewButton.addEventListener('click', go('random'));
-    this.hud.cityDailyButton.addEventListener('click', go('daily'));
-    this.hud.overNewCityButton.addEventListener('click', go('random'));
+    this.onUi(this.hud.cityNewButton, 'click', go('random'));
+    this.onUi(this.hud.cityDailyButton, 'click', go('daily'));
+    this.onUi(this.hud.overNewCityButton, 'click', go('random'));
     this.hud.showScreen('title');
     this.debug = new DebugTools(() => {
       this.renderer.toneMappingExposure = QUALITY.exposure;
@@ -467,7 +477,8 @@ export class Game {
     this.audio.click();
     this.runCount++;
     // the daily city also gives every attempt the same parcels, so a daily best is a fair race
-    if (this.city.mode === 'daily') this.rng = createSeededRandom(this.seed * 977 + 13);
+    // round 41: a `?seed=` city (the Stateloop platform always sends one) does the same, so a seed is one exact game
+    if (this.city.mode !== 'random') this.rng = createSeededRandom(this.seed * 977 + 13);
     this.drone.reset(this.startPos, this.startYaw);
     this.delivery.reset(this.rng, this.startPos, (from, to) => {
       // a straight descending line to the target must clear every solid building
@@ -528,6 +539,7 @@ export class Game {
     this.lastTick = -1;
     this.wasBoosting = false;
     this.hud.resetCache();
+    this.chud?.clearEvents();
     // round 25: a new player's first run teaches in layers; returning players get the full HUD and no hints
     this.teachOn = !this.returning();
     this.learned.clear();
@@ -618,7 +630,7 @@ export class Game {
   private endRun(): void {
     this.state = 'over';
     try {
-      window.localStorage.setItem(PLAYED_KEY, '1');
+      storeSet(PLAYED_KEY, '1');
     } catch {
       /* storage unavailable */
     }
@@ -688,12 +700,24 @@ export class Game {
       dailyNew: dailyNew && score > 0,
     });
     this.hud.showScreen('over');
+    // round 41: tell the Stateloop platform the session ended naturally (once per run; guarded, never throws)
+    this.sessionDetail = {
+      game: 'drone-dash', score, medal: this.tier > 0 ? tierName(this.tier) : 'none', medalTier: this.tier,
+      deliveries: this.delivery.deliveries, seed: this.seed, cityMode: this.city.mode,
+      runSeconds: Math.round(this.runTime * 10) / 10, run: this.runCount,
+    };
+    if (completeSession(this.sessionDetail)) this.sessionCompletes++;
     this.marker.hide();
     this.clearMark();
     this.drone.hasGuide = false;
     this.cameraRig.setOrbitAngle(this.drone.yaw + Math.PI / 2);
   }
 
+  /** Round 41: the HUD drawn on the WebGL canvas (Stateloop platform, or ?hud=canvas); null keeps the HTML HUD. */
+  private readonly chud: CanvasHud | null = null;
+  private chudOff = false; // test hook: skip the canvas HUD pass (pixel A/B in probes)
+  private sessionDetail: SessionDetail | null = null;
+  private sessionCompletes = 0;
   private readonly onBlur = () => this.pause();
   private readonly onVisibility = () => {
     if (document.hidden) {
@@ -713,14 +737,15 @@ export class Game {
     if (this.state === 'playing') this.canvas.focus({ preventScroll: true });
   };
   private readonly onMenuKey = (e: KeyboardEvent) => {
-    // round 40: in a run M toggles the minimap; on the title, pause and game-over screens (where the music chip shows)
-    // M still toggles the music. N toggles the music anywhere.
-    if (e.code === 'KeyM' && !e.repeat && this.state === 'playing') {
+    // round 40: in a run M toggles the minimap. Round 41: N toggles the music anywhere, M is the map only (the help
+    // line and the music chip say so)
+    if (e.code === 'KeyM' && !e.repeat) {
+      if (this.state !== 'playing') return;
       this.minimap.toggle();
       this.hud.relayout(); // re-measure the HUD layout (the map box joined or left it)
       return;
     }
-    if ((e.code === 'KeyM' || e.code === 'KeyN') && !e.repeat) {
+    if (e.code === 'KeyN' && !e.repeat) {
       this.audio.unlock();
       this.audio.setMusicEnabled(!this.audio.musicEnabled);
       return;
@@ -827,7 +852,7 @@ export class Game {
     d.update(dt, this.intent, this.world, this.layout.half + 30, this.events);
     this.checkCrash(realDt);
     this.updateMark(dt);
-    this.updateSlipstream(dt);
+    this.updateSlipstream(dt, realDt);
     const dp = d.group.position;
     const groundBelow = this.world.surfaceBelow(dp.x, dp.y, dp.z);
     const altAboveGround = Math.max(0, dp.y - groundBelow - 0.85);
@@ -843,11 +868,14 @@ export class Game {
       const s = Math.min(1, this.events.bump / 16);
       this.bumpCooldown = 0.18;
       this.audio.bump(this.events.bump);
-      this.cameraRig.addShake(0.25 + s * 0.7);
-      this.hud.hitFlash(0.35 + s * 0.65);
+      // round 41: the bump of a free head-on knock (the light effect played) stays small: with the full bump shake,
+      // flash and burst on top, a knock at 10 to 11 m/s added up to a crash-size jolt
+      const light = this.hitPending && this.hitFx === 1;
+      this.cameraRig.addShake(light ? 0.08 + s * 0.12 : 0.25 + s * 0.7);
+      this.hud.hitFlash(light ? 0.2 + s * 0.25 : 0.35 + s * 0.65);
       // round 40: the hit-stop is part of the crash effect only (a free knock or bump never freezes the game)
       if (this.events.bump > 4 && this.hitFx === 2) this.hitStop = Math.max(this.hitStop, 0.06);
-      this.vfx.burst(d.group.position, new THREE.Color('#ffe2b8'), 10 + Math.round(s * 14), 4 + s * 4, 0.12, this.fxRng);
+      this.vfx.burst(d.group.position, this.bumpCol, light ? 4 + Math.round(s * 4) : 10 + Math.round(s * 14), 4 + s * 4, 0.12, this.fxRng);
     }
     // boost start
     if (d.boosting && !this.wasBoosting) {
@@ -974,7 +1002,7 @@ export class Game {
     this.hud.setSpeedLines(Math.max(d.boosting ? Math.min(1, d.speed / 24) : 0, this.slip.intensity * 0.5));
     // the wind chip only matters while the drone is actually trying to go somewhere up high (not while it hovers at a rooftop pad)
     const windy = d.headwind > 0.35 && d.speed > 7;
-    this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, windy, this.slip.hug > 0.4, dt, this.slipRateTier(), this.slipCue());
+    this.hud.setSlip(this.slip.level, this.slip.drafting, this.slip.chain, windy, this.slip.hug > 0.4, realDt, this.slipRateTier(), this.slipCue());
     this.hud.setWind(windy);
     this.updateTeach(windy);
     this.updateNav();
@@ -1110,6 +1138,7 @@ export class Game {
   }
 
   private readonly sparkCol = new THREE.Color('#ffa630');
+  private readonly bumpCol = new THREE.Color('#ffe2b8');
   private readonly sparkHot = new THREE.Color('#fff2b0');
   private readonly sparkDir = new THREE.Vector3();
   private readonly sparkCarry = new THREE.Vector3();
@@ -1148,15 +1177,17 @@ export class Game {
   private lightHitFx(s: number): void {
     const d = this.drone;
     this.lightHits++;
-    this.cameraRig.addShake(0.45 + s * 0.2);
-    this.cameraRig.kick(this.hitNx, this.hitNz, 0.12 + 0.08 * s);
+    // round 41: about a third of a crash's shake (the round 40 0.45 to 0.65 plus the bump's own shake hit the 1.0 cap)
+    this.cameraRig.addShake(0.2 + s * 0.12);
+    this.cameraRig.kick(this.hitNx, this.hitNz, 0.1 + 0.06 * s);
     d.knock(s, this.hitNx, this.hitNz);
     const p = d.group.position;
     const at = this.tmp2.set(p.x - this.hitNx * FLIGHT.radius * 0.9, p.y, p.z - this.hitNz * FLIGHT.radius * 0.9);
     const dir = this.sparkDir.set(this.hitNx, 0.45, this.hitNz).normalize();
-    this.vfx.emit(at, this.sparkCarry.set(this.hitNx, 0.3, this.hitNz), this.sparkHot, 0.7, 0.12, 0);
-    this.vfx.spray(at, dir, 0.7, 22 + Math.round(s * 12), 7 + s * 4, this.sparkCol, 0.2, 0.6, -15, this.fxRng);
-    this.vfx.spray(at, dir, 0.4, 8, 11, this.sparkHot, 0.13, 0.4, -18, this.fxRng);
+    // round 41: a small fan (about a quarter of a crash's sparks)
+    this.vfx.emit(at, this.sparkCarry.set(this.hitNx, 0.3, this.hitNz), this.sparkHot, 0.55, 0.1, 0);
+    this.vfx.spray(at, dir, 0.6, 10 + Math.round(s * 6), 6 + s * 3, this.sparkCol, 0.18, 0.5, -15, this.fxRng);
+    this.vfx.spray(at, dir, 0.35, 4, 10, this.sparkHot, 0.12, 0.35, -18, this.fxRng);
   }
 
   /**
@@ -1212,7 +1243,7 @@ export class Game {
   /** Round 25: saved progress exists (a finished run, a best score or a medal). */
   private returning(): boolean {
     try {
-      if (window.localStorage.getItem(PLAYED_KEY)) return true;
+      if (storeGet(PLAYED_KEY)) return true;
     } catch {
       /* storage unavailable: teach */
     }
@@ -1729,13 +1760,18 @@ export class Game {
   }
 
   /** Low street line reward: draft meter, payouts, wind streaks and the rising whistle. */
-  private updateSlipstream(dt: number): void {
+  /**
+   * Round 41 (Codex review): `dt` (scaled by slow motion) is movement, so distance-based progress (the meter, the
+   * progress flown for a payout) follows what the drone really flew. `realDt` is the clock: the slow-clock reward and
+   * the slipstream's timers are elapsed-time economy and run at real time, like the run clock.
+   */
+  private updateSlipstream(dt: number, realDt: number): void {
     const d = this.drone;
     this.payFlown += Math.hypot(d.velocity.x, d.velocity.z) * dt;
     // round 19: in an alley the walls give the full draft; under a tunnel roof the slow clock runs at full strength
     this.narrow = this.narrowAt(d.group.position);
     this.vanDraft = this.env.vanDraft(d.group.position, d.velocity.x, d.velocity.z);
-    const ev = this.slip.update(dt, d.group.position, d.speed, this.world, !!this.narrow, this.vanDraft);
+    const ev = this.slip.update(dt, d.group.position, d.speed, this.world, !!this.narrow, this.vanDraft, realDt);
     this.audio.setDraft(this.slip.intensity, this.slip.level);
     // slow clock: good drafting earns clock time smoothly, every frame, instead of in lumps per payout
     // (round 13: only on the way to the objective, and at most `clockBudget` seconds per leg, so it pays delivering)
@@ -1744,14 +1780,14 @@ export class Game {
     if (this.stale) this.slipClockK = 0;
     this.slipToward = this.slipClockK > 0 ? this.slipTowardTarget() : 1;
     // round 17: no slow clock in overtime (overtime is a fixed window)
-    const want = this.delivery.overtime ? 0 : SLIPSTREAM.clockRate * this.slipClockK * this.slipToward * this.delivery.clockDecay * dt;
+    const want = this.delivery.overtime ? 0 : SLIPSTREAM.clockRate * this.slipClockK * this.slipToward * this.delivery.clockDecay * realDt;
     const give = Math.min(want, this.slipBudget);
     const added = give > 0 ? this.delivery.addClock(give) : 0;
     this.slipBudget = Math.max(0, this.slipBudget - added);
     this.slip.seconds += added;
-    this.slipClockGain = dt > 0 ? added / dt : 0;
+    this.slipClockGain = realDt > 0 ? added / realDt : 0;
     const idle = this.delivery.overtime || this.slipClockK < 0.3 || this.slipClockGain >= 0.03 ? '' : this.slipBudget <= 0 ? 'spent' : this.slipToward < 0.05 ? 'away' : '';
-    this.hud.setSlowClock(this.slipClockGain, dt, this.slipBudget, idle);
+    this.hud.setSlowClock(this.slipClockGain, realDt, this.slipBudget, idle);
     if (ev?.type === 'tick') { if (this.shown('slip')) this.audio.slipTick(ev.step); }
     else if (ev?.type === 'payout') {
       // round 14: the payout is banked on the parcel run (paid on delivery), not scored now
@@ -2148,8 +2184,28 @@ export class Game {
     this.env.syncView(this.camera.position, this.camera.getWorldDirection(this.tmp2));
     this.renderer.info.reset();
     this.pipeline.render();
+    // round 41: the canvas HUD goes on after post-processing (no bloom on it); its quads count in the draw calls
+    if (this.chud && !this.chudOff && (this.state === 'playing' || this.state === 'paused')) {
+      this.chud.update(this.hudNumbers(), this.hud.isTouch);
+      this.chud.render(this.renderer);
+    }
     this.drawCalls = this.renderer.info.render.calls;
     this.triangles = this.renderer.info.render.triangles;
+  }
+
+  private readonly hudNums = { timeFrac: 1, goalQ: 0, slipLevel: 0, objDist: -1 };
+  private hudNumbers(): { timeFrac: number; goalQ: number; slipLevel: number; objDist: number } {
+    const n = this.hudNums, tl = this.delivery.timeLeft;
+    const total = this.delivery.overtime ? this.delivery.overtimeGiven : RUN.startTime;
+    n.timeFrac = Math.max(0, Math.min(1, tl / Math.max(total, tl, 1e-6)));
+    n.goalQ = nextGoal(this.delivery.score)?.progress ?? 1;
+    n.slipLevel = this.slip.level;
+    const t = this.delivery.target;
+    if (t && !this.delivery.finished && this.finishHold <= 0 && this.state !== 'over') {
+      const mp = this.marker.position, p = this.drone.group.position;
+      n.objDist = Math.hypot(mp.x - p.x, mp.y + 2.4 - p.y, mp.z - p.z);
+    } else n.objDist = -1;
+    return n;
   }
 
   // ---------------- diagnostics & hooks ----------------
@@ -2301,6 +2357,15 @@ export class Game {
         };
       },
       minimapToggle: () => this.minimap.toggle(),
+      // round 41: the canvas HUD (panels with their screen boxes, uploads, cost) and the Stateloop session reports
+      canvasHud: (reset = false) => {
+        const r = this.chud ? this.chud.stats() : { on: false };
+        if (reset) this.chud?.resetStats();
+        return r;
+      },
+      canvasHudOff: (off: boolean) => { this.chudOff = off; },
+      session: () => ({ completes: this.sessionCompletes, last: this.sessionDetail, seed: this.seed, mode: this.city.mode }),
+      stick: () => this.input.stickState(),
       minimapStats: (reset = false) => {
         const r = { draws: this.minimap.draws, msMean: this.minimap.msMean, msMax: this.minimap.msMax };
         if (reset) this.minimap.resetStats();
@@ -2494,8 +2559,18 @@ export class Game {
     };
   }
 
+  /** Round 41 (Codex audit 3): UI listeners added through here are all removed in dispose(). */
+  private readonly uiCleanups: Array<() => void> = [];
+  private onUi(el: EventTarget, type: string, fn: (e: Event) => void): void {
+    el.addEventListener(type, fn);
+    this.uiCleanups.push(() => el.removeEventListener(type, fn));
+  }
+
   dispose(): void {
     this.loop.stop();
+    for (const off of this.uiCleanups) off();
+    this.chud?.dispose();
+    this.uiCleanups.length = 0;
     this.input.dispose();
     this.audio.dispose();
     this.debug.dispose();

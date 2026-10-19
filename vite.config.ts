@@ -5,6 +5,9 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 export default defineConfig(({ mode }) => {
   const single = mode === 'single';
   return {
+    // round 41: relative URLs only. The Stateloop Play Worker serves the build from a private bucket on another origin
+    // inside an iframe, and the Vercel preview may sit under any path. Assets resolve against the page (BASE_URL './').
+    base: './',
     plugins: single ? [viteSingleFile({ removeViteModuleLoader: true })] : [],
     server: { host: '127.0.0.1', port: 5188, strictPort: true },
     preview: { host: '127.0.0.1', port: 4188, strictPort: true },

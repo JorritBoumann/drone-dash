@@ -1,0 +1,21 @@
+node acceptance-probe.mjs > flat.log 2>&1
+ALT=12 node crash-classify-v.mjs > ccv12.log 2>&1
+node platform41c.mjs > platform41c.log 2>&1
+ALT=20 node crash-classify-v.mjs > ccv20.log 2>&1
+node platform41c-phone.mjs > platform41c-phone.log 2>&1; PILOT=0 DEVICE="Pixel 7 landscape" node platform41c-phone.mjs >> platform41c-phone.log 2>&1
+for dv in desk1:22 desk2:130 phone:22 phone:130; do DEV=${dv%%:*} SEED=${dv##*:} RECDIR=/private/tmp/claude-501/-Users-jorritboumann-projects-browser-game-lab/c70bfd6f-b51c-4910-b300-7e4c0c36b628/scratchpad/c41/rec/ node rec41c.mjs >> rec41c.log 2>&1; done
+node fixes41c.mjs > fixes41c.log 2>&1
+node corner41c.mjs > corner41c.log 2>&1; Q="&hud=canvas" DEVS="iPhone 13 landscape" node corner41c.mjs >> corner41c.log 2>&1
+NOORBIT=1 SEED=22 TOTAL=62 node cam-clip30.mjs > cam-clip30-22-noorbit.log 2>&1
+SEED=58 TOTAL=62 node cam-clip30.mjs > cam-clip30-58-orbit.log 2>&1
+node navcorner41c.mjs > navcorner41c.log 2>&1; Q="&hud=html" RUNS="iPhone 13 landscape:130" node navcorner41c.mjs >> navcorner41c.log 2>&1
+node seeds41c.mjs > seeds41c.log 2>&1
+SEED=22 FACES=3 ANGLES=30,45,60,90 SPEEDS=8,9,10,11,12,13,16,20,25 node crash39c.mjs > crash41c-22.log 2>&1
+SEED=22 FACES=3 ANGLES=60,90 SPEEDS=9,10,11,12,13,16 HOLD=held node crash39c.mjs > crash41c-22.log 2>&1
+node gpu41c.mjs > gpu41c.log 2>&1
+UNCAP=1 node perf-street41.mjs > perf-street-d-uncap.log 2>&1
+UNCAP=1 Q="&hud=canvas" node perf-street41.mjs > perf-street-d-uncap-chud.log 2>&1
+PORT=5193 RUNS=1 DEVS=desktop node load34.mjs > load41.log 2>&1
+node htmlhud41c.mjs > htmlhud41c.log 2>&1
+UNCAP=1 MOBILE=1 Q="&hud=canvas" node perf-street41.mjs > perf-street-m-uncap-chud.log 2>&1
+END

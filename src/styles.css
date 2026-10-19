@@ -62,10 +62,11 @@ body { background: #f0b98a; }
 #app[data-state='playing'] #hud,
 #app[data-state='paused'] #hud { opacity: 1; }
 
+/* round 41: clear of the Stateloop back arrow's 64 px top-left corner (desktop and phone) */
 .hud-score {
   position: absolute;
   top: max(16px, env(safe-area-inset-top));
-  left: max(18px, env(safe-area-inset-left));
+  left: max(76px, calc(env(safe-area-inset-left) + 18px));
   color: var(--cream);
   text-shadow: 0 2px 10px rgba(80, 30, 0, 0.35);
 }
@@ -1485,3 +1486,16 @@ kbd {
 @media (max-height: 300px) {
   #app.touch .minimap { width: 92px; height: 92px; }
 }
+
+/* round 41: canvas HUD (Stateloop platform or ?hud=canvas). The game draws these on the WebGL canvas so recordings show
+   them; the HTML copies keep their layout (the canvas panels sit on their boxes) but are not painted. Touch controls,
+   menus, the pause and deliveries chips, the boost meter and the world-anchored markers stay HTML. */
+#app.canvas-hud .hud-score,
+#app.canvas-hud #timer,
+#app.canvas-hud #objective,
+#app.canvas-hud #slip,
+#app.canvas-hud #minimap,
+#app.canvas-hud #pop,
+#app.canvas-hud #slip-pop,
+#app.canvas-hud #medal-pop,
+#app.canvas-hud #event-pop { visibility: hidden !important; }

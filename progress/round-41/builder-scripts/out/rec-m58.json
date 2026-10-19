@@ -1,0 +1,133 @@
+{
+ "m58": {
+  "video": "1688x780",
+  "webmKB": 3562,
+  "changed": {
+   "score": 0.831,
+   "clock": 0.929,
+   "objective": 0.986,
+   "slip": 0.521,
+   "event": "hidden",
+   "minimap": 0.787
+  },
+  "panels": [
+   {
+    "n": "score",
+    "v": true,
+    "b": [
+     68,
+     10,
+     152,
+     80
+    ],
+    "draws": 21,
+    "tex": [
+     304,
+     160
+    ]
+   },
+   {
+    "n": "clock",
+    "v": true,
+    "b": [
+     354,
+     14,
+     135,
+     46
+    ],
+    "draws": 26,
+    "tex": [
+     272,
+     96
+    ]
+   },
+   {
+    "n": "objective",
+    "v": true,
+    "b": [
+     262,
+     70,
+     321,
+     30
+    ],
+    "draws": 24,
+    "tex": [
+     960,
+     64
+    ]
+   },
+   {
+    "n": "slip",
+    "v": true,
+    "b": [
+     341,
+     304,
+     162,
+     34
+    ],
+    "draws": 27,
+    "tex": [
+     336,
+     80
+    ]
+   },
+   {
+    "n": "event",
+    "v": false,
+    "b": null,
+    "draws": 2,
+    "tex": [
+     432,
+     144
+    ]
+   },
+   {
+    "n": "minimap",
+    "v": true,
+    "b": [
+     716,
+     66,
+     110,
+     110
+    ],
+    "draws": 336,
+    "tex": [
+     300,
+     150
+    ]
+   }
+  ],
+  "uploads": 436,
+  "msMean": 0.027,
+  "msMax": 2.9,
+  "frames": 1427,
+  "buffer": [
+   1688,
+   780
+  ],
+  "css": [
+   844,
+   390
+  ],
+  "event": {
+   "main": "Parcel secured!",
+   "sub": "Deliver for +378",
+   "kind": "pop"
+  },
+  "diag": {
+   "state": "playing",
+   "mood": "Hazy noon",
+   "calls": 99,
+   "tris": 366301
+  },
+  "samples": {
+   "n": 60,
+   "corner": 0,
+   "overlap": {
+    "c:objective~c:event": 2
+   },
+   "cornerWho": {}
+  },
+  "errors": []
+ }
+}

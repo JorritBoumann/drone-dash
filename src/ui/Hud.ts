@@ -1,3 +1,4 @@
+import { storeGet, storeSet } from '../core/storage';
 import type { MarkerKind } from '../entities/ObjectiveMarker';
 import { GOALS } from '../game/config';
 import { nextGoal, tierName } from '../game/goals';
@@ -526,7 +527,18 @@ export class Hud {
       m.el.style.maxWidth = '';
     }
     this.cActive = { kind: m.kind, el: m.el, shownAt: now, minMs: m.minMs, durMs: m.durMs };
+    // round 41: the canvas HUD (recordings) shows the same message
+    if (this.onCentre) {
+      const el = m.el;
+      const main = (el === this.pop ? this.popMain : el === this.medalPopEl ? this.medalPopName : el === this.eventPopEl ? this.eventPopMain : this.slipPopMain).textContent ?? '';
+      const sub = (el === this.pop ? this.popSub : el === this.medalPopEl ? this.medalPopSub : el === this.eventPopEl ? this.eventPopSub : this.slipPopSub).textContent ?? '';
+      const cl = el.classList;
+      const tone = el === this.pop ? (cl.contains('crash') ? 'crash' : cl.contains('rush') ? 'rush' : cl.contains('drop') ? 'drop' : 'pickup') : el === this.medalPopEl ? `medal${el.dataset.m ?? '1'}` : el === this.eventPopEl ? 'event' : 'slip';
+      this.onCentre(m.kind, main, sub, tone, el, m.durMs);
+    }
   }
+  /** Round 41: called when a centre message is shown (kind, main text, sub line, colour tone, element, ms on screen). */
+  onCentre: ((kind: string, main: string, sub: string, tone: string, el: HTMLElement, durMs: number) => void) | null = null;
 
   /** Every frame: show the next queued centre message once the one up has been read. */
   tickCentre(): void {
@@ -931,8 +943,8 @@ export class Hud {
     if (!enabled) { this.hintArmed = false; return; }
     if (this.hintRuns === 0) {
       try {
-        this.hintRuns = 1 + Number(localStorage.getItem('drone-dash-slip-hint') || 0);
-        localStorage.setItem('drone-dash-slip-hint', String(this.hintRuns));
+        this.hintRuns = 1 + Number(storeGet('drone-dash-slip-hint') || 0);
+        storeSet('drone-dash-slip-hint', String(this.hintRuns));
       } catch {
         this.hintRuns = 1;
       }
@@ -955,8 +967,8 @@ export class Hud {
     if (!enabled) return;
     let runs = 1;
     try {
-      runs = 1 + Number(localStorage.getItem('drone-dash-view-hint') || 0);
-      localStorage.setItem('drone-dash-view-hint', String(runs));
+      runs = 1 + Number(storeGet('drone-dash-view-hint') || 0);
+      storeSet('drone-dash-view-hint', String(runs));
     } catch {
       /* storage blocked: show it */
     }

@@ -1,3 +1,4 @@
+import { storeGet, storeSet } from '../core/storage';
 /**
  * Round 15: which city a page load builds.
  * - `?seed=N`: exactly that city (bot scripts and shared links; unchanged).
@@ -42,10 +43,30 @@ export function randomSeed(): number {
   return 10000 + Math.floor(r * 90000);
 }
 
+/**
+ * Round 41: `?seed=` as the Stateloop Play Worker may send it. A whole number is used as it is (22 stays 22; a huge one
+ * is folded into 32 bits, which is all the generators use). Anything else that is not empty (a hex string, a uuid) is
+ * hashed to a five-digit seed, so the same string always builds the same city. Empty or missing: null.
+ */
+export function parseSeed(raw: string | null): number | null {
+  const v = (raw ?? '').trim();
+  if (!v) return null;
+  if (/^-?\d+$/.test(v)) {
+    const n = Number(v);
+    if (Number.isSafeInteger(n)) return Math.abs(n) % 4294967296;
+    let h = 0;
+    for (const c of v) h = (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0;
+    return h;
+  }
+  let h = 0x811c9dc5;
+  for (const c of `drone-dash/seed/${v}`) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
+  return 10000 + (h % 90000);
+}
+
 export function resolveCity(params: URLSearchParams): CityPick {
   const today = localDateKey();
-  const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-  if (Number.isFinite(seedParam)) return { mode: 'seed', seed: seedParam, date: today };
+  const seed = parseSeed(params.get('seed'));
+  if (seed !== null) return { mode: 'seed', seed, date: today };
   if (params.has('daily')) {
     const v = params.get('daily') ?? '';
     const date = /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : today;
@@ -68,7 +89,7 @@ export type DailyBest = { date: string; best: number; tier: number };
 
 export function readDaily(date: string): DailyBest {
   try {
-    const raw = JSON.parse(window.localStorage.getItem(DAILY_KEY) ?? 'null') as DailyBest | null;
+    const raw = JSON.parse(storeGet(DAILY_KEY) ?? 'null') as DailyBest | null;
     if (raw && raw.date === date) return { date, best: Number(raw.best) || 0, tier: Number(raw.tier) || 0 };
   } catch {
     /* storage unavailable or bad data */
@@ -78,7 +99,7 @@ export function readDaily(date: string): DailyBest {
 
 export function writeDaily(v: DailyBest): void {
   try {
-    window.localStorage.setItem(DAILY_KEY, JSON.stringify(v));
+    storeSet(DAILY_KEY, JSON.stringify(v));
   } catch {
     /* storage unavailable */
   }

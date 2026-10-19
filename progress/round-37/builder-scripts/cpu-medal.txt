@@ -1,0 +1,3 @@
+ %CPU COMM
+  5.9 /usr/sbin/coreaudiod
+  3.1 /System/Library/PrivateFrameworks/CoreDuetContext.framework/Resources/ContextStoreAgent

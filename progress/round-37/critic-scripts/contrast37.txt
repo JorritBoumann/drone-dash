@@ -1,0 +1,8 @@
+r31 130 cruise 13.9 low 23.4 ratio 0.59
+r31 22 cruise 12.8 low 21.5 ratio 0.60
+r31 33 cruise 14.2 low 23.6 ratio 0.60
+r31 58 cruise 12.3 low 20.6 ratio 0.60
+r30 130 cruise 18.0 low 35.2 ratio 0.51
+r30 22 cruise 16.3 low 30.9 ratio 0.53
+r30 33 cruise 16.4 low 40.7 ratio 0.40
+r30 58 cruise 16.6 low 31.3 ratio 0.53

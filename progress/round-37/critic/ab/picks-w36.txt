@@ -1,0 +1,5 @@
+Picks written before opening .key-w36.json (which water looks more natural)
+1 golden open sea 1 m: TOP, moderate. Bottom is harsher camo blobs right up to the camera; top has a calmer teal foreground.
+2 golden marina 1 m: BOTTOM, moderate. Top is big cream blobs on navy; bottom has finer, more varied ripples.
+3 dusk open sea 1 m: TOP, weak to moderate. Bottom is an even mauve grid of blobs; top has depth (darker near water, ripples receding).
+4 dusk marina 1 m: BOTTOM, weak. Top is pink blobs on navy; bottom is finer and calmer but a bit darker and duller.

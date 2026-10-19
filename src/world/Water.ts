@@ -86,11 +86,11 @@ export function shoreDistance(x: number, z: number): number {
 }
 
 /** Per-mood water colours (sRGB hex): deep, shallow (near the wall), foam tint; and the sky reflection strength. */
-const MOOD_WATER: Array<{ deep: string; shallow: string; foam: string; refl: number; chop: number }> = [
-  { deep: '#14425a', shallow: '#2f7f86', foam: '#fff1e2', refl: 0.92, chop: 1.0 }, // golden hour
-  { deep: '#134b6b', shallow: '#2f8f98', foam: '#f6fbff', refl: 0.88, chop: 1.15 }, // bright morning
-  { deep: '#1c3358', shallow: '#3a6f86', foam: '#ffe9e6', refl: 0.95, chop: 1.15 }, // rose dusk
-  { deep: '#16506a', shallow: '#3a9a96', foam: '#fffaf0', refl: 0.85, chop: 0.68 }, // hazy noon
+const MOOD_WATER: Array<{ deep: string; shallow: string; foam: string; refl: number; chop: number; near: number }> = [
+  { deep: '#14425a', shallow: '#2f7f86', foam: '#fff1e2', refl: 0.92, chop: 1.0, near: 1.32 }, // golden hour
+  { deep: '#134b6b', shallow: '#2f8f98', foam: '#f6fbff', refl: 0.88, chop: 1.15, near: 1.45 }, // bright morning
+  { deep: '#1c3358', shallow: '#3a6f86', foam: '#ffe9e6', refl: 0.95, chop: 1.15, near: 0.95 }, // rose dusk
+  { deep: '#16506a', shallow: '#3a9a96', foam: '#fffaf0', refl: 0.85, chop: 0.68, near: 1.5 }, // hazy noon
 ];
 
 export const MAX_WAKES = 8;
@@ -237,6 +237,7 @@ export class Water {
       uFoamCol: { value: new THREE.Color(mw.foam) },
       uRefl: { value: mw.refl },
       uChop: { value: mw.chop },
+      uNearChop: { value: mw.near },
       uSkyTop: { value: PALETTE.skyTop },
       uSkyMid: { value: PALETTE.skyMid },
       uSkyHorizon: { value: PALETTE.horizon },
@@ -251,7 +252,7 @@ export class Water {
       color: mw.deep, roughness: 0.16, metalness: 0, envMapIntensity: 0.35,
     });
     this.material.onBeforeCompile = (shader) => this.patch(shader);
-    this.material.customProgramCacheKey = () => `water34-${lite ? 'lite' : 'full'}`;
+    this.material.customProgramCacheKey = () => `water37-${lite ? 'lite' : 'full'}`;
     this.mesh = new THREE.Mesh(geo, this.material);
     this.mesh.position.y = WATER_Y;
     this.mesh.receiveShadow = true;
@@ -286,12 +287,26 @@ uniform sampler2D uNear;
 uniform vec3 uDeep, uShallow, uFoamCol, uSkyTop, uSkyMid, uSkyHorizon, uSkySun, uSunDir;
 uniform float uRefl;
 uniform float uChop;
+uniform float uNearChop;
 uniform vec4 uWakeA[${MAX_WAKES}];
 uniform vec4 uWakeB[${MAX_WAKES}];
 uniform int uWakeN;
 uniform vec4 uPier[${MAX_PIERS}];
 varying vec3 vWaterW;
 ${GLSL_WAVES(lite)}
+#define NEAR_A 0.24
+#define MID_A 0.2
+#define FINE_A 0.2
+#define HI_MID 0.17
+#define HI_FINE 0.15
+#define NEAR_B 0.16
+#define NEAR_C 0.12
+#define FRES_S 0.5
+#define REFL_S 0.75
+#define HI_FRES_S 0.25
+#define HI_REFL_S 0.3
+#define SLOPE_K 3.0
+#define BODY_K 0.4
 float shoreD(vec2 p){ vec2 q = abs(p) - vec2(${SHORE.toFixed(1)}); return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0); }
 float rectD(vec2 p, vec4 r){ vec2 q = abs(p - r.xy) - r.zw; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0); }
 vec3 skyRefl(vec3 d){
@@ -326,7 +341,7 @@ vec3 skyRefl(vec3 d){
   float wind = smoothstep(0.25, 0.8, dB.w); // calm and ruffled patches, tens of metres across (the broad layer's height)
   vec2 dnB = (dB.xy * 2.0 - 1.0) * mix(0.05, 0.155 * uChop, hiK);
   vec4 d1 = texture2D(uDetail, wxz * 0.071 + vec2(uTime * 0.013, uTime * 0.008));
-  vec2 dn = (d1.xy * 2.0 - 1.0) * mix(0.3, 0.26, hiK) * mix(0.2, 1.0, kMid);
+  vec2 dn = (d1.xy * 2.0 - 1.0) * mix(MID_A, HI_MID, hiK) * mix(0.2, 1.0, kMid);
   float foamN = d1.w;
   ${lite ? '' : `// the finest layer is skipped where it has faded out (most of the bay from play height); explicit gradients keep
   // the mip choice right inside the branch, and the foam noise blends over to the coarser layer alone
@@ -334,7 +349,7 @@ vec3 skyRefl(vec3 d){
   vec2 uv2dx = dFdx(uv2), uv2dy = dFdy(uv2);
   vec4 d2 = vec4(0.5, 0.5, 1.0, d1.w);
   if (kFine > 0.001) d2 = textureGrad(uDetail, uv2, uv2dx, uv2dy);
-  dn += (d2.xy * 2.0 - 1.0) * mix(0.27, 0.22, hiK) * kFine;
+  dn += (d2.xy * 2.0 - 1.0) * mix(FINE_A, HI_FINE, hiK) * kFine;
   foamN = foamN * 0.6 + mix(d1.w, d2.w, smoothstep(0.001, 0.05, kFine)) * 0.4;
   // round 33: a fine near layer (ripples about 2 m across) right round the camera, where one pixel covers less than a
   // few centimetres, so the water under a low drone stays crisp instead of smearing into soft streaks
@@ -345,8 +360,24 @@ vec3 skyRefl(vec3 d){
   vec2 uv3dx = dFdx(uv3), uv3dy = dFdy(uv3);
   // round 34: the near layer is its own texture of short ripples turned every way, and it takes over from the coarser
   // layers right round the camera (their few long crests read as soft streaks in the bottom of a low view)
-  if (kNear > 0.001) { vec4 d3 = textureGrad(uNear, uv3, uv3dx, uv3dy); dn = mix(dn, (d3.xy * 2.0 - 1.0) * 0.45, kNear * 0.85); }`}
-  dn *= mix(1.0, mix(0.55, 1.05, wind) * uChop, hiK); // uChop: how breezy the mood's bay looks from above
+  // round 37: one strong near octave read as camouflage (big blobs with hard edges); now two octaves at lower slope,
+  // the second about 2.6 times finer (ripples 8 to 18 cm), fading out by the pixel footprint so it never aliases
+  if (kNear > 0.001) {
+    vec4 d3 = textureGrad(uNear, uv3, uv3dx, uv3dy);
+    vec2 uv4 = mat2(-0.28, 0.96, -0.96, -0.28) * wxz * 0.77 + vec2(-uTime * 0.052, uTime * 0.041);
+    vec4 d4 = textureGrad(uNear, uv4, dFdx(uv4), dFdy(uv4));
+    float k4 = 1.0 - smoothstep(0.012, 0.045, foot);
+    vec2 nn = (d3.xy * 2.0 - 1.0) * NEAR_A + (d4.xy * 2.0 - 1.0) * NEAR_B * k4;
+    // and capillary ripples (3 to 7 cm) for the water right under a skimming camera, only while one pixel covers
+    // under about a centimetre
+    float k5 = 1.0 - smoothstep(0.004, 0.014, foot);
+    if (k5 > 0.001) {
+      vec2 uv5 = mat2(0.96, 0.28, -0.28, 0.96) * wxz * 2.1 + vec2(uTime * 0.09, -uTime * 0.07);
+      nn += (textureGrad(uNear, uv5, dFdx(uv5), dFdy(uv5)).xy * 2.0 - 1.0) * NEAR_C * k5;
+    }
+    dn = mix(dn, nn, kNear * 0.85);
+  }`}
+  dn *= mix(uNearChop, mix(0.55, 1.05, wind) * uChop, hiK); // uChop: how breezy the mood's bay looks from above
   dn += dnB;
   // shore: shallow colour and lapping foam along the seawall, foam round the pier legs
   float sdist = shoreD(wxz);
@@ -394,25 +425,28 @@ vec3 skyRefl(vec3 d){
     // the arms: the main crest line and a fainter echo inside it
     float x0 = b.y * 0.72 + max(ub, 0.0) * 0.354;
     float d = av - x0;
-    float w1 = 0.06 + max(ub, 0.0) * 0.013;
+    // round 37: never thinner than about 1.5 pixels, so a far arm does not break into dots between pixel centres
+    float w1 = max(0.06 + max(ub, 0.0) * 0.013, foot * 1.5);
     float l1 = exp(-d * d / (w1 * w1));
     float d2 = d + 0.45 + max(ub, 0.0) * 0.06;
     float l2 = exp(-d2 * d2 / (w1 * w1 * 1.4)) * 0.4;
-    float brk = smoothstep(0.34, 0.62, fN * 0.75 + foamN * 0.25 + 0.14 * age);
+    // round 37: the froth noise only thins the arms (70 to 100%), it no longer cuts holes (the arms read as perforated)
+    float brk = 0.7 + 0.3 * smoothstep(0.3, 0.7, fN * 0.75 + foamN * 0.25 + 0.14 * age);
     float arms = (l1 + l2) * brk * (0.2 + 0.8 * age) * win * (0.3 + 0.7 * spd);
     // transom trail: narrow, short, broken up; fades in over the last half metre of the hull
     float uu = max(us, 0.0);
-    float tw = b.y * (0.42 + uu * 0.045);
+    float tw = b.y * (0.3 + uu * 0.04);
     float tr = exp(-v * v / (tw * tw)) * smoothstep(-0.5, 0.6, us) * exp(-uu / (1.6 + a.w * 0.55 + max(b.x - 4.0, 0.0) * 0.45));
-    tr *= smoothstep(0.18, 0.6, fN * 0.75 + foamN * 0.25 + 0.3 * exp(-uu / 1.5)) * (0.4 + 0.6 * churn);
+    // round 37: a dimmer, narrower trail of broken froth (it read as a pale haze brighter than the arms)
+    tr *= (0.35 + 0.65 * smoothstep(0.3, 0.7, fN * 0.75 + foamN * 0.25 + 0.3 * exp(-uu / 1.5))) * (0.4 + 0.6 * churn);
     // wash hugging the hull at the waterline (strongest at the bow), a thin band just outside an ellipse round the hull
     vec2 he = vec2(v / (b.y * 1.02), (along - b.x * 0.05) / (b.x * 1.03));
     float hd = (length(he) - 1.0) * b.y;
     float bowness = smoothstep(0.0, 0.9, along / b.x);
     float hug = exp(-(hd - 0.04) * (hd - 0.04) / 0.012) * (0.1 + 0.9 * bowness) * (0.2 + 0.8 * spd) * (0.5 + 0.5 * fN);
-    float wf = arms + tr * 0.95 + hug * 0.6;
+    float wf = arms + tr * 0.5 + hug * 0.6;
     foam += wf;
-    wakeFoam += tr;
+    wakeFoam += tr * 0.6;
     // ripples: along the arms, and transverse crests inside the V (wavelength 2 pi U^2 / g)
     float lam = max(6.283 * a.w * a.w / 9.81, 1.2);
     float inV = smoothstep(0.5, -0.8, d) * win * age;
@@ -421,6 +455,13 @@ vec3 skyRefl(vec3 d){
   }
   foam = clamp(foam, 0.0, 1.0);
   vec3 nW = normalize(vec3(-g.x - dn.x - wakeN.x, 1.0, -g.y - dn.y - wakeN.y));
+  // round 37: body colour by slope: a facet tilted toward the eye shows light scattered through the wave (lighter,
+  // greener), one tilted away the darker deep colour, so the troughs are not flat navy holes in the sheen
+  {
+    vec3 Vc = normalize(cameraPosition - vWaterW);
+    float facing = clamp(dot(nW.xz, normalize(Vc.xz + vec2(1e-4, 0.0))) * SLOPE_K, -1.0, 1.0);
+    waterCol = mix(waterCol, mix(uShallow, uDeep, 0.35) * 1.08, max(facing, 0.0) * BODY_K) * (1.0 + 0.1 * min(facing, 0.0));
+  }
   // the sun glint (key light) sees less of the fine layer when the sun is low and the camera is high, so a low sun
   // lays a soft glitter path instead of lighting every ripple on the bay
   float lowSun = 1.0 - smoothstep(0.28, 0.6, normalize(uSunDir).y);
@@ -436,10 +477,20 @@ vec3 skyRefl(vec3 d){
       .replace('#include <opaque_fragment>', `
   {
     vec3 V = normalize(cameraPosition - vWaterW);
-    float NdV = clamp(dot(nW, V), 0.0, 1.0);
+    // round 37: a gentler Fresnel at grazing angles. Schlick on the full ripple normal flips between near 0 and 1 from
+    // one ripple to the next when the eye skims the water (navy blobs on a cream sheen). The Fresnel now uses the
+    // normal with its slope scaled by FRES_S (the average over a ripple's slopes is close to the flat-water value),
+    // and the reflected ray uses REFL_S of the slope, so the sky reflection keeps fine detail but no hard flips.
+    // (only where the eye skims the water: looking more steeply down, as under a low drone, the ripples keep their full
+    // slope in the Fresnel and reflection, so the near water stays lively)
+    float graze = 1.0 - smoothstep(0.22, 0.5, V.y);
+    float fS = mix(1.0, mix(FRES_S, HI_FRES_S, hiK), graze), rS = mix(1.0, mix(REFL_S, HI_REFL_S, hiK), graze);
+    vec3 nF = normalize(vec3(nW.x * fS, nW.y, nW.z * fS));
+    float NdV = clamp(dot(nF, V), 0.0, 1.0);
     float fres0 = clamp((0.02 + 0.98 * pow(clamp(1.0 - NdV, 0.0, 1.0), 5.0)) * uRefl, 0.0, 1.0);
     float fres = fres0 * (1.0 - foam);
-    vec3 R = reflect(-V, nW);
+    vec3 nR = normalize(vec3(nW.x * rS, nW.y, nW.z * rS));
+    vec3 R = reflect(-V, nR);
     R.y = abs(R.y);
     vec3 refl = skyRefl(normalize(R + vec3(0.0, 0.001, 0.0)));
     // foam also scatters the sky light, so it stays white in building shadow
@@ -457,7 +508,7 @@ vec3 skyRefl(vec3 d){
       vec3 R0 = reflect(-V, vec3(0.0, 1.0, 0.0));
       float glare = smoothstep(0.4, 0.95, dot(R0, normalize(uSunDir))) * lowSun;
       // (trail only, and under the bloom threshold, so it reads as bright froth, not a glowing beam)
-      need = max(need, glare * smoothstep(0.05, 0.4, wakeFoam) * 1.05);
+      need = max(need, glare * smoothstep(0.05, 0.4, wakeFoam) * 0.8); // round 37: 0.8 (was 1.05), no beam behind the transom
       if (foam > 0.01 && ol < need) outgoingLight *= need / max(ol, 0.001);
     }
   }

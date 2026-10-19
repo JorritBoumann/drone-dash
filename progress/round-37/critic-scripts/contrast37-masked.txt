@@ -1,0 +1,8 @@
+r31 130 cruise 13.92 low 23.44 ratio 0.594 | HUD masked: cruise 5.18 ratio 0.221 | low far 24.0 near 22.7
+r31 22 cruise 12.85 low 21.52 ratio 0.597 | HUD masked: cruise 4.78 ratio 0.222 | low far 20.3 near 23.0
+r31 33 cruise 14.23 low 23.69 ratio 0.601 | HUD masked: cruise 5.62 ratio 0.237 | low far 25.2 near 21.6
+r31 58 cruise 12.29 low 20.64 ratio 0.595 | HUD masked: cruise 3.20 ratio 0.155 | low far 18.8 near 22.8
+r30 130 cruise 18.03 low 35.22 ratio 0.512 | HUD masked: cruise 12.76 ratio 0.362 | low far 36.5 near 33.4
+r30 22 cruise 16.32 low 30.89 ratio 0.528 | HUD masked: cruise 11.35 ratio 0.368 | low far 30.7 near 31.2
+r30 33 cruise 16.37 low 40.72 ratio 0.402 | HUD masked: cruise 10.35 ratio 0.254 | low far 45.1 near 34.2
+r30 58 cruise 16.61 low 31.29 ratio 0.531 | HUD masked: cruise 11.92 ratio 0.381 | low far 29.3 near 33.7

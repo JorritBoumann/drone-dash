@@ -1,0 +1,7 @@
+Picks written before opening .key-w34.json (which water looks more natural)
+Caveat: one image in pairs 1 to 4 is the same file as in the w36 set, so this set is only half blind (I can tell which
+image repeats, not which build it is). I judged each pair on its own.
+1 golden open sea 1 m: BOTTOM, moderate. Top is brownish blobs with a hazy pink foreground; bottom has a teal foreground and reads as water.
+2 golden marina 1 m: BOTTOM, moderate. Top is big cream blobs on navy; bottom is finer.
+3 dusk open sea 1 m: TOP, weak to moderate. Bottom is an even busy grid; top has depth.
+4 dusk marina 1 m: BOTTOM, weak. Top is pink blobs on navy; bottom is finer, a bit dull.

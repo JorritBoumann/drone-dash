@@ -1,0 +1,6 @@
+low-1 top (finer ripples, fewer dark blobs; closer than the rest)
+low-2 top (clear)
+low-3 bottom (clear: top has the navy-on-cream blobs)
+low-4 top (top: fine sparkle; bottom: large smooth swirls)
+low-5 bottom (clear)
+low-6 top (clear)

@@ -1,0 +1,3 @@
+ %CPU COMM
+ 20.6 /Users/jorritboumann/Library/Application Support/Claude/claude-code/2.1.299/4fa9694b7975/claude.app/Contents/MacOS/claude
+  2.3 /Library/SystemExtensions/49CF18A3-BC4E-4F5D-AA0F-75651D3C7946/com.nordvpn.macos.Shield.systemextension/Contents/MacOS/com.nordvpn.macos.Shield

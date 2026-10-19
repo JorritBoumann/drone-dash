@@ -1,0 +1,3 @@
+ %CPU COMM
+ 15.1 /usr/sbin/coreaudiod
+  8.1 /System/Library/PrivateFrameworks/MediaRemote.framework/Support/mediaremoted

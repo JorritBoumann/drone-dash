@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { DynBox } from '../systems/CollisionWorld';
 import type { ModelParts } from './StreetAssets';
 import { SHADOW_FAR } from './shadowSubset';
@@ -70,6 +71,105 @@ diffuseColor.rgb = min(diffuseColor.rgb * mix(${gain.toFixed(3)}, 1.0, step(0.5,
   m.customProgramCacheKey = () => `boat36-${gain}`;
   return m;
 }
+/**
+ * Round 37: harbour-bus details, built in code in the ferry's model space (bow +z, port +x, keel at y 0; the instance
+ * matrix scales it by 0.72 with the boat): a teal livery stripe with a navy pinstripe along both hull sides, six
+ * orange-and-white life rings on the cabin sides and the aft face, and a destination board ("HARBOUR LOOP", amber dot
+ * letters) on the roof edge, fore and aft. One merged mesh and one material (vertex colours times a small canvas
+ * atlas; the letters also glow a little through an emissive map): one extra draw call.
+ */
+const FERRY_X = { hull: 2.231, cabin: 2.12, roof: 5.1, cabinFront: 5.62, cabinAft: -8.42, hullAft: -8.5, hullFwd: 5.8 };
+function ferryExtras(): { geo: THREE.BufferGeometry; mat: THREE.MeshStandardMaterial } | null {
+  if (typeof document === 'undefined') return null;
+  const W = 512, H = 128;
+  const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+  const cA = mk(), cE = mk();
+  const a = cA.getContext('2d'), e = cE.getContext('2d');
+  if (!a || !e) return null;
+  // atlas: rows 0..95 = the board face, rows 96..127 = plain white (vertex-coloured parts)
+  a.fillStyle = '#ffffff'; a.fillRect(0, 0, W, H);
+  a.fillStyle = '#16191d'; a.fillRect(0, 0, W, 96);
+  e.fillStyle = '#000000'; e.fillRect(0, 0, W, H);
+  for (const [ctx, col] of [[a, '#ffb43c'], [e, '#c97a14']] as const) {
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.font = '700 54px "Arial Narrow", Arial, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('HARBOUR LOOP', W / 2, 50, W - 40);
+    ctx.restore();
+  }
+  // dot-matrix look: a dark grid over the letters
+  for (const ctx of [a, e]) {
+    ctx.fillStyle = ctx === a ? '#16191d' : '#000000';
+    for (let x = 0; x < W; x += 6) ctx.fillRect(x, 0, 2, 96);
+    for (let y = 0; y < 96; y += 6) ctx.fillRect(0, y, W, 2);
+  }
+  const tex = (c: HTMLCanvasElement, srgb: boolean) => {
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.anisotropy = 4;
+    t.generateMipmaps = true;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    return t;
+  };
+  const parts: THREE.BufferGeometry[] = [];
+  const white = 0.12 / 1; // v of the white strip (canvas rows 96..127 -> v 0..0.25)
+  const paint = (g: THREE.BufferGeometry, hex: number | ((x: number, y: number, z: number) => number), uvKeep = false) => {
+    const pos = g.getAttribute('position'); const n = pos.count;
+    const col = new Float32Array(n * 3); const c = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      c.set(typeof hex === 'number' ? hex : hex(pos.getX(i), pos.getY(i), pos.getZ(i))).convertSRGBToLinear();
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    if (!uvKeep) { const uv = g.getAttribute('uv'); for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.5, white); }
+    return g;
+  };
+  const box = (sx: number, sy: number, sz: number, x: number, y: number, z: number, hex: number) => {
+    const g = new THREE.BoxGeometry(sx, sy, sz); g.translate(x, y, z); parts.push(paint(g, hex));
+  };
+  const zA = FERRY_X.hullAft + 0.15, zB = 1.6, zC = FERRY_X.hullFwd - 0.2;
+  for (const sd of [-1, 1]) {
+    const x = sd * (FERRY_X.hull + 0.012);
+    // teal livery band with a navy pinstripe, sweeping up toward the bow (a flat shape on the hull side)
+    for (const [y0, y1, rise, hex] of [[1.49, 1.75, 0.5, 0x1f9ea3], [1.8, 1.86, 0.5, 0x1d3557]] as const) {
+      const sh = new THREE.Shape();
+      const zx = (z: number) => (sd > 0 ? -z : z); // the shape's x after the turn onto this side
+      sh.moveTo(zx(zA), y0); sh.lineTo(zx(zB), y0); sh.lineTo(zx(zC), y0 + rise); sh.lineTo(zx(zC), y1 + rise); sh.lineTo(zx(zB), y1); sh.lineTo(zx(zA), y1);
+      const g = new THREE.ShapeGeometry(sh);
+      g.rotateY(sd > 0 ? Math.PI / 2 : -Math.PI / 2);
+      g.translate(x, 0, 0);
+      parts.push(paint(g, hex));
+    }
+  }
+  // life rings: orange with four white bands
+  const ring = (x: number, y: number, z: number, ry: number) => {
+    const g = new THREE.TorusGeometry(0.3, 0.075, 8, 20);
+    paint(g, (px, py) => { const ang = Math.atan2(py, px); const q = ((ang / (Math.PI / 2)) % 1 + 1) % 1; return q > 0.4 && q < 0.6 ? 0xf4f1ea : 0xf26a1b; });
+    g.rotateY(ry); g.translate(x, y, z); parts.push(g);
+  };
+  for (const sd of [-1, 1]) for (const z of [-6.2, -1.2, 3.9]) ring(sd * (FERRY_X.cabin + 0.08), 4.05, z, Math.PI / 2);
+  for (const x of [-1.25, 1.25]) ring(x, 4.05, FERRY_X.cabinAft - 0.08, 0);
+  // destination boards on the roof edge, fore and aft: a dark board with a lettered face and two posts
+  const board = (z: number, face: 1 | -1) => {
+    box(2.6, 0.62, 0.06, 0, FERRY_X.roof + 0.48, z, 0x16191d);
+    for (const x of [-1.0, 1.0]) box(0.06, 0.2, 0.06, x, FERRY_X.roof + 0.08, z, 0x2a2e33);
+    const pl = new THREE.PlaneGeometry(2.48, 0.5);
+    const uv = pl.getAttribute('uv'); for (let i = 0; i < uv.count; i++) uv.setY(i, 0.25 + uv.getY(i) * 0.75);
+    paint(pl, 0xffffff, true);
+    if (face < 0) pl.rotateY(Math.PI);
+    pl.translate(0, FERRY_X.roof + 0.48, z + face * 0.032);
+    parts.push(pl);
+  };
+  board(FERRY_X.cabinFront - 0.25, 1);
+  board(FERRY_X.cabinAft + 0.25, -1);
+  const geo = mergeGeometries(parts, false);
+  if (!geo) return null;
+  const mat = new THREE.MeshStandardMaterial({ map: tex(cA, true), emissiveMap: tex(cE, true), emissive: 0xffffff, emissiveIntensity: 0.55, vertexColors: true, roughness: 0.55, metalness: 0 });
+  mat.name = 'ferry37';
+  return { geo, mat };
+}
+
 /** Model name in boats.glb, hull length / beam (m), how deep the keel sits below the waterline, sailboat heel. */
 const KIND: Record<Kind, { model: string; len: number; beam: number; draft: number; heel: number; scale: number; gain: number }> = {
   sail: { model: 'boat_sail', len: 7.0, beam: 2.85, draft: 0.42, heel: 0.13, scale: 1, gain: 1.0 },
@@ -221,6 +321,19 @@ export class Boats {
         cap.name = `boats-cap-${k}`;
         this.caps.set(k, cap);
         this.group.add(cap);
+      }
+      if (k === 'ferry') {
+        // round 37: livery, life rings and destination boards on the harbour bus (same instance matrices)
+        const fx = ferryExtras();
+        if (fx) {
+          const ex = new THREE.InstancedMesh(fx.geo, fx.mat, count.get(k)!);
+          ex.instanceMatrix = im.instanceMatrix;
+          ex.frustumCulled = false;
+          ex.castShadow = false;
+          ex.receiveShadow = true;
+          ex.name = 'boats-ferry-detail';
+          this.group.add(ex);
+        }
       }
     }
     water.mesh.renderOrder = 2;

@@ -1,0 +1,3 @@
+ %CPU COMM
+  6.5 /usr/sbin/systemstats
+  2.7 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer

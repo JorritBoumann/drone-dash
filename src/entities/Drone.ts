@@ -634,6 +634,22 @@ export class Drone {
         const hs = Math.hypot(v.x, v.z);
         if (hs > lim) { v.x *= lim / hs; v.z *= lim / hs; }
       }
+      if (depth > 0 && world.deepestDynamic && !world.deepestSoft && world.deepestBox && this.normal.y > 0.7 && Math.abs(world.deepestBox.vx) + Math.abs(world.deepestBox.vz) > 0.1) {
+        // round 37: resting on a hull top. The drone hovered on the boat's box while the boat (and its sail) slid
+        // through it for seconds. It now slides off the nearer side, the same eased sideways carry as a bow contact,
+        // fast enough to clear the beam in about half a second. Only for a boat under way: the docks and moored boats
+        // hold still, so the drone may rest on them.
+        const b = world.deepestBox;
+        const ox = p.x - b.x, oz = p.z - b.z, side = Math.sign(ox * b.c - oz * b.s) || 1;
+        const want = Math.max(2.5, b.hx * 2.2);
+        this.slideX = b.c * side;
+        this.slideZ = -b.s * side;
+        this.slideV = Math.max(this.slideT > 0 ? this.slideV : 0, want);
+        this.slideT = 0.3;
+        this.slideCap = Math.max(Math.hypot(b.vx, b.vz) + 2, Math.hypot(v0x, v0z), want);
+        const sa = v.x * this.slideX + v.z * this.slideZ;
+        if (sa < this.slideV) { v.x += this.slideX * (this.slideV - sa); v.z += this.slideZ * (this.slideV - sa); }
+      }
       // ground
       const floor = world.floorY + 0.85; // skids just above the sidewalk
       if (p.y < floor) {

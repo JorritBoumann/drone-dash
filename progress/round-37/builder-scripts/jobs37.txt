@@ -1,0 +1,43 @@
+ps -Ao pcpu,comm -r | head -3 > cpu-water.txt; TAG=r37 SEEDS=130,22,33,58 node water31.mjs > water-d-r37.log 2>&1; python3 contrast31.py r37 > contrast37.log 2>&1
+TAG=r37 SEEDS=130,22 node boatlow37.mjs > boatlow37.log 2>&1
+TAG=r37 SEEDS=130,22,33 SWEEP=8 node hullwater35.mjs > hw37-d.log 2>&1
+TAG=r37 MOBILE=1 SEEDS=130,22,33 SWEEP=4 node hullwater35.mjs > hw37-m.log 2>&1
+TAG=r37b SEEDS=130,22,33,58 GPU=0 node water31.mjs > water-d-r37b.log 2>&1; python3 contrast31.py r37b > contrast37b.log 2>&1
+TAG=r37b SEEDS=130,22 node boatlow37.mjs > boatlow37b.log 2>&1
+TAG=r37 node wake36.mjs > wake37-d.log 2>&1; python3 wakecheck37.py $OUTDIR/wake36-r37-*-top.jpg > wakecheck37.log 2>&1
+for k in 1 2 3 4 5 6 7 8 9 10; do SEEDS=22 SHOTS=0 node boats37.mjs > boats37-22-$k.log 2>&1; done
+TAG=r37c SEEDS=130,22,33,58 GPU=0 node water31.mjs > water-d-r37c.log 2>&1; python3 contrast31.py r37c > contrast37c.log 2>&1
+node ridealong37.mjs > ridealong37.log 2>&1
+SEEDS=22,58,4711,9001 node boats33.mjs > boats33.log 2>&1
+SEEDS=22,58,5150 T=120 node boats31.mjs > boats31-overlap.log 2>&1
+node bus-stop33.mjs > bus-stop33.log 2>&1
+SEEDS=4711,22 node boattrace33.mjs > boattrace33-r37.log 2>&1
+node acceptance-probe.mjs > flat.log 2>&1
+PORTS=5190,5193 DEVS=desktop,iphone RUNS=2 node fouc34.mjs > fouc37.log 2>&1
+node load34.mjs > load37.log 2>&1
+SEED=130 node trisweep31.mjs > trisweep-d-130.log 2>&1
+SEED=22 node trisweep31.mjs > trisweep-d-22.log 2>&1
+SEED=33 node trisweep31.mjs > trisweep-d-33.log 2>&1
+MOBILE=1 SEED=130 node trisweep31.mjs > trisweep-m-130.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr37- node hud-probe34.mjs > fr-m-22.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr37- node hud-probe34.mjs > fr-m-58.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr37- node hud-probe34.mjs > fr-m-130.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20.log 2>&1
+node pad-people23.mjs > pad-people.log 2>&1
+node traffic-det29.mjs > traffic-det37.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-perf.txt; UNCAP=1 node perf-harbour35.mjs > perf-harbour-d.log 2>&1
+UNCAP=1 MOBILE=1 node perf-harbour35.mjs > perf-harbour-m.log 2>&1
+UNCAP=1 node perf-street34.mjs > perf-street-d-uncap.log 2>&1
+UNCAP=1 MOBILE=1 node perf-street34.mjs > perf-street-m-uncap.log 2>&1
+ps -Ao pcpu,comm -r | head -3 > cpu-medal.txt; LINE=low SEEDS=22,58,130 SIMT=600 node route-play-rt-x-m-esc17.mjs > m-low-a.log 2>&1
+TAG=r37c SEEDS=130,22 node boatlow37.mjs > boatlow37c.log 2>&1
+TAG=r37c node wake36.mjs > wake37c-d.log 2>&1; python3 wakecheck37.py $OUTDIR/wake36-r37c-*-top.jpg > wakecheck37c.log 2>&1
+TAG=r37c MOBILE=1 SEEDS=130,22 node water31.mjs > water-m-r37c.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr37b- node hud-probe34.mjs > fr-m-22-rerun.log 2>&1
+for k in 1 2 3 4 5 6 7 8 9 10; do SEEDS=22 SHOTS=0 node boats37.mjs > boats37f-22-$k.log 2>&1; done
+node ridealong37.mjs > ridealong37f.log 2>&1
+SEEDS=22,58,4711,9001 node boats33.mjs > boats33f.log 2>&1
+SEEDS=4711,22 node boattrace33.mjs > boattrace33f-r37.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20f.log 2>&1
+END

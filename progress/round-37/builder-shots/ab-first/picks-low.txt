@@ -1,0 +1,6 @@
+low-1 bottom (clear: no big navy blobs)
+low-2 top (clear)
+low-3 top (clear)
+low-4 top (weak: both fine, top has less smooth swirl)
+low-5 bottom (clear)
+low-6 bottom (clear)

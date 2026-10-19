@@ -6,3 +6,5 @@ progress/**/*.wav filter=lfs diff=lfs merge=lfs -text
 progress/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
 progress/**/*.ogg filter=lfs diff=lfs merge=lfs -text
 progress/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
+progress/**/*-rows.json filter=lfs diff=lfs merge=lfs -text
+progress/**/*.jsonl filter=lfs diff=lfs merge=lfs -text

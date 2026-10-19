@@ -1,0 +1,3 @@
+ %CPU COMM
+ 20.8 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 15.6 /usr/sbin/coreaudiod

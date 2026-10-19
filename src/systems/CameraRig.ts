@@ -118,6 +118,13 @@ export class CameraRig {
   private swingWant = 0;
   private swingIdle = 99; // s since the swing was last needed
   private swingSearch = 0; // s until the blocked view may search for a new swing angle again (the sweep is not per frame)
+  // round 39: speed camera state (spring arm, boost pull-back, turn roll) and the crash kick
+  private accLag = 0;
+  private accLagVel = 0;
+  private boostPull = 0;
+  private camRoll = 0;
+  private readonly kickOff = new THREE.Vector3();
+  private readonly kickVel = new THREE.Vector3();
 
   constructor(private readonly camera: THREE.PerspectiveCamera) {
     try {
@@ -226,6 +233,18 @@ export class CameraRig {
     this.shake = Math.min(1, this.shake + amount);
   }
 
+  /** Round 39: a short lurch of the camera toward a wall the drone just hit (nx, nz: wall normal; amount ~0.2..0.5). */
+  kick(nx: number, nz: number, amount: number): void {
+    this.kickVel.x -= nx * amount * 10;
+    this.kickVel.z -= nz * amount * 10;
+    this.kickVel.y -= amount * 3.5;
+  }
+
+  /** Round 39: speed camera state for probes. */
+  get feel(): { fov: number; roll: number; accLag: number; boostPull: number; shake: number; kick: number } {
+    return { fov: this.fov, roll: THREE.MathUtils.radToDeg(this.camRoll), accLag: this.accLag, boostPull: this.boostPull, shake: this.shake, kick: this.kickOff.length() };
+  }
+
   private computeIdeal(drone: Drone, speedFactor: number, alt = 0, target: THREE.Vector3 | null = null): void {
     // round 21: the player's orbit turns the chase view around the drone; heading still follows the drone
     const yaw = this.yaw + this.yawUse;
@@ -236,7 +255,8 @@ export class CameraRig {
     // never further than CAMERA.maxDistance so the drone stays readable at speed;
     // on the final approach the camera pulls in a little and rises to look down over roof edges
     const z = Math.exp(this.zoom);
-    let dist = Math.min(CAMERA.maxDistance, CAMERA.distance + speedFactor * 1.0 + (drone.boosting ? 0.8 : 0)) * (1 - CAMERA.approachPullIn * ap) * z;
+    // round 39: the arm also stretches with acceleration (spring, see update) and pulls back further under boost
+    let dist = Math.min(CAMERA.maxDistance + this.boostPull, CAMERA.distance + speedFactor * 1.0 + this.boostPull + this.accLag) * (1 - CAMERA.approachPullIn * ap) * z;
     const vy = THREE.MathUtils.clamp(drone.velocity.y / FLIGHT.climbSpeed, -1, 1);
     // higher up -> camera rises and pitches down so the city stays in frame
     let height = (Math.min(CAMERA.maxHeight, CAMERA.height + CAMERA.heightPerAlt * alt) + CAMERA.approachRise * ap) * z;
@@ -421,7 +441,9 @@ export class CameraRig {
     // Round 28: on a phone (narrower view) the slow floor is wider still: 4.2 m from close above filled up to 74% of
     // the screen height after a pickup beside a wall.
     const slow = SWING.slowDist * this.touchRoom;
-    const target = this.roomHold > 0 ? slow : THREE.MathUtils.lerp(slow, SWING.minDist, THREE.MathUtils.smoothstep(drone.speed, 4, 9));
+    // round 39: the floors were set at a 60 degree view; a narrower view (55 at a hover) backs off to keep the same screen size
+    const fovK = Math.max(1, Math.tan(THREE.MathUtils.degToRad(30)) / Math.tan(THREE.MathUtils.degToRad(this.fov / 2)));
+    const target = (this.roomHold > 0 ? slow : THREE.MathUtils.lerp(slow, SWING.minDist, THREE.MathUtils.smoothstep(drone.speed, 4, 9))) * fovK;
     // round 29: the floor never jumps out (with the wider desktop floor a camera 8.8 m up could appear in one frame).
     // When it wants more room than it had, it holds the camera where it is and backs it off at FLOOR_RATE m/s.
     if (target <= this.floorEff) this.floorEff = target;
@@ -725,6 +747,19 @@ export class CameraRig {
     this.yaw += dy * (1 - Math.exp(-CAMERA.yawLag * dt));
 
     const speedFactor = Math.min(1, drone.speed / FLIGHT.maxSpeed);
+    // round 39: spring arm. Forward acceleration stretches the chase distance (a little overshoot as it settles), braking
+    // shortens it a little; boost pulls the camera back
+    {
+      const want = THREE.MathUtils.clamp(drone.forwardAccel / FLIGHT.thrust, -0.5, 1) * CAMERA.accelLag;
+      const w = 7, n = Math.max(1, Math.ceil(dt / 0.012)), h = dt / n;
+      for (let i = 0; i < n; i++) {
+        this.accLagVel += (w * w * (want - this.accLag) - 2 * 0.7 * w * this.accLagVel) * h;
+        this.accLag += this.accLagVel * h;
+      }
+      this.boostPull += ((drone.boosting ? CAMERA.boostPull : 0) - this.boostPull) * (1 - Math.exp(-(drone.boosting ? 3 : 1.5) * dt));
+      const rollWant = THREE.MathUtils.clamp(drone.yawRate / FLIGHT.turnRate, -1, 1) * CAMERA.turnRoll * Math.min(1, drone.speed / FLIGHT.maxSpeed);
+      this.camRoll += (rollWant - this.camRoll) * (1 - Math.exp(-4 * dt));
+    }
     const wantApproach = this.approachWeight(drone, target);
     this.approach += (wantApproach - this.approach) * (1 - Math.exp(-(wantApproach > this.approach ? 2.5 : 1.5) * dt));
     // round 23: alley / tunnel framing blends in and out smoothly
@@ -824,6 +859,19 @@ export class CameraRig {
 
     // impact shake: an offset on top of the smoothed camera (removed again at the start of the next frame)
     let rz = 0;
+    // round 39: the crash kick, a small damped lurch toward the wall (also an offset on top, removed next frame)
+    if (this.kickVel.lengthSq() > 1e-6 || this.kickOff.lengthSq() > 1e-6) {
+      const w = 16, n = Math.max(1, Math.ceil(dt / 0.012)), h = dt / n;
+      for (let i = 0; i < n; i++) {
+        this.kickVel.addScaledVector(this.kickOff, -w * w * h).multiplyScalar(1 - 2 * 0.45 * w * h);
+        this.kickOff.addScaledVector(this.kickVel, h);
+      }
+      if (this.kickOff.length() > 0.45) this.kickOff.setLength(0.45);
+      if (this.kickOff.lengthSq() < 1e-6 && this.kickVel.lengthSq() < 1e-6) { this.kickOff.set(0, 0, 0); this.kickVel.set(0, 0, 0); }
+      cam.position.add(this.kickOff);
+      world.pushOutPoint(cam.position, 0.3);
+      cam.position.y = Math.max(cam.position.y, 0.8);
+    }
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt * 2.4);
       const s = this.shake * this.shake * 0.35;
@@ -835,10 +883,14 @@ export class CameraRig {
     }
     cam.lookAt(this.lookSmoothed);
     this.keepInFrame(drone.group.position);
-    if (rz !== 0) cam.rotation.z += rz;
+    // round 39: plus a slight roll into the turn
+    if (rz !== 0 || this.camRoll !== 0) cam.rotation.z += rz + this.camRoll;
 
-    const targetFov = Math.min(CAMERA.maxFov, (drone.boosting ? CAMERA.boostFov : CAMERA.fov) + speedFactor * CAMERA.speedFov);
-    this.fov += (targetFov - this.fov) * (1 - Math.exp(-(drone.boosting ? 6 : 3) * dt));
+    // round 39: speed FOV, 55 at a hover, 67 at cruise speed, 75 at full boost speed
+    const sp = drone.speed;
+    const targetFov = Math.min(CAMERA.fovTop, CAMERA.fovMin + (CAMERA.fovCruise - CAMERA.fovMin) * Math.min(1, sp / FLIGHT.maxSpeed)
+      + (CAMERA.fovTop - CAMERA.fovCruise) * THREE.MathUtils.clamp((sp - FLIGHT.maxSpeed) / (FLIGHT.boostSpeed - FLIGHT.maxSpeed), 0, 1) + (drone.boosting ? 2 : 0));
+    this.fov += (targetFov - this.fov) * (1 - Math.exp(-(targetFov > this.fov ? (drone.boosting ? 5 : 3) : 2) * dt));
     if (Math.abs(cam.fov - this.fov) > 0.01) {
       cam.fov = this.fov;
       cam.updateProjectionMatrix();

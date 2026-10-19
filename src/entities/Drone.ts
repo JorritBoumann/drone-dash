@@ -11,7 +11,17 @@ import type { CollisionWorld } from '../systems/CollisionWorld';
  * drop guide). Contacts with low obstacles (skimmable lips, kerbs, rims) are not counted. wallTop: tallest top of the
  * obstacle column at the hardest wall contact.
  */
-export type FlightEvents = { bump: number; ledge: number; landed: boolean; wallLoss: number; wallTop: number; wallNormalY: number };
+export type FlightEvents = {
+  bump: number; ledge: number; landed: boolean; wallLoss: number; wallTop: number; wallNormalY: number;
+  /**
+   * Round 39: glancing wall contacts (impact angle under FLIGHT.scrapeAngle). scrape: normal impact speed (0 = none),
+   * scrapeSpeed: speed along the wall after it, sx/sy/sz the contact point, sdx/sdz the direction of travel along the wall,
+   * snx/snz the wall normal. scrapeOld: the speed the round 38 response (bounce plus scrub) would have taken off, for the
+   * "would have been charged" count. hitAngle (deg) and hitNx/hitNz: the hardest charged-type wall contact this frame.
+   */
+  scrape: number; scrapeSpeed: number; sx: number; sy: number; sz: number; sdx: number; sdz: number; snx: number; snz: number; scrapeOld: number;
+  hitAngle: number; hitNx: number; hitNz: number;
+};
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -63,6 +73,19 @@ export class Drone {
   private rotorSpeed = 40;
   private pitch = 0;
   private roll = 0;
+  // round 39: attitude spring state and its drive
+  private pitchVel = 0;
+  private rollVel = 0;
+  private accF = 0; // smoothed forward acceleration from the flight controls (m/s^2; collisions left out)
+  private accR = 0; // smoothed sideways acceleration
+  private thrustCmd = 0; // forward thrust command this frame (-1..1.3)
+  private readonly ctrlVel = new THREE.Vector3(); // velocity after controls, before collisions
+  private tumbleYaw = 0; // visual-only body yaw wobble of a crash tumble (rad)
+  private tumbleYawVel = 0;
+  private sputter = 0; // 1 -> 0: rotors stutter after a crash
+  private readonly rotorApp = { value: 0 }; // apparent rotor angle (reads as spinning without strobing)
+  private readonly rotorSmear = { value: 0.4 }; // blur sector length, share of a quarter turn
+  private readonly rotorVeil = { value: 0.08 };
   private boostIdle = 0;
   private time = 0;
   private bumpFlash = 0;
@@ -200,8 +223,30 @@ export class Drone {
     discGeo.rotateX(-Math.PI / 2);
     const lipMat = shell.clone();
     lipMat.side = THREE.DoubleSide;
-    this.blurMat = new THREE.MeshBasicMaterial({ color: '#d9e2ea', transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide });
+    this.blurMat = new THREE.MeshBasicMaterial({ color: '#d9e2ea', transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide });
     this.blurMat.forceSinglePass = true; // round 33: one draw for the blur discs (a flat disc needs no back-then-front pass)
+    {
+      // round 39: the blur disc is a motion smear. Each of the 4 blade arms drags a fading sector behind it; the sector
+      // grows with rotor speed and the whole pattern turns at an apparent rate (no strobing at 60 Hz). The blades turn
+      // at the same apparent angle, so each blade leads its own smear.
+      const app = this.rotorApp, smear = this.rotorSmear, veil = this.rotorVeil;
+      this.blurMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uRotorApp = app;
+        shader.uniforms.uSmear = smear;
+        shader.uniforms.uVeil = veil;
+        shader.vertexShader = 'attribute float spin;\nvarying vec2 vRuv;\nvarying float vSpin;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvRuv = uv - 0.5; vSpin = spin;');
+        shader.fragmentShader = 'uniform float uRotorApp;\nuniform float uSmear;\nuniform float uVeil;\nvarying vec2 vRuv;\nvarying float vSpin;\n' + shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+          float rr = length(vRuv) * 2.0;
+          float ang = atan(vRuv.y, vRuv.x) * vSpin - uRotorApp;
+          float d = fract(ang / 1.5707963);          // 0 at a blade, rising toward the next one
+          float behind = 1.0 - d;                     // share of a quarter turn behind the blade
+          float sm = clamp(1.0 - behind / max(uSmear, 0.05), 0.0, 1.0);
+          float body = smoothstep(0.12, 0.3, rr) * (1.0 - smoothstep(0.9, 1.0, rr));
+          float tip = smoothstep(0.82, 0.93, rr) * (1.0 - smoothstep(0.93, 1.0, rr));
+          diffuseColor.a = clamp(uVeil + sm * sm * 0.42 * body + tip * (0.1 + uSmear * 0.12), 0.0, 0.75) * (1.0 - smoothstep(0.97, 1.0, rr));`);
+      };
+      this.blurMat.customProgramCacheKey = () => 'drone-rotor-blur39';
+    }
     const rotorParts: THREE.BufferGeometry[] = [], discParts: THREE.BufferGeometry[] = [];
     motorPos.forEach((p, i) => {
       // arm from hull to motor
@@ -229,7 +274,9 @@ export class Drone {
       const rg = rotorGeo.clone().translate(p.x, p.y + 0.13, p.z);
       rg.setAttribute('hub', new THREE.BufferAttribute(hubA, 4));
       rotorParts.push(rg);
-      discParts.push(discGeo.clone().translate(p.x, p.y + 0.135, p.z));
+      const dg = discGeo.clone().translate(p.x, p.y + 0.135, p.z);
+      dg.setAttribute('spin', new THREE.BufferAttribute(new Float32Array(dg.getAttribute('position').count).fill(i % 2 === 0 ? 1 : -1), 1));
+      discParts.push(dg);
       // nav light under each motor: port red, starboard green
       add(navGeo(new THREE.SphereGeometry(0.03, 8, 6), p.x < 0 ? '#ff2a1a' : '#22ff6a'), p.x < 0 ? red : green, p.x * 1.08, p.y - 0.07, p.z * 1.08);
     });
@@ -360,6 +407,8 @@ export class Drone {
     this.carrying = false;
     this.cargo.visible = false;
     this.pitch = this.roll = 0;
+    this.pitchVel = this.rollVel = this.accF = this.accR = 0;
+    this.tumble = this.tumbleYaw = this.tumbleYawVel = this.sputter = 0;
     this.hop = 0;
     this.hopCarry = 0;
     this.slideT = 0;
@@ -391,12 +440,43 @@ export class Drone {
     this.cargoSnap = v ? 1 : 0;
   }
 
-  /** Hard crash: a short visual tumble, a cargo jolt and a red status blink. Flight control is unchanged. */
-  crash(strength: number): void {
+  /**
+   * Hard crash: a visual tumble, a cargo jolt, a rotor sputter and a red status blink. Flight control is unchanged.
+   * Round 39: the tumble is an angular kick on the attitude spring (the nose thrown up and back from the wall, a roll to
+   * one side, a yaw wobble) plus the round 4 rattle, so the body clearly flips and then rights itself. nx/nz: the wall
+   * normal (world, horizontal), which sets how much of the kick is pitch and how much is roll.
+   */
+  crash(strength: number, nx = 0, nz = 0, side = Math.random() < 0.5 ? -1 : 1): void {
+    const s = THREE.MathUtils.clamp(strength, 0, 1);
     this.tumble = 1;
-    this.tumbleAmp = 0.5 + strength * 0.7;
+    this.tumbleAmp = 0.35 + s * 0.5;
     this.alarm = 1;
-    if (this.carrying) this.cargoSwingVel.set(3 + strength * 4, (Math.random() - 0.5) * 6);
+    this.sputter = 1;
+    // wall normal in the drone's frame: along = how head-on (normal against the heading), across = from the side
+    const fwd = -(nx * this.forward.x + nz * this.forward.z);
+    const across = nx * -this.forward.z + nz * this.forward.x;
+    const kick = 11 + s * 8; // rad/s
+    const hasN = Math.hypot(nx, nz) > 0.1;
+    const pitchShare = hasN ? THREE.MathUtils.clamp(Math.abs(fwd), 0.35, 1) : 0.8;
+    this.pitchVel += kick * pitchShare; // nose thrown up, away from the wall
+    this.rollVel += kick * (hasN && Math.abs(across) > 0.3 ? -Math.sign(across) * 0.9 : side * 0.75);
+    this.tumbleYawVel += side * (6 + s * 5);
+    if (this.carrying) this.cargoSwingVel.set((3 + s * 4) * Math.sign(fwd || 1), (Math.random() - 0.5) * 6);
+  }
+
+  /** Round 39: attitude and effect state for probes (degrees where angles). */
+  get feel(): { pitch: number; roll: number; tiltX: number; tiltZ: number; tumble: number; accF: number; accR: number; thrust: number; yawRate: number; cargoX: number; cargoZ: number; rotor: number; smear: number; sputter: number } {
+    const d = THREE.MathUtils.radToDeg;
+    return {
+      pitch: d(this.pitch), roll: d(this.roll), tiltX: d(this.tilt.rotation.x), tiltZ: d(this.tilt.rotation.z), tumble: this.tumble,
+      accF: this.accF, accR: this.accR, thrust: this.thrustCmd, yawRate: this.yawRate,
+      cargoX: d(this.cargoSwing.x), cargoZ: d(this.cargoSwing.y), rotor: this.rotorSpeed, smear: this.rotorSmear.value, sputter: this.sputter,
+    };
+  }
+
+  /** Round 39: smoothed forward acceleration from the controls (m/s^2), for the camera's spring arm. */
+  get forwardAccel(): number {
+    return this.accF;
   }
 
   /** Advance flight. Returns impact info for audio/camera feedback. */
@@ -408,6 +488,10 @@ export class Drone {
     events.wallLoss = 0;
     events.wallTop = -1e9;
     events.wallNormalY = 0;
+    events.scrape = 0;
+    events.scrapeSpeed = 0;
+    events.scrapeOld = 0;
+    events.hitAngle = -1;
     const F = FLIGHT;
 
     // Yaw with smoothed rate
@@ -441,9 +525,14 @@ export class Drone {
     const drag = (thrust / top) * (hSpeed > top + 0.5 && !diving ? 0.35 + 0.65 * this.headwind : 1); // the headwind eats carried speed too
     const v = this.velocity;
     this.prevVel.copy(v);
-    const thrustDv = Math.max(0, thrustIn) * thrust * dt;
-    v.x += this.forward.x * thrustIn * thrust * dt;
-    v.z += this.forward.z * thrustIn * thrust * dt;
+    this.thrustCmd = thrustIn * (this.boosting ? 1.3 : 1);
+    // round 39: over the top speed, forward thrust no longer pushes (it used to: with the gentle over-top drag the speed
+    // ran away to about 2.9 x top, 48 m/s after a boost or a fast carve with W held, 88 m/s while boosting). The leftover
+    // speed still bleeds off gently, as before.
+    const push = thrustIn > 0 && hSpeed > top + 0.5 && !F.overTopPush ? 0 : thrustIn;
+    const thrustDv = Math.max(0, push) * thrust * dt;
+    v.x += this.forward.x * push * thrust * dt;
+    v.z += this.forward.z * push * thrust * dt;
     // reversing is weaker than going forward
     const k = Math.exp(-drag * dt * (thrustIn < 0 ? 1.4 : 1));
     // outside of boost, excess speed bleeds off gently instead of snapping
@@ -503,6 +592,8 @@ export class Drone {
       if (hs > this.slideCap) { v.x *= this.slideCap / hs; v.z *= this.slideCap / hs; }
     }
 
+    // round 39: the velocity the controls asked for (before any contact), the drive of the attitude
+    this.ctrlVel.copy(v);
     // Sub-stepped integration so fast boosts never tunnel through thin walls
     const p = this.group.position;
     const travel = v.length() * dt;
@@ -578,9 +669,40 @@ export class Drone {
           this.hopLift = Math.max(this.hop > 0 ? this.hopLift : 0, F.hopSpeed, Math.min(F.hopSpeed * 2, -vn * 0.55));
           v.y = Math.max(v.y, this.hopLift * 0.75);
           this.hop = F.hopTime;
+        } else if (vn < 0 && this.glancing(v, low) < F.scrapeAngle) {
+          // round 39: a glancing wall hit is a scrape: it slides along the wall with a small bounce, loses speed along
+          // the wall by friction (scrapeFriction x the normal speed) and is never a crash (no wallHit, no wallLoss)
+          const impact = -vn, n = this.normal, hBefore = Math.hypot(v.x, v.z);
+          // what the round 38 response would have taken off (for the count of hits this round made free)
+          {
+            const ox = v.x - n.x * (1 + F.bounce) * vn, oy = v.y - n.y * (1 + F.bounce) * vn, oz = v.z - n.z * (1 + F.bounce) * vn;
+            let rx = ox, rz = oz;
+            if (impact > 2.5) {
+              const on = ox * n.x + oy * n.y + oz * n.z;
+              rx = n.x * on + (ox - n.x * on) * F.bumpFriction;
+              rz = n.z * on + (oz - n.z * on) * F.bumpFriction;
+            }
+            events.scrapeOld = Math.max(events.scrapeOld, hBefore - Math.hypot(rx, rz));
+          }
+          v.addScaledVector(n, -(1 + F.scrapeBounce) * vn);
+          const on = v.dot(n);
+          this.tmp.copy(v).addScaledVector(n, -on); // along the wall
+          const tl = this.tmp.length();
+          const keep = tl > 1e-3 ? Math.max(0.5, 1 - (F.scrapeFriction * impact) / tl) : 1;
+          v.copy(n).multiplyScalar(on).addScaledVector(this.tmp, keep);
+          if (impact > events.scrape) {
+            events.scrape = impact;
+            events.scrapeSpeed = Math.hypot(this.tmp.x, this.tmp.z) * keep;
+            events.sx = p.x - n.x * F.radius; events.sy = p.y - n.y * F.radius; events.sz = p.z - n.z * F.radius;
+            const th = Math.hypot(this.tmp.x, this.tmp.z) || 1;
+            events.sdx = this.tmp.x / th; events.sdz = this.tmp.z / th;
+            const nh = Math.hypot(n.x, n.z) || 1;
+            events.snx = n.x / nh; events.snz = n.z / nh;
+          }
         } else if (vn < 0) {
           const impact = -vn;
           const hBefore = Math.hypot(v.x, v.z);
+          const hitAngle = this.normal.y < 0.7 && !low ? this.glancing(v, low) : -1;
           v.addScaledVector(this.normal, -(1 + F.bounce) * vn);
           if (impact > 2.5 && this.normal.y < 0.7) {
             // tangential scrub on hard wall hits
@@ -601,6 +723,10 @@ export class Drone {
                 hardest = lost;
                 events.wallTop = this.columnTop(world, p);
                 events.wallNormalY = this.normal.y;
+                events.hitAngle = hitAngle;
+                const nh = Math.hypot(this.normal.x, this.normal.z) || 1;
+                events.hitNx = this.normal.x / nh;
+                events.hitNz = this.normal.z / nh;
               }
             }
           }
@@ -692,10 +818,28 @@ export class Drone {
     if (events.bump > 0) {
       this.bumpFlash = 1;
       this.bumpAmp = Math.min(1.6, 0.4 + events.bump / 10);
+    } else if (events.scrape > 1.5) {
+      // round 39: a scrape rattles the drone a little
+      this.bumpFlash = Math.max(this.bumpFlash, 0.6);
+      this.bumpAmp = Math.min(0.8, 0.25 + events.scrape / 16);
     }
 
     this.speed = Math.hypot(v.x, v.z);
     this.animate(dt, intent);
+  }
+
+  /**
+   * Round 39: impact angle (deg) between the horizontal velocity and a wall face (this.normal), from the velocity
+   * component along the wall normal: 0 = sliding along it, 90 = straight into it. Returns 90 (never a scrape) for
+   * floors, ceilings, low steps and a drone barely moving sideways.
+   */
+  private glancing(v: THREE.Vector3, low: boolean): number {
+    const n = this.normal;
+    if (low || n.y >= 0.7 || n.y < -0.5) return 90;
+    const nh = Math.hypot(n.x, n.z), h = Math.hypot(v.x, v.z);
+    if (nh < 0.5 || h < 1) return 90;
+    const into = -(v.x * n.x + v.z * n.z) / nh;
+    return THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(into / h, 0, 1)));
   }
 
   /**
@@ -731,16 +875,34 @@ export class Drone {
     const F = FLIGHT;
     const v = this.velocity;
     const fwdSpeed = v.x * this.forward.x + v.z * this.forward.z;
-    const accelF = dt > 0 ? ((v.x - this.prevVel.x) * this.forward.x + (v.z - this.prevVel.z) * this.forward.z) / dt : 0;
     const rightX = -this.forward.z, rightZ = this.forward.x;
-    const latSpeed = v.x * rightX + v.z * rightZ;
+    // round 39: acceleration the controls produced this frame (thrust, drag, grip, guide; wall contacts left out),
+    // low-passed so single frames never twitch the body
+    const cax = dt > 0 ? (this.ctrlVel.x - this.prevVel.x) / dt : 0;
+    const caz = dt > 0 ? (this.ctrlVel.z - this.prevVel.z) / dt : 0;
+    const aF = cax * this.forward.x + caz * this.forward.z;
+    const aR = cax * rightX + caz * rightZ;
+    const la = 1 - Math.exp(-10 * dt);
+    this.accF += (THREE.MathUtils.clamp(aF, -80, 80) - this.accF) * la;
+    this.accR += (THREE.MathUtils.clamp(aR, -80, 80) - this.accR) * la;
 
     const sf = Math.min(1, Math.abs(fwdSpeed) / F.maxSpeed);
-    const targetPitch = -(THREE.MathUtils.clamp(accelF / 30, -1, 1) * 0.55 + (fwdSpeed / F.boostSpeed) * 0.75) * F.pitchAngle;
-    const targetRoll = (this.yawRate / F.turnRate) * F.bankAngle * (0.35 + 0.65 * sf) - (latSpeed / 10) * 0.25;
-    const a = 1 - Math.exp(-8 * dt);
-    this.pitch += (targetPitch - this.pitch) * a;
-    this.roll += (targetRoll - this.roll) * a;
+    // pitch: nose down for forward thrust (more under boost), plus the forward acceleration (braking lifts the nose)
+    const targetPitch = THREE.MathUtils.clamp(-(this.thrustCmd * F.attPitchForce + THREE.MathUtils.clamp(this.accF / F.thrust, -1.5, 1.5) * F.attPitchAccel), -0.48, 0.48);
+    // roll: into the turn by the yaw rate, more at speed, plus a little of the sideways acceleration
+    const targetRoll = THREE.MathUtils.clamp(this.yawRate / F.turnRate, -1, 1) * F.attRoll * (F.attRollSlow + (1 - F.attRollSlow) * sf)
+      - THREE.MathUtils.clamp(this.accR / 40, -1, 1) * 0.08;
+    // lightly damped spring (sub-stepped for long frames); looser while a crash tumble plays, so the flip reads
+    const w = F.attFreq * (1 - 0.55 * this.tumble), z = F.attDamp;
+    const n = Math.max(1, Math.ceil(dt / 0.012)), h = dt / n;
+    for (let i = 0; i < n; i++) {
+      this.pitchVel += (w * w * (targetPitch - this.pitch) - 2 * z * w * this.pitchVel) * h;
+      this.rollVel += (w * w * (targetRoll - this.roll) - 2 * z * w * this.rollVel) * h;
+      this.pitch += this.pitchVel * h;
+      this.roll += this.rollVel * h;
+      this.tumbleYawVel += (-90 * this.tumbleYaw - 7 * this.tumbleYawVel) * h;
+      this.tumbleYaw += this.tumbleYawVel * h;
+    }
     this.group.rotation.set(0, this.yaw, 0);
     // hover bob + wobble from bumps
     const hover = Math.sin(this.time * 2.1) * F.hoverBob * (1 - sf * 0.7);
@@ -748,20 +910,26 @@ export class Drone {
     const wob = Math.sin(this.time * 38) * this.bumpFlash * 0.12 * this.bumpAmp;
     this.stepOffset *= Math.exp(-14 * dt);
     this.tilt.position.y = hover + this.stepOffset;
-    // crash tumble: a damped roll/pitch shake that settles in about a second
+    // crash rattle on top of the tumble kick: a damped roll/pitch shake that settles in about a second
     this.tumble = Math.max(0, this.tumble - dt * 1.1);
     const tk = this.tumble * this.tumble * this.tumbleAmp;
-    const tumbleP = Math.sin(this.time * 17) * 0.35 * tk;
-    const tumbleR = Math.sin(this.time * 23 + 1.3) * 0.55 * tk;
-    this.tilt.rotation.set(this.pitch + wob + tumbleP, 0, this.roll - wob * 0.6 + tumbleR);
+    const tumbleP = Math.sin(this.time * 17) * 0.2 * tk;
+    const tumbleR = Math.sin(this.time * 23 + 1.3) * 0.3 * tk;
+    this.tilt.rotation.set(this.pitch + wob + tumbleP, this.tumbleYaw, this.roll - wob * 0.6 + tumbleR, 'YXZ');
 
-    // rotor spin follows throttle effort
+    // rotor spin follows throttle effort; a crash makes them sputter (stall and catch) for about 0.7 s
+    this.sputter = Math.max(0, this.sputter - dt / 0.7);
     const effort = 0.5 + Math.abs(intent.thrust) * 0.25 + Math.max(0, intent.lift) * 0.3 + (this.boosting ? 0.5 : 0);
-    const targetSpin = 55 + effort * 70;
-    this.rotorSpeed += (targetSpin - this.rotorSpeed) * (1 - Math.exp(-5 * dt));
+    let targetSpin = 55 + effort * 70;
+    if (this.sputter > 0) targetSpin *= 0.35 + 0.65 * (1 - this.sputter) * (0.5 + 0.5 * Math.sign(Math.sin(this.time * 31)));
+    this.rotorSpeed += (targetSpin - this.rotorSpeed) * (1 - Math.exp(-(this.sputter > 0 ? 12 : 5) * dt));
     this.rotorAngle += this.rotorSpeed * dt;
-    this.rotorSpin.value = this.rotorAngle % (Math.PI * 2);
-    this.blurMat.opacity = 0.08 + Math.min(0.18, (this.rotorSpeed - 50) / 500);
+    // round 39: blades and smear turn at an apparent 2 to 3.5 turns a second (no strobing); the smear grows with speed
+    this.rotorApp.value = (this.rotorApp.value + this.rotorSpeed * 0.17 * dt) % (Math.PI * 2);
+    this.rotorSpin.value = this.rotorApp.value;
+    const r01 = THREE.MathUtils.clamp((this.rotorSpeed - 45) / 95, 0, 1);
+    this.rotorSmear.value = 0.3 + r01 * 0.62;
+    this.rotorVeil.value = 0.05 + r01 * 0.07;
     this.blurMat.color.set(this.boosting ? '#9ff3ff' : '#d9e2ea');
     this.accentMat.emissiveIntensity = this.boosting ? 0.9 : 0;
 
@@ -775,18 +943,24 @@ export class Drone {
       this.statusMat.emissive.set(on ? '#ff4030' : this.carrying ? '#ffb02e' : '#38e8ff');
     }
 
-    // cargo pendulum driven by acceleration
+    // cargo: a damped pendulum on its pivot, driven by the drone's acceleration (round 39: it now lags behind the
+    // acceleration, as a hanging load does, and hangs plumb against the body's tilt)
     if (this.carrying) {
       const ax = dt > 0 ? (v.x - this.prevVel.x) / dt : 0;
       const az = dt > 0 ? (v.z - this.prevVel.z) / dt : 0;
       // into drone local frame
-      const lf = ax * this.forward.x + az * this.forward.z;
-      const lr = ax * rightX + az * rightZ;
-      const kSpring = 30, damp = 4;
-      this.cargoSwingVel.x += (-kSpring * this.cargoSwing.x - damp * this.cargoSwingVel.x + lf * 0.25) * dt;
-      this.cargoSwingVel.y += (-kSpring * this.cargoSwing.y - damp * this.cargoSwingVel.y - lr * 0.25) * dt;
-      this.cargoSwing.addScaledVector(this.cargoSwingVel, dt);
-      this.cargo.rotation.set(this.cargoSwing.x - this.pitch * 0.8, 0, this.cargoSwing.y - this.roll * 0.8);
+      const lf = THREE.MathUtils.clamp(ax * this.forward.x + az * this.forward.z, -60, 60);
+      const lr = THREE.MathUtils.clamp(ax * rightX + az * rightZ, -60, 60);
+      const kSpring = 22, damp = 2.4;
+      const m = Math.max(1, Math.ceil(dt / 0.012)), hh = dt / m;
+      for (let i = 0; i < m; i++) {
+        this.cargoSwingVel.x += (-kSpring * this.cargoSwing.x - damp * this.cargoSwingVel.x - lf * 0.2) * hh;
+        this.cargoSwingVel.y += (-kSpring * this.cargoSwing.y - damp * this.cargoSwingVel.y - lr * 0.2) * hh;
+        this.cargoSwing.addScaledVector(this.cargoSwingVel, hh);
+      }
+      this.cargoSwing.x = THREE.MathUtils.clamp(this.cargoSwing.x, -0.6, 0.6);
+      this.cargoSwing.y = THREE.MathUtils.clamp(this.cargoSwing.y, -0.6, 0.6);
+      this.cargo.rotation.set(this.cargoSwing.x - this.pitch, 0, this.cargoSwing.y - this.roll);
       // snap-in: parcel is reeled up from below with an overshoot pop (round 26: from 1 m below, was 1.6: the long cable
       // made the drone plus parcel fill a phone screen right after a pickup)
       if (this.cargoSnap > 0) {

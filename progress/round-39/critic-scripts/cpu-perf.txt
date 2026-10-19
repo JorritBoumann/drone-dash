@@ -1,0 +1,3 @@
+ %CPU COMM
+ 25.7 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/155.0.8059.80/Helpers/Google Chrome Helper (Aperitif Renderer).app/Contents/MacOS/Google Chrome Helper (Aperitif Renderer)
+ 17.4 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer

@@ -49,6 +49,8 @@ export class AudioSystem {
   private sfx!: GainNode;
   private reverbSend!: GainNode;
   private rotorGain!: GainNode;
+  private rotorSputter!: GainNode; // round 39: crash stutter on the rotor bus (scheduled, apart from the per-frame gain)
+  private lastScrape = 0;
   private rotorOsc1!: OscillatorNode;
   private rotorOsc2!: OscillatorNode;
   private rotorFilter!: BiquadFilterNode;
@@ -221,7 +223,9 @@ export class AudioSystem {
     this.rotorLfo.connect(lfoDepth).connect(this.rotorAm.gain);
     this.rotorOsc1.connect(this.rotorFilter);
     this.rotorOsc2.connect(this.rotorFilter);
-    this.rotorFilter.connect(this.rotorAm).connect(this.rotorGain).connect(this.master);
+    this.rotorSputter = ctx.createGain();
+    this.rotorSputter.gain.value = 1;
+    this.rotorFilter.connect(this.rotorAm).connect(this.rotorGain).connect(this.rotorSputter).connect(this.master);
 
     // wind / air rush layer that grows with speed
     const wind = ctx.createBufferSource();
@@ -410,13 +414,57 @@ export class AudioSystem {
 
   /** Hard crash: a heavy crunch plus a falling two-note "lost it" cue (lower still when a combo breaks). */
   crash(strength: number, comboBroken: boolean): void {
+    this.impact(strength);
+    this.crashCue(comboBroken);
+  }
+
+  /**
+   * Round 39: the moment of a head-on hit: the crunch, a metal clank, and the rotors sputter (the rotor bus stutters
+   * and sags in pitch for about 0.7 s, then catches).
+   */
+  impact(strength: number): void {
     if (!this.ready) return;
-    const t = this.ctx!.currentTime;
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
     const s = Math.min(1, strength);
     this.duck(0.35, t, 0.55, 0.6, 'crash');
     this.tone(95, t, 0.45, 'sine', 0.55 + s * 0.3, 0.1, 38);
     this.noise(t, 0.32 + s * 0.2, 0.35 + s * 0.25, 'lowpass', 2400, 160, 0.9);
     this.noise(t + 0.02, 0.12, 0.08 + s * 0.06, 'bandpass', 3800, 1800, 3);
+    if (!this.rotorOn) return;
+    const g = this.rotorSputter.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(1, t);
+    const cuts = [0.04, 0.13, 0.21, 0.3, 0.37, 0.46, 0.55];
+    cuts.forEach((c, i) => {
+      g.setValueAtTime(i % 2 === 0 ? 0.12 + i * 0.04 : 1.25, t + c);
+    });
+    g.setTargetAtTime(1, t + 0.6, 0.12);
+    for (const o of [this.rotorOsc1, this.rotorOsc2]) {
+      o.detune.cancelScheduledValues(t);
+      o.detune.setValueAtTime(0, t);
+      o.detune.linearRampToValueAtTime(-900, t + 0.12);
+      o.detune.setTargetAtTime(0, t + 0.35, 0.18);
+    }
+    // stuttering whine of the motors catching again
+    this.tone(320, t + 0.1, 0.35, 'square', 0.025, 0.2, 180);
+  }
+
+  /** Round 39: a glancing wall hit: a short bright grind (no "lost it" cue). Rate-limited for long slides. */
+  scrape(strength: number): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime;
+    if (t - this.lastScrape < 0.09) return;
+    this.lastScrape = t;
+    const s = Math.min(1, strength / 10);
+    this.noise(t, 0.12 + s * 0.1, 0.05 + s * 0.12, 'bandpass', 5200, 2600, 4);
+    this.noise(t, 0.08, 0.04 + s * 0.06, 'highpass', 7000, 9000, 1);
+  }
+
+  /** Round 39: the charge after a crash: the falling two-note "lost it" cue (lower still when a combo breaks). */
+  crashCue(comboBroken: boolean): void {
+    if (!this.ready) return;
+    const t = this.ctx!.currentTime - 0.12;
     const base = comboBroken ? 392 : 466.16;
     this.tone(base, t + 0.12, 0.22, 'triangle', 0.1, 0.3);
     this.tone(base * 0.749, t + 0.26, 0.4, 'triangle', 0.11, 0.4, base * 0.7);

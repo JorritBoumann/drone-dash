@@ -16,8 +16,24 @@ export const FLIGHT = {
   radius: 0.95, // collision sphere
   bounce: 0.35, // restitution against walls
   bumpFriction: 0.55, // tangential speed kept after a bump
-  bankAngle: 0.55, // rad roll at full turn & speed
-  pitchAngle: 0.32, // rad pitch at full acceleration
+  bankAngle: 0.55, // rad roll at full turn & speed (round 39: no longer used, see attRoll)
+  pitchAngle: 0.32, // rad (round 39: no longer used, see attPitchForce / attPitchAccel)
+  // round 39: drone attitude (visual only). Pitch follows the thrust the drone commands (nose down to speed up, nose up
+  // to brake) plus its smoothed forward acceleration; roll follows the yaw rate, more at speed. A lightly damped spring
+  // (attFreq rad/s, attDamp ratio) gives a little overshoot and settle.
+  attPitchForce: 0.2, // rad at full forward (or reverse) thrust (x1.3 under boost)
+  attPitchAccel: 0.1, // rad per thrust-sized m/s^2 of forward acceleration (clamped to 1.5 of it)
+  attRoll: 0.56, // rad at a full-rate turn at cruise speed or faster
+  attRollSlow: 0.3, // share of attRoll when turning on the spot
+  attFreq: 12,
+  attDamp: 0.55,
+  // round 39: wall hits by impact angle. Under scrapeAngle (deg, from the horizontal velocity to the wall face) a wall
+  // contact is a scrape: no crash charge, a small bounce and friction that takes scrapeFriction x the normal speed off
+  // the speed along the wall.
+  scrapeAngle: 25,
+  scrapeBounce: 0.15,
+  scrapeFriction: 0.6,
+  overTopPush: false, // round 39: true restores the round 38 thrust above top speed (the runaway), for A/B probes only
   boostDrain: 0.38, // per second
   boostRegen: 0.16, // per second
   boostRegenDelay: 0.9, // s
@@ -44,7 +60,16 @@ export const CAMERA = {
   fov: 60,
   boostFov: 68,
   speedFov: 4, // extra fov at top cruise speed
-  maxFov: 70,
+  maxFov: 70, // round 39: no longer used (see fovMin..fovTop)
+  // round 39: speed camera. The FOV widens from fovMin at a hover to fovCruise at cruise speed and on to fovTop at full
+  // boost speed; the chase arm stretches with forward acceleration (accelLag m at full thrust, shorter when braking) and
+  // pulls back boostPull m under boost; the view rolls up to turnRoll rad into hard turns at speed.
+  fovMin: 55,
+  fovCruise: 67,
+  fovTop: 75,
+  accelLag: 0.8,
+  boostPull: 0.6,
+  turnRoll: 0.06,
   maxDistance: 8,
   maxHeight: 9,
   heightPerAlt: 0.12,

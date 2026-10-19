@@ -1,0 +1,4 @@
+ %CPU COMM
+ 13.5 /Applications/Brave Browser.app/Contents/Frameworks/Brave Browser Framework.framework/Versions/152.1.94.121/Helpers/Brave Browser Helper (Renderer).app/Contents/MacOS/Brave Browser Helper (Renderer)
+ 11.2 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 10.7 /usr/sbin/coreaudiod

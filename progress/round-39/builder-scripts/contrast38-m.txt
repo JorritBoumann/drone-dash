@@ -1,0 +1,8 @@
+r38-m 130 old: cruise 18.22 low 18.10 ratio 1.007 | new (HUD hidden): cruise 9.96 low 16.72 ratio 0.596 | rect-masked: cruise 10.90 low 16.81
+r38-m 22 old: cruise 16.56 low 17.52 ratio 0.945 | new (HUD hidden): cruise 10.32 low 16.41 ratio 0.629 | rect-masked: cruise 10.62 low 17.27
+r38-m 33 old: cruise 17.83 low 17.27 ratio 1.033 | new (HUD hidden): cruise 7.79 low 15.97 ratio 0.488 | rect-masked: cruise 8.74 low 18.38
+r38-m 58 old: cruise 15.42 low 15.85 ratio 0.973 | new (HUD hidden): cruise 9.13 low 14.75 ratio 0.619 | rect-masked: cruise 8.55 low 14.47
+r37-m 130 old: cruise 16.51 low 17.94 ratio 0.920 | new (HUD hidden): cruise 4.82 low 16.55 ratio 0.291 | rect-masked: cruise 5.28 low 16.66
+r37-m 22 old: cruise 14.90 low 17.40 ratio 0.856 | new (HUD hidden): cruise 5.97 low 16.28 ratio 0.366 | rect-masked: cruise 6.05 low 17.12
+r37-m 33 old: cruise 17.43 low 16.99 ratio 1.026 | new (HUD hidden): cruise 6.47 low 15.65 ratio 0.414 | rect-masked: cruise 7.51 low 18.03
+r37-m 58 old: cruise 13.87 low 15.77 ratio 0.880 | new (HUD hidden): cruise 3.93 low 14.66 ratio 0.268 | rect-masked: cruise 3.73 low 14.40

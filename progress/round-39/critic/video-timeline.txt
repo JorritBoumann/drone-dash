@@ -1,0 +1,30 @@
+Drone Dash, round 39 build (working tree on top of 78353b0). Two 30 s gameplay videos for a second-opinion review.
+Both: real game, real HUD, headless Chromium, live real-time play driven by a per-frame scripted pilot (keys on
+desktop; the on-screen stick and buttons on the phone). A fresh first run. No cuts. H.264 MP4, 30 fps, no sound.
+The pilot flies the street grid low, picks up, delivers, then aims one deliberate wall hit on the next leg.
+
+video-desktop-30s.mp4   1280x720, 30.0 s, 9.1 MB, city 58 (hazy noon)
+  0.0   take-off from the start (title card fading)
+  0.2 - 6   climb out and first street run (drone leans into the turns, FOV widens with speed)
+  6.5   first pickup ("Parcel secured!"), parcel hangs under the drone and swings
+  7 - 19   street run with the parcel, slipstream chain, speed streaks at the edges above 17 m/s
+  19.8  first delivery ("+826 delivered"), then the Bronze medal pop
+  20 - 24   accelerating out of the pad, nose-down pitch
+  22.8  the pilot turns toward a building to hit it on purpose
+  24.5  head-on wall crash: red flash, sparks, the drone flips about 70 degrees, rotor sputter, short slow-motion
+        beat, "Crash! -3 sec, combo lost"
+  25.4  recovered, flying again along the sea wall
+  30.0  end
+
+video-phone-30s.mp4     750x342 (iPhone 13 landscape in CSS pixels), 30.0 s, 8.9 MB, city 130 (golden hour)
+  0.0   just after the first pickup, the parcel swinging
+  0.5 - 20   street run with slipstream chain, banked turns, FOV changes with speed
+  20.8  first delivery and the Bronze medal pop
+  24.9  the pilot turns toward a building to hit it on purpose
+  27.5  scraping along a wall ("WALL HUG!"), sparks
+  28.0  head-on wall crash: red flash, sparks, the drone flips, "Crash! -3 sec, combo lost"
+  29.0  recovered
+  30.0  end
+
+Known things a reviewer can see: on the phone the objective marker (diamond and arrow) often sits on or next to the
+drone; at full boost the drone is small (about 6% of the screen height).

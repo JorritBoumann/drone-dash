@@ -41,7 +41,8 @@ interface ThreeGameDiagnostics {
   centreLog?: Array<{ kind: string; text: string; t: number }>;
   /** Debug: the last charged crash (speed lost, top of the wall hit, its normal y, drone height). */
   /** Debug: this frame's contacts (wall impact speed, ledge hop impact, crash-relevant speed loss). */
-  contact?: { bump: number; ledge: number; wallLoss: number };
+  contact?: { bump: number; ledge: number; wallLoss: number; scrape?: number; scrapeOld?: number; hitAngle?: number };
+  feel?: Record<string, unknown>;
   /** Audio: context state and the adaptive music (track, section, layer, intensity, ducking, scheduler health). */
   audio?: { state: string; music: Record<string, unknown> };
   lastCrash?: { loss: number; wallTop: number; normalY: number; y: number } | null;

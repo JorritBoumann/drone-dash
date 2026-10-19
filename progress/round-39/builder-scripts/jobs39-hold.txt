@@ -1,0 +1,17 @@
+node pad-people23.mjs > pad-people.log 2>&1
+node traffic-det29.mjs > traffic-det.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr39- node hud-probe34.mjs > fr-m-58.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr39- node hud-probe34.mjs > fr-m-130.log 2>&1
+NEW=1 DEV=desktop SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fd39- node hud-probe34.mjs > fr-d-58.log 2>&1
+MOBILE=1 node climb30.mjs > climb30-m.log 2>&1
+MOBILE=1 NOORBIT=1 SEED=22 TOTAL=62 node cam-clip24.mjs > cam-clip24-m-22-noorbit.log 2>&1
+TAG=r39 SEEDS=130,22,33 SWEEP=3 node hullwater35.mjs > hw39-d.log 2>&1
+TAG=r39 MOBILE=1 SEEDS=130,22,33 SWEEP=2 node hullwater35.mjs > hw39-m.log 2>&1
+PORTS=5190,5195 DEVS=desktop,iphone RUNS=2 node fouc34.mjs > fouc39.log 2>&1
+PORT=5195 node load34.mjs > load39.log 2>&1
+UNCAP=1 node perf-harbour35.mjs > perf-harbour-d.log 2>&1
+UNCAP=1 MOBILE=1 node perf-harbour35.mjs > perf-harbour-m.log 2>&1
+SEED=22 node trisweep31.mjs > trisweep-d-22.log 2>&1; MOBILE=1 SEED=130 node trisweep31.mjs > trisweep-m-130.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 OUTDIR=$OUTDIR/raw/ node farm-probe.mjs > farm-$s.log 2>&1; done
+ps -Ao pcpu,comm -r | head -4 > cpu-medal.txt; LINE=low SEEDS=22,58,130 SIMT=600 OUTDIR=$OUTDIR/raw/a- node route-play-rt-x-m-esc17.mjs > m-low-a.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 OUTDIR=$OUTDIR/raw/ node balance-probe-m-esc17.mjs > m-lazy-a.log 2>&1

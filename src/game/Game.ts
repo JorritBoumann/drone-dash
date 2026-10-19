@@ -12,7 +12,7 @@ import { CollisionWorld } from '../systems/CollisionWorld';
 import { DebugTools } from '../systems/DebugTools';
 import { DeliverySystem, JOBS } from '../systems/DeliverySystem';
 import { Slipstream } from '../systems/Slipstream';
-import { VfxSystem } from '../systems/VfxSystem';
+import { SpeedStreaks, VfxSystem } from '../systems/VfxSystem';
 import { Hud, fmtX, type Box, type TouchLayout } from '../ui/Hud';
 import { createCityMaterial, setCityDetailTextures, type CityMaterial } from '../world/CityMaterial';
 import { propAudit, propPlacementAudit } from '../world/StreetProps';
@@ -167,7 +167,10 @@ export class Game {
   private readonly intent: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
   private readonly viewIntent: ViewIntent = { yaw: 0, pitch: 0, zoom: 0, held: false };
   private readonly idle: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
-  private readonly events: FlightEvents = { bump: 0, ledge: 0, landed: false, wallLoss: 0, wallTop: -1e9, wallNormalY: 0 };
+  private readonly events: FlightEvents = {
+    bump: 0, ledge: 0, landed: false, wallLoss: 0, wallTop: -1e9, wallNormalY: 0,
+    scrape: 0, scrapeSpeed: 0, sx: 0, sy: 0, sz: 0, sdx: 0, sdz: 0, snx: 0, snz: 0, scrapeOld: 0, hitAngle: -1, hitNx: 0, hitNz: 0,
+  };
   private readonly startPos = new THREE.Vector3();
   private readonly titleFocus = new THREE.Vector3(0, 8, 0);
   private startYaw = 0;
@@ -194,6 +197,28 @@ export class Game {
   private lastCrash: { loss: number; wallTop: number; normalY: number; y: number } | null = null;
   private crashes = 0;
   private hitStop = 0;
+  // round 39: crash feel. slowMo: real seconds left of the slow-motion beat after a head-on hit. hitFx: the current
+  // collision already played its impact. hitNx/hitNz/hitAngle: wall normal and impact angle of the current hit.
+  private slowMo = 0;
+  private hitFx = false;
+  private hitNx = 0;
+  private hitNz = 0;
+  private hitAngle = -1;
+  private impacts = 0;
+  private scrapes = 0;
+  private scrapeT = 99; // s since the last scrape contact
+  private scrapeFx = 0; // s until the next scrape spark burst may fire
+  private lastImpact: { angle: number; loss: number; at: number } | null = null;
+  // round 39: the round 38 rules run alongside (scrape contacts counted with the speed the old response would have taken
+  // off) to count the hits that this round made free
+  private shPending = false;
+  private shAge = 0;
+  private shLoss = 0;
+  private shReal = 0;
+  private shSkim = false;
+  private shSince = 99;
+  private freed = 0;
+  private readonly streaks: SpeedStreaks;
   private frame = 0;
   private time = 0;
   private fps = 0;
@@ -268,6 +293,8 @@ export class Game {
     this.gateRoot.add(this.gate.group);
     this.scene.add(this.gateRoot);
     this.scene.add(this.vfx.group);
+    this.streaks = new SpeedStreaks(56, createSeededRandom(this.seed + 39));
+    this.scene.add(this.streaks.mesh);
 
     this.blob = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
@@ -751,6 +778,7 @@ export class Game {
         break;
     }
 
+    if (this.state !== 'playing' && this.state !== 'paused') this.streaks.update(dt, 0, false, false);
     if (this.state !== 'paused') {
       this.marker.update(animDt, time, this.camera.position);
       this.gate.update(animDt);
@@ -764,11 +792,12 @@ export class Game {
   }
 
   private updatePlaying(realDt: number): void {
-    // brief hit-stop after hard impacts sells the collision
-    const dt = this.hitStop > 0 ? realDt * 0.08 : realDt;
+    // brief hit-stop after hard impacts sells the collision; round 39: then a short slow-motion beat
+    const dt = this.hitStop > 0 ? realDt * 0.08 : this.slowMo > 0 ? realDt * 0.3 : realDt;
     this.runTime += dt;
     this.legClock += dt;
-    this.hitStop = Math.max(0, this.hitStop - realDt);
+    if (this.hitStop > 0) this.hitStop = Math.max(0, this.hitStop - realDt);
+    else this.slowMo = Math.max(0, this.slowMo - realDt);
     this.input.read(this.intent);
     this.input.readView(this.viewIntent);
     const d = this.drone;
@@ -784,8 +813,9 @@ export class Game {
     this.updateDeskPop();
     this.env.updateOcclusion(this.camera.position, dp);
 
-    // feedback: bumps
+    // feedback: bumps (round 39: a head-on impact keeps its bump too: the knock, the flash and the first shake)
     this.bumpCooldown = Math.max(0, this.bumpCooldown - realDt);
+    this.scrapeFeedback(realDt);
     if (this.events.bump > 2 && this.bumpCooldown <= 0) {
       const s = Math.min(1, this.events.bump / 16);
       this.bumpCooldown = 0.18;
@@ -804,6 +834,7 @@ export class Game {
     if (d.boosting) this.emitBoostTrail();
     this.emitRotorWash();
     this.emitWindStreaks();
+    this.streaks.update(realDt, d.speed, d.boosting, true);
 
     // objectives (drafting never changes delivery points or the fast-drop clock: the slipstream pays its own payouts)
     const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius);
@@ -961,6 +992,7 @@ export class Game {
     const ev = this.events;
     const wall = ev.wallLoss > 0 && !this.isTargetEdge(ev.wallTop);
     this.sinceContact += realDt;
+    this.shadowCrash(realDt, wall);
     if (wall) {
       // contacts closer together than chainGap are one collision: being pinned against a wall is charged at most once
       const fresh = this.sinceContact > CRASH.chainGap;
@@ -970,12 +1002,22 @@ export class Game {
         this.hitAge = 0;
         this.hitLoss = 0;
         this.hitSkim = false;
+        this.hitFx = false;
       }
       // only the first moments of a collision count, so a long slide along a wall never adds up to a crash
       if (this.hitPending && this.hitAge <= CRASH.hitSpan) {
         this.hitLoss += ev.wallLoss;
         this.hitTop = ev.wallTop;
         this.hitNormalY = ev.wallNormalY;
+        if (ev.hitAngle >= 0) { this.hitNx = ev.hitNx; this.hitNz = ev.hitNz; this.hitAngle = ev.hitAngle; }
+      }
+      // round 39: a hit already heavy enough to be charged plays its impact now (tumble, shake, sparks, sputter, slow
+      // motion); the charge itself is still decided after hitSpan by the unchanged rules below
+      // (and a hard head-on knock, 45 degrees or more at 8 m/s or more into the wall, shows the same impact even when the
+      // unchanged rules leave it free: its speed loss stays under the threshold up to about 10.8 m/s)
+      if (this.hitPending && !this.hitFx && ev.ledge <= 0 && (this.hitLoss >= CRASH.threshold || (ev.hitAngle >= 45 && ev.bump >= 8))) {
+        this.hitFx = true;
+        this.impactFx(Math.min(1, this.hitLoss / 30));
       }
     }
     if (!this.hitPending) return;
@@ -1020,7 +1062,6 @@ export class Game {
   }
 
   private crashFeedback(label: string, seconds: number, comboLost: number, s: number, fresh: boolean, bankCut = 0): void {
-    const d = this.drone;
     this.hud.flashTimePenalty(seconds);
     let lost = comboLost > 0 ? `-${seconds} sec · ${fmtX(comboLost)} combo lost` : `-${seconds} sec`;
     if (bankCut > 0) lost += ` · bonus -${bankCut}`;
@@ -1028,14 +1069,94 @@ export class Game {
     if (comboLost > 0) this.hud.breakCombo(comboLost);
     this.slip.lose();
     if (!fresh) return; // upgraded tier of the same hit: numbers update, effects already played
-    this.audio.crash(s, comboLost > 0);
-    this.cameraRig.addShake(0.6 + s * 0.4);
+    if (!this.hitFx) {
+      this.hitFx = true;
+      this.impactFx(s);
+    }
+    this.audio.crashCue(comboLost > 0);
     this.hud.hitFlash(1, true);
-    this.hitStop = 0.1 + s * 0.06;
-    d.crash(s);
+    this.cameraRig.addShake(0.5); // the charge lands a moment after the impact: a second jolt keeps the shake up
+  }
+
+  private readonly sparkCol = new THREE.Color('#ffa630');
+  private readonly sparkHot = new THREE.Color('#fff2b0');
+  private readonly sparkDir = new THREE.Vector3();
+  private readonly sparkCarry = new THREE.Vector3();
+  /**
+   * Round 39: a head-on hit. The drone tumbles (attitude kick, rattle, rotor sputter), the camera shakes and lurches
+   * toward the wall, sparks and debris fly off the contact, the rotors sputter in the mix, and time runs at 0.3 for about
+   * 0.15 s after a 30 ms hit-stop. Played once per collision, at the contact when the hit is already over the crash
+   * threshold, else when it is charged.
+   */
+  private impactFx(s: number): void {
+    const d = this.drone;
+    this.impacts++;
+    this.lastImpact = { angle: this.hitAngle, loss: this.hitLoss, at: this.rt() };
+    this.audio.impact(s);
+    this.cameraRig.addShake(0.85 + s * 0.3);
+    this.cameraRig.kick(this.hitNx, this.hitNz, 0.3 + 0.3 * s);
+    this.hitStop = 0.03;
+    this.slowMo = 0.15;
+    d.crash(s, this.hitNx, this.hitNz, this.fxRng() < 0.5 ? -1 : 1);
     const p = d.group.position;
-    this.vfx.burst(p, new THREE.Color('#ff8a3d'), 22 + Math.round(s * 18), 6 + s * 6, 0.16, this.fxRng);
-    this.vfx.burst(p, new THREE.Color('#fff1c9'), 10, 9 + s * 4, 0.1, this.fxRng);
+    const at = this.tmp2.set(p.x - this.hitNx * FLIGHT.radius * 0.9, p.y, p.z - this.hitNz * FLIGHT.radius * 0.9);
+    const dir = this.sparkDir.set(this.hitNx, 0.45, this.hitNz).normalize();
+    // a hot flash at the contact, a fan of sparks thrown back off the wall, hot fast streaks, and slower debris
+    this.vfx.emit(at, this.sparkCarry.set(this.hitNx, 0.3, this.hitNz), this.sparkHot, 1.1, 0.16, 0);
+    this.vfx.spray(at, dir, 0.75, 44 + Math.round(s * 30), 9 + s * 7, this.sparkCol, 0.24, 0.8, -15, this.fxRng);
+    this.vfx.spray(at, dir, 0.45, 18, 14 + s * 6, this.sparkHot, 0.15, 0.5, -18, this.fxRng);
+    this.vfx.burst(at, new THREE.Color('#ff8a3d'), 16 + Math.round(s * 10), 5 + s * 4, 0.3, this.fxRng);
+    try { if (this.hud.isTouch) navigator.vibrate?.(45); } catch { /* no vibration */ }
+  }
+
+  /**
+   * Round 39: a glancing wall hit (under FLIGHT.scrapeAngle). Sparks stream off the contact along the wall, the camera
+   * jitters a little and a short grind plays. No combo loss, no time penalty. A long slide keeps a light spark stream.
+   */
+  private scrapeFeedback(realDt: number): void {
+    const ev = this.events;
+    this.scrapeT += realDt;
+    this.scrapeFx = Math.max(0, this.scrapeFx - realDt);
+    if (ev.scrape <= 0.05 || (ev.scrape < 0.8 && ev.scrapeSpeed < 4)) return;
+    if (this.scrapeT > CRASH.chainGap && ev.scrape > 1.5) this.scrapes++;
+    const fresh = this.scrapeT > 0.25 && ev.scrape > 0.8;
+    this.scrapeT = 0;
+    if (this.scrapeFx > 0 && !fresh) return;
+    this.scrapeFx = 0.04;
+    const s = Math.min(1, ev.scrape / 10);
+    const at = this.tmp2.set(ev.sx, ev.sy, ev.sz);
+    // sparks trail back along the wall and kick off it a little; they keep part of the drone's slide
+    const back = this.sparkDir.set(-ev.sdx * 0.8 + ev.snx * 0.5, 0.35, -ev.sdz * 0.8 + ev.snz * 0.5).normalize();
+    this.sparkCarry.set(ev.sdx * ev.scrapeSpeed * 0.35, 0, ev.sdz * ev.scrapeSpeed * 0.35);
+    const n = fresh ? 26 + Math.round(s * 26) : 5 + Math.round(Math.min(1, ev.scrapeSpeed / 20) * 5);
+    this.vfx.spray(at, back, 0.35, n, 5 + s * 6 + ev.scrapeSpeed * 0.15, this.sparkCol, 0.19, 0.55, -16, this.fxRng, this.sparkCarry);
+    this.vfx.spray(at, back, 0.2, fresh ? 10 : 2, 8, this.sparkHot, 0.12, 0.3, -18, this.fxRng, this.sparkCarry);
+    if (fresh) {
+      this.cameraRig.addShake(0.12 + s * 0.22);
+    }
+    this.audio.scrape(ev.scrape + (fresh ? 2 : 0));
+  }
+
+  /**
+   * Round 39: the round 38 crash rules, run on the side with scrape contacts counted at the speed the round 38 response
+   * would have taken off. A collision those rules would have charged but this round's did not is counted in `freed`.
+   */
+  private shadowCrash(realDt: number, wall: boolean): void {
+    const ev = this.events;
+    const oldLoss = (wall ? ev.wallLoss : 0) + (ev.scrapeOld > 0 && !this.isTargetEdge(ev.wallTop > -1e8 ? ev.wallTop : -1e9) ? ev.scrapeOld : 0);
+    this.shSince += realDt;
+    if (oldLoss > 0) {
+      const fresh = this.shSince > CRASH.chainGap;
+      this.shSince = 0;
+      if (!this.shPending && fresh) { this.shPending = true; this.shAge = 0; this.shLoss = 0; this.shReal = 0; this.shSkim = false; }
+      if (this.shPending && this.shAge <= CRASH.hitSpan) { this.shLoss += oldLoss; this.shReal += wall ? ev.wallLoss : 0; }
+    }
+    if (!this.shPending) return;
+    if (ev.ledge > 0) this.shSkim = true;
+    this.shAge += realDt;
+    if (this.shAge < CRASH.hitSpan) return;
+    this.shPending = false;
+    if (!this.shSkim && this.shLoss >= CRASH.threshold && this.shReal < CRASH.threshold) this.freed++;
   }
 
   /** Round 25: saved progress exists (a finished run, a best score or a medal). */
@@ -1963,8 +2084,14 @@ export class Game {
       breakdown: { ...this.delivery.tally, total: this.delivery.score },
       goals: { tier: this.tier, tierName: tierName(this.tier), next: nextGoal(this.delivery.score)?.score ?? 0, passes: this.tierPasses.length, passList: this.tierPasses, best: this.best, bestTier: this.bestTier, thresholds: GOALS.tiers.map((g) => g.score) },
       lastCrash: this.lastCrash,
+      // round 39: flight feel (attitude in degrees, camera FOV and arm, streak level) and crash classes
+      feel: {
+        ...this.drone.feel, ...Object.fromEntries(Object.entries(this.cameraRig.feel).map(([k, v]) => ['cam' + k[0].toUpperCase() + k.slice(1), v])),
+        camDist: this.camera.position.distanceTo(p), streaks: this.streaks.level, slowMo: this.slowMo, hitStop: this.hitStop, particles: this.vfx.live(),
+        impacts: this.impacts, scrapes: this.scrapes, freed: this.freed, lastImpact: this.lastImpact,
+      },
       audio: { state: this.audio.contextState, music: this.audio.musicInfo() },
-      contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss },
+      contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss, scrape: this.events.scrape, scrapeOld: this.events.scrapeOld, hitAngle: this.events.hitAngle },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
       fps: Math.round(this.fps * 10) / 10,
       camera: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z, fov: this.camera.fov, aspect: this.camera.aspect, view: this.cameraRig.view, behind: this.cameraBehind(), corridor: this.cameraRig.corridor },

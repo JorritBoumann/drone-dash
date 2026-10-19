@@ -34,6 +34,12 @@ export const FLIGHT = {
   scrapeBounce: 0.15,
   scrapeFriction: 0.6,
   overTopPush: false, // round 39: true restores the round 38 thrust above top speed (the runaway), for A/B probes only
+  // round 40: boost tail (see Drone.carry). After a full boost with W held: 22 m/s or more for about 2 s, 18 m/s after
+  // about 3.4 s, peak slowdown tailDecel. No added speed: it only holds back the over-top drag.
+  tailDecel: 3.8, // m/s^2: the most the carried speed drops a second
+  tailBase: 1.0, // m/s^2: ...near the end it eases: tailBase + tailEase x carry
+  tailEase: 0.8,
+  tailWind: 2, // the full headwind makes the tail (1 + tailWind) times shorter (cruising over the roofs stays slow)
   boostDrain: 0.38, // per second
   boostRegen: 0.16, // per second
   boostRegenDelay: 0.9, // s

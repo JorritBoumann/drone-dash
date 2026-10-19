@@ -18,7 +18,8 @@ import { createCityMaterial, setCityDetailTextures, type CityMaterial } from '..
 import { propAudit, propPlacementAudit } from '../world/StreetProps';
 import { BuildingDetail } from '../world/BuildingDetail';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
-import { surfaceHeight, waveHeight as waveHeightAt } from '../world/Water';
+import { SHORE, surfaceHeight, waveHeight as waveHeightAt } from '../world/Water';
+import { Minimap, buildMinimapLayer, type MinimapFrame } from '../ui/Minimap';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE, SUN_DIR } from '../world/Environment';
 import { shadowSlab } from '../world/shadowSubset';
 import { radialTexture } from '../world/Textures';
@@ -90,6 +91,11 @@ export class Game {
   private readonly pipeline: RenderPipeline;
   private readonly input: InputController;
   private readonly hud = new Hud();
+  /** Round 40: the heading-up minimap (bottom-right on desktop, under the top-right chips on touch). */
+  readonly minimap = new Minimap(document.getElementById('minimap') as HTMLCanvasElement);
+  private readonly mmFrame: MinimapFrame = { px: 0, pz: 0, yaw: 0, radius: 150, objective: null, shortcut: null };
+  private readonly mmObj: NonNullable<MinimapFrame['objective']> = { x: 0, z: 0, kind: 'pickup', dist: 0 };
+  private readonly mmCut: NonNullable<MinimapFrame['shortcut']> = { x: 0, z: 0, ex: 0, ez: 0, kind: 'alley' };
   private readonly audio = new AudioSystem();
   private readonly vfx = new VfxSystem();
   private readonly cameraRig = new CameraRig(this.camera);
@@ -169,7 +175,7 @@ export class Game {
   private readonly idle: FlightIntent = { turn: 0, thrust: 0, lift: 0, boost: false };
   private readonly events: FlightEvents = {
     bump: 0, ledge: 0, landed: false, wallLoss: 0, wallTop: -1e9, wallNormalY: 0,
-    scrape: 0, scrapeSpeed: 0, sx: 0, sy: 0, sz: 0, sdx: 0, sdz: 0, snx: 0, snz: 0, scrapeOld: 0, hitAngle: -1, hitNx: 0, hitNz: 0,
+    scrape: 0, scrapeSpeed: 0, sx: 0, sy: 0, sz: 0, sdx: 0, sdz: 0, snx: 0, snz: 0, scrapeOld: 0, scrapeTop: -1e9, hitAngle: -1, hitNx: 0, hitNz: 0,
   };
   private readonly startPos = new THREE.Vector3();
   private readonly titleFocus = new THREE.Vector3(0, 8, 0);
@@ -200,7 +206,12 @@ export class Game {
   // round 39: crash feel. slowMo: real seconds left of the slow-motion beat after a head-on hit. hitFx: the current
   // collision already played its impact. hitNx/hitNz/hitAngle: wall normal and impact angle of the current hit.
   private slowMo = 0;
-  private hitFx = false;
+  /** Round 40: the time scale of the last playing frame (1, 0.3 in slow motion, 0.08 in hit-stop), for probes. */
+  private timeScale = 1;
+  /** 0: no effect yet this collision, 1: the light knock played (round 40), 2: the full impact played. */
+  private hitFx = 0;
+  /** Round 40: uncharged hard knocks that played the light effect. */
+  private lightHits = 0;
   private hitNx = 0;
   private hitNz = 0;
   private hitAngle = -1;
@@ -245,7 +256,7 @@ export class Game {
     const touch = window.matchMedia?.('(pointer: coarse)').matches ?? false;
     this.hud.setTouch(touch);
     this.cameraRig.touchRoom = CAMERA_TOUCH_ROOM;
-    window.addEventListener('touchstart', () => { this.hud.setTouch(true); }, { once: true, passive: true });
+    window.addEventListener('touchstart', () => { this.hud.setTouch(true); this.minimap.relayout(); }, { once: true, passive: true });
 
     this.renderer = createRenderer(canvas);
     this.renderer.info.autoReset = false;
@@ -259,6 +270,8 @@ export class Game {
     applyMood(MOODS[this.look.mood]);
     this.layout = generateCity(createSeededRandom(this.seed), 7, this.look.parks, this.seed);
     this.buildNarrowRects();
+    // round 40: the minimap's static city layer, drawn once from the generator data
+    this.minimap.setLayer(buildMinimapLayer(this.layout, SHORE, this.narrowRects.filter((r) => r.kind === 'tunnel')));
     this.openGraph = buildStreetGraph(this.layout.roadCenters, this.layout.blockSize, this.layout.roadWidth, [], this.layout.boulevards, true);
     this.world = new CollisionWorld(this.layout.colliders, 0);
     this.cameraRig.setCorridors(this.cameraCorridors());
@@ -700,7 +713,14 @@ export class Game {
     if (this.state === 'playing') this.canvas.focus({ preventScroll: true });
   };
   private readonly onMenuKey = (e: KeyboardEvent) => {
-    if (e.code === 'KeyM' && !e.repeat) {
+    // round 40: in a run M toggles the minimap; on the title, pause and game-over screens (where the music chip shows)
+    // M still toggles the music. N toggles the music anywhere.
+    if (e.code === 'KeyM' && !e.repeat && this.state === 'playing') {
+      this.minimap.toggle();
+      this.hud.relayout(); // re-measure the HUD layout (the map box joined or left it)
+      return;
+    }
+    if ((e.code === 'KeyM' || e.code === 'KeyN') && !e.repeat) {
       this.audio.unlock();
       this.audio.setMusicEnabled(!this.audio.musicEnabled);
       return;
@@ -793,9 +813,12 @@ export class Game {
 
   private updatePlaying(realDt: number): void {
     // brief hit-stop after hard impacts sells the collision; round 39: then a short slow-motion beat
+    // round 40 (Codex A): the time scale slows motion and effects only; the run clock, the leg clock, the delivery
+    // timers and the rush window always run at real time, so a crash never buys clock time
     const dt = this.hitStop > 0 ? realDt * 0.08 : this.slowMo > 0 ? realDt * 0.3 : realDt;
-    this.runTime += dt;
-    this.legClock += dt;
+    this.timeScale = dt / Math.max(1e-6, realDt);
+    this.runTime += realDt;
+    this.legClock += realDt;
     if (this.hitStop > 0) this.hitStop = Math.max(0, this.hitStop - realDt);
     else this.slowMo = Math.max(0, this.slowMo - realDt);
     this.input.read(this.intent);
@@ -822,7 +845,8 @@ export class Game {
       this.audio.bump(this.events.bump);
       this.cameraRig.addShake(0.25 + s * 0.7);
       this.hud.hitFlash(0.35 + s * 0.65);
-      if (this.events.bump > 4) this.hitStop = 0.06;
+      // round 40: the hit-stop is part of the crash effect only (a free knock or bump never freezes the game)
+      if (this.events.bump > 4 && this.hitFx === 2) this.hitStop = Math.max(this.hitStop, 0.06);
       this.vfx.burst(d.group.position, new THREE.Color('#ffe2b8'), 10 + Math.round(s * 14), 4 + s * 4, 0.12, this.fxRng);
     }
     // boost start
@@ -837,7 +861,7 @@ export class Game {
     this.streaks.update(realDt, d.speed, d.boosting, true);
 
     // objectives (drafting never changes delivery points or the fast-drop clock: the slipstream pays its own payouts)
-    const ev = this.delivery.update(dt, this.rng, d.group.position, FLIGHT.radius);
+    const ev = this.delivery.update(realDt, this.rng, d.group.position, FLIGHT.radius);
     if (ev) this.slipBudget = SLIPSTREAM.clockBudget; // a new leg: the slow clock budget refills (to the cap, no stacking)
     if (ev?.type === 'picked') {
       this.newLeg(ev.site.pos);
@@ -921,7 +945,7 @@ export class Game {
       }
     }
 
-    this.updateRush(dt);
+    this.updateRush(realDt);
     this.hud.tickBank(realDt);
     this.hud.tickCentre();
 
@@ -955,6 +979,7 @@ export class Game {
     this.updateTeach(windy);
     this.updateNav();
     this.updateGateTag();
+    this.updateMinimap(realDt);
 
     // round 17: the clock hitting 0 with a parcel aboard starts overtime (once); otherwise the run is over
     if (this.finishHold > 0) {
@@ -1002,7 +1027,7 @@ export class Game {
         this.hitAge = 0;
         this.hitLoss = 0;
         this.hitSkim = false;
-        this.hitFx = false;
+        this.hitFx = 0;
       }
       // only the first moments of a collision count, so a long slide along a wall never adds up to a crash
       if (this.hitPending && this.hitAge <= CRASH.hitSpan) {
@@ -1012,12 +1037,18 @@ export class Game {
         if (ev.hitAngle >= 0) { this.hitNx = ev.hitNx; this.hitNz = ev.hitNz; this.hitAngle = ev.hitAngle; }
       }
       // round 39: a hit already heavy enough to be charged plays its impact now (tumble, shake, sparks, sputter, slow
-      // motion); the charge itself is still decided after hitSpan by the unchanged rules below
-      // (and a hard head-on knock, 45 degrees or more at 8 m/s or more into the wall, shows the same impact even when the
-      // unchanged rules leave it free: its speed loss stays under the threshold up to about 10.8 m/s)
-      if (this.hitPending && !this.hitFx && ev.ledge <= 0 && (this.hitLoss >= CRASH.threshold || (ev.hitAngle >= 45 && ev.bump >= 8))) {
-        this.hitFx = true;
-        this.impactFx(Math.min(1, this.hitLoss / 30));
+      // motion); the charge itself is still decided after hitSpan by the unchanged rules below.
+      // Round 40: a hard head-on knock the rules leave free (45 degrees or more at 8 m/s or more into the wall, speed loss
+      // under the threshold: up to about 10.8 m/s) plays a lighter effect: shake, sparks and a small knock of the body,
+      // no flip and no slow motion. The full effect is kept for hits that are charged (it upgrades if the hit is).
+      if (this.hitPending && this.hitFx < 2 && ev.ledge <= 0) {
+        if (this.hitLoss >= CRASH.threshold) {
+          this.hitFx = 2;
+          this.impactFx(Math.min(1, this.hitLoss / 30));
+        } else if (this.hitFx === 0 && ev.hitAngle >= 45 && ev.bump >= 8) {
+          this.hitFx = 1;
+          this.lightHitFx(Math.min(1, (ev.bump - 6) / 6));
+        }
       }
     }
     if (!this.hitPending) return;
@@ -1069,8 +1100,8 @@ export class Game {
     if (comboLost > 0) this.hud.breakCombo(comboLost);
     this.slip.lose();
     if (!fresh) return; // upgraded tier of the same hit: numbers update, effects already played
-    if (!this.hitFx) {
-      this.hitFx = true;
+    if (this.hitFx < 2) {
+      this.hitFx = 2;
       this.impactFx(s);
     }
     this.audio.crashCue(comboLost > 0);
@@ -1110,6 +1141,25 @@ export class Game {
   }
 
   /**
+   * Round 40: a hard knock that is not a crash (head-on at 8 to 11 m/s, under the charge threshold). A shake, a short
+   * camera lurch, a fan of sparks off the wall and a small knock of the body (well under 30 degrees). No flip, no
+   * rotor sputter, no hit-stop and no slow motion: those say "crash" and stay with the charged hits.
+   */
+  private lightHitFx(s: number): void {
+    const d = this.drone;
+    this.lightHits++;
+    this.cameraRig.addShake(0.45 + s * 0.2);
+    this.cameraRig.kick(this.hitNx, this.hitNz, 0.12 + 0.08 * s);
+    d.knock(s, this.hitNx, this.hitNz);
+    const p = d.group.position;
+    const at = this.tmp2.set(p.x - this.hitNx * FLIGHT.radius * 0.9, p.y, p.z - this.hitNz * FLIGHT.radius * 0.9);
+    const dir = this.sparkDir.set(this.hitNx, 0.45, this.hitNz).normalize();
+    this.vfx.emit(at, this.sparkCarry.set(this.hitNx, 0.3, this.hitNz), this.sparkHot, 0.7, 0.12, 0);
+    this.vfx.spray(at, dir, 0.7, 22 + Math.round(s * 12), 7 + s * 4, this.sparkCol, 0.2, 0.6, -15, this.fxRng);
+    this.vfx.spray(at, dir, 0.4, 8, 11, this.sparkHot, 0.13, 0.4, -18, this.fxRng);
+  }
+
+  /**
    * Round 39: a glancing wall hit (under FLIGHT.scrapeAngle). Sparks stream off the contact along the wall, the camera
    * jitters a little and a short grind plays. No combo loss, no time penalty. A long slide keeps a light spark stream.
    */
@@ -1143,7 +1193,7 @@ export class Game {
    */
   private shadowCrash(realDt: number, wall: boolean): void {
     const ev = this.events;
-    const oldLoss = (wall ? ev.wallLoss : 0) + (ev.scrapeOld > 0 && !this.isTargetEdge(ev.wallTop > -1e8 ? ev.wallTop : -1e9) ? ev.scrapeOld : 0);
+    const oldLoss = (wall ? ev.wallLoss : 0) + (ev.scrapeOld > 0 && !this.isTargetEdge(ev.scrapeTop) ? ev.scrapeOld : 0);
     this.shSince += realDt;
     if (oldLoss > 0) {
       const fresh = this.shSince > CRASH.chainGap;
@@ -2033,7 +2083,59 @@ export class Game {
       off = r.off;
       angle = r.angle;
     }
+    // round 40: on desktop the marker (diamond, arrow and distance pill) keeps off the minimap (bottom-right)
+    if (!geo && this.minimap.visible && Number.isFinite(x) && Number.isFinite(y)) {
+      const mm = this.mmBox(w, h);
+      // clearance for the diamond, its distance pill and the edge arrow (it sticks out about 46 px toward the target)
+      const cl = 64;
+      if (mm && x > mm.l - cl && y > mm.t - cl) {
+        if (y - (mm.t - cl) < x - (mm.l - cl)) y = mm.t - cl;
+        else x = mm.l - cl;
+      }
+    }
     this.hud.setNav(x, y, off, angle, dist, Number.isFinite(x) && Number.isFinite(y));
+  }
+
+  // round 40: the minimap box in CSS px, measured every 500 ms (never per frame)
+  private mmGeo: { w: number; h: number; at: number; box: { l: number; t: number; r: number; b: number } | null } = { w: 0, h: 0, at: -1e9, box: null };
+  private mmBox(w: number, h: number): { l: number; t: number; r: number; b: number } | null {
+    const g = this.mmGeo, now = performance.now();
+    if (g.w !== w || g.h !== h || now - g.at > 500) {
+      g.w = w; g.h = h; g.at = now;
+      g.box = this.minimap.box();
+    }
+    return this.minimap.visible ? g.box : null;
+  }
+
+  /** Round 40: feed the minimap (it redraws itself at most 30 times a second). */
+  private updateMinimap(realDt: number, force = false): void {
+    // throttled: nothing is gathered on the frames between redraws
+    if (!this.minimap.due(realDt) && !force) return;
+    const f = this.mmFrame, p = this.drone.group.position;
+    f.px = p.x;
+    f.pz = p.z;
+    f.yaw = this.drone.yaw;
+    const t = this.delivery.target;
+    if (t && !this.delivery.finished && this.finishHold <= 0) {
+      const o = this.mmObj;
+      o.x = t.pos.x;
+      o.z = t.pos.z;
+      o.kind = this.delivery.phase === 'pickup' ? 'pickup' : this.rushActive ? 'rush' : 'drop';
+      // the same distance the pad marker's pill shows (to the marker, 2.4 m over the pad), so the two never disagree
+      const mp = this.marker.position;
+      o.dist = Math.hypot(mp.x - p.x, mp.y + 2.4 - p.y, mp.z - p.z);
+      f.objective = o;
+    } else f.objective = null;
+    const m = this.mark;
+    if (m && m.stage === 'entrance') {
+      this.mmCut.x = m.gate.x;
+      this.mmCut.z = m.gate.z;
+      this.mmCut.ex = m.exit.x;
+      this.mmCut.ez = m.exit.z;
+      this.mmCut.kind = m.kind;
+      f.shortcut = this.mmCut;
+    } else f.shortcut = null;
+    this.minimap.draw(f);
   }
 
   private renderFromLoop(): void {
@@ -2089,6 +2191,7 @@ export class Game {
         ...this.drone.feel, ...Object.fromEntries(Object.entries(this.cameraRig.feel).map(([k, v]) => ['cam' + k[0].toUpperCase() + k.slice(1), v])),
         camDist: this.camera.position.distanceTo(p), streaks: this.streaks.level, slowMo: this.slowMo, hitStop: this.hitStop, particles: this.vfx.live(),
         impacts: this.impacts, scrapes: this.scrapes, freed: this.freed, lastImpact: this.lastImpact,
+        timeScale: this.timeScale, runTime: this.runTime, legClock: this.legClock, lightHits: this.lightHits, carry: this.drone.carry,
       },
       audio: { state: this.audio.contextState, music: this.audio.musicInfo() },
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss, scrape: this.events.scrape, scrapeOld: this.events.scrapeOld, hitAngle: this.events.hitAngle },
@@ -2149,6 +2252,8 @@ export class Game {
   }
 
   private installHooks(): void {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const game = this;
     window.__GAME__ = {
       start: () => this.start(),
       restart: () => this.start(),
@@ -2186,6 +2291,21 @@ export class Game {
         return window.__THREE_GAME_DIAGNOSTICS__?.state ?? 'title';
       },
       diagnostics: () => window.__THREE_GAME_DIAGNOSTICS__,
+      // round 40: the minimap. visible and radius (m), plus probe data: heading (rad, the drone yaw: map up), the last
+      // draw's objective marker angle (deg clockwise from up) and whether it sat on the rim, draws and cost per draw (ms)
+      get minimap() {
+        const m = game.minimap, l = m.last;
+        return {
+          visible: m.visible, radius: m.radius, draws: m.draws, msMean: m.msMean, msMax: m.msMax, box: m.box(),
+          last: l ? { ...l } : null,
+        };
+      },
+      minimapToggle: () => this.minimap.toggle(),
+      minimapStats: (reset = false) => {
+        const r = { draws: this.minimap.draws, msMean: this.minimap.msMean, msMax: this.minimap.msMax };
+        if (reset) this.minimap.resetStats();
+        return r;
+      },
       // round 23 test hook: the camera's alley and tunnel corridors
       camCorridors: () => this.cameraCorridors(),
       place: (x: number, y: number, z: number, yaw: number, speed = 0) => this.drone.place(new THREE.Vector3(x, y, z), yaw, speed),
@@ -2379,6 +2499,7 @@ export class Game {
     this.input.dispose();
     this.audio.dispose();
     this.debug.dispose();
+    this.minimap.dispose();
     this.pipeline.dispose();
     window.removeEventListener('blur', this.onBlur);
     document.removeEventListener('visibilitychange', this.onVisibility);

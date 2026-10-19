@@ -1,0 +1,8 @@
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr40c- node hud-probe34.mjs > fr-m-58c.log 2>&1
+node tail40.mjs > tail40.log 2>&1; PORT=5190 node topspeed39c.mjs > topspeed40.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ccv12c.log 2>&1
+ALT=20 SEEDS=22,58,130 node crash-classify-v.mjs > ccv20c.log 2>&1
+LINE=low SEEDS=22,58,130 SIMT=600 OUTDIR=$OUTDIR/raw/ac- node route-play-rt-x-m-esc17.mjs > m-low-c.log 2>&1
+LINE=high SEEDS=22,58,130 SIMT=600 OUTDIR=$OUTDIR/raw/hc- node route-play-rt-x-m-esc17.mjs > m-high-c.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=raw/fr40c- node hud-probe34.mjs > fr-m-22c.log 2>&1
+END

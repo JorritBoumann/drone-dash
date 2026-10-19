@@ -77,6 +77,9 @@
           <span id="view-hint" class="view-hint" aria-hidden="true"><span class="vh-desk">Right-drag or two-finger swipe to look around</span><span class="vh-touch">Drag the screen to look around</span></span>
         </div>
 
+        <!-- Round 40: heading-up minimap (M toggles it in a run) -->
+        <canvas id="minimap" class="minimap" width="160" height="160" aria-label="Minimap" role="img"></canvas>
+
         <div id="nav-marker" class="nav-marker" data-kind="pickup">
           <div class="nav-arrow"></div>
           <div class="nav-diamond"></div>
@@ -137,7 +140,7 @@
             <li><kbd>Space</kbd>/<kbd>Shift</kbd> up / down</li>
             <li><kbd>E</kbd> or click boost</li>
             <li><kbd>Right-drag</kbd> or swipe look · scroll zoom</li>
-            <li><kbd>Esc</kbd> pause</li>
+            <li><kbd>M</kbd> map · <kbd>Esc</kbd> pause</li>
           </ul>
           <p class="controls-touch">Stick to fly · buttons to climb, dive &amp; boost · drag the screen to look</p>
           <button id="play-button" class="primary-button" type="button">Play</button>

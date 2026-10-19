@@ -220,6 +220,12 @@ export class Hud {
     }, `hint:${main}`);
   }
 
+  /** Round 40: measure the touch and desktop layouts again on the next frame (the minimap was shown or hidden). */
+  relayout(): void {
+    this.touchAt = -1e9;
+    this.deskAt = -1e9;
+  }
+
   get isTouch(): boolean {
     return this.app.classList.contains('touch');
   }
@@ -236,6 +242,7 @@ export class Hud {
   private readonly stickEl = $('touch-stick');
   private readonly touchButtonsEl = document.querySelector('.touch-buttons') as HTMLElement;
   private readonly hudEl = $('hud');
+  private readonly minimapEl = document.getElementById('minimap');
 
   /**
    * Round 24: where things sit on a touch screen. `controls` are the stick and the button cluster (the objective marker
@@ -264,7 +271,9 @@ export class Hud {
     // the stick's "Fly" label sits 20 px above it
     if (stick) controls.push({ l: stick.l, t: stick.t - 20, r: stick.r, b: stick.b });
     if (btns) controls.push(btns);
-    const top: Box[] = [centre, score, right].filter((b): b is Box => !!b);
+    // round 40: the minimap (under the right chips) is part of the top HUD: the objective marker keeps off it
+    const map = this.minimapEl && !this.minimapEl.hidden ? R(this.minimapEl) : null;
+    const top: Box[] = [centre, score, right, map].filter((b): b is Box => !!b);
     const pillBottom = centre ? centre.b : 0;
     // pop slot: from the left gutter (safe area) to 100 px left of the screen centre (the drone sits on the centre line;
     // round 25: 72 -> 100 px, the two-line hints and delivery pops reached its rotors);

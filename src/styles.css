@@ -1460,3 +1460,28 @@ kbd {
 #app.touch .pop-squeeze .pop-icon { display: none; }
 #app.touch .pop-squeeze .medal { width: 22px !important; height: 22px !important; }
 #app.touch .pop-squeeze::before { display: none; }
+
+/* ---------- Round 40: minimap ---------- */
+/* Desktop: bottom-right, clear of the meters (bottom-left) and the right chips (top). Touch: under the deliveries and
+   pause chips, above the climb / boost / dive buttons. The map draws its own cream rim; the shadow lifts it off any sky. */
+.minimap {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  box-shadow: 0 8px 22px rgba(60, 28, 10, 0.28);
+  pointer-events: none;
+}
+.minimap[hidden] { display: none; }
+#app.touch .minimap {
+  top: calc(max(16px, env(safe-area-inset-top)) + 50px);
+  bottom: auto;
+  width: 110px;
+  height: 110px;
+  box-shadow: 0 6px 16px rgba(60, 28, 10, 0.28);
+}
+@media (max-height: 300px) {
+  #app.touch .minimap { width: 92px; height: 92px; }
+}

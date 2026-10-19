@@ -20,6 +20,8 @@ export type FlightEvents = {
    * "would have been charged" count. hitAngle (deg) and hitNx/hitNz: the hardest charged-type wall contact this frame.
    */
   scrape: number; scrapeSpeed: number; sx: number; sy: number; sz: number; sdx: number; sdz: number; snx: number; snz: number; scrapeOld: number;
+  /** Round 40: column top at the scrape contact with the largest scrapeOld (the pad-edge exemption of the shadow rules). */
+  scrapeTop: number;
   hitAngle: number; hitNx: number; hitNz: number;
 };
 
@@ -53,6 +55,12 @@ export class Drone {
   yawRate = 0;
   boost = 1;
   boosting = false;
+  /**
+   * Round 40: boost tail. Speed over the cruise top (m/s) the drone may still carry after a boost while forward is held.
+   * It is set while boosting and eases down at FLIGHT.tailDecel (gentler near the end), so the boost tails off instead
+   * of braking hard. It never adds speed: it only holds back the over-top drag.
+   */
+  carry = 0;
   carrying = false;
   speed = 0;
   /** 0..1 headwind strength at the drone's altitude (see FLIGHT.headwind*). */
@@ -404,6 +412,7 @@ export class Drone {
     this.yawRate = 0;
     this.boost = 1;
     this.boosting = false;
+    this.carry = 0;
     this.carrying = false;
     this.cargo.visible = false;
     this.pitch = this.roll = 0;
@@ -464,6 +473,21 @@ export class Drone {
     if (this.carrying) this.cargoSwingVel.set((3 + s * 4) * Math.sign(fwd || 1), (Math.random() - 0.5) * 6);
   }
 
+  /**
+   * Round 40: a hard knock that is not a crash. A small kick on the attitude spring (the nose lifts off the wall about
+   * 10 to 15 degrees and settles in about half a second) and the bump rattle. No tumble, no sputter, no alarm.
+   */
+  knock(strength: number, nx = 0, nz = 0): void {
+    const s = THREE.MathUtils.clamp(strength, 0, 1);
+    const fwd = -(nx * this.forward.x + nz * this.forward.z);
+    const across = nx * -this.forward.z + nz * this.forward.x;
+    const kick = 2.6 + s * 1.2; // rad/s (the crash kicks with 11 to 19)
+    const hasN = Math.hypot(nx, nz) > 0.1;
+    this.pitchVel += kick * (hasN ? THREE.MathUtils.clamp(Math.abs(fwd), 0.35, 1) : 0.8);
+    this.rollVel += kick * 0.6 * (hasN && Math.abs(across) > 0.3 ? -Math.sign(across) : 0);
+    if (this.carrying) this.cargoSwingVel.set((1.5 + s * 1.5) * Math.sign(fwd || 1), 0);
+  }
+
   /** Round 39: attitude and effect state for probes (degrees where angles). */
   get feel(): { pitch: number; roll: number; tiltX: number; tiltZ: number; tumble: number; accF: number; accR: number; thrust: number; yawRate: number; cargoX: number; cargoZ: number; rotor: number; smear: number; sputter: number } {
     const d = THREE.MathUtils.radToDeg;
@@ -491,6 +515,7 @@ export class Drone {
     events.scrape = 0;
     events.scrapeSpeed = 0;
     events.scrapeOld = 0;
+    events.scrapeTop = -1e9;
     events.hitAngle = -1;
     const F = FLIGHT;
 
@@ -538,6 +563,26 @@ export class Drone {
     // outside of boost, excess speed bleeds off gently instead of snapping
     v.x *= k;
     v.z *= k;
+    // round 40: boost tail. While boosting the carry follows the speed over the cruise top. After the boost, with forward
+    // held (and not airbraking onto a pad), the speed is held at min(speed before the drag, top + carry), and the carry
+    // eases down: tailDecel m/s^2 at most, tailBase + tailEase x carry near the end. The headwind eats it faster.
+    const cruiseTop = F.maxSpeed * (1 - F.headwindSlow * this.headwind);
+    // near the objective's pad (inside the airbrake range) the tail ends: arriving is the normal over-top bleed, as before
+    const nearPad = this.hasGuide && Math.hypot(this.guide.x - p0.x, this.guide.z - p0.z) < F.guideBrakeRange;
+    if (this.boosting) this.carry = Math.max(this.carry, hSpeed - cruiseTop);
+    else if (nearPad) this.carry = 0;
+    else if (this.carry > 0) {
+      const rate = Math.min(F.tailDecel, F.tailBase + F.tailEase * this.carry) * (1 + F.tailWind * this.headwind);
+      this.carry = Math.max(0, this.carry - rate * dt);
+      if (thrustIn > 0.2 && !diving && hSpeed > top + 0.5) {
+        const hold = Math.min(hSpeed, top + this.carry);
+        const now = Math.hypot(v.x, v.z);
+        if (now > 1e-3 && now < hold) {
+          v.x *= hold / now;
+          v.z *= hold / now;
+        }
+      }
+    }
     // lateral grip: drift turns into heading over time
     const fwdComp = v.x * this.forward.x + v.z * this.forward.z;
     const latX = v.x - this.forward.x * fwdComp;
@@ -682,7 +727,12 @@ export class Drone {
               rx = n.x * on + (ox - n.x * on) * F.bumpFriction;
               rz = n.z * on + (oz - n.z * on) * F.bumpFriction;
             }
-            events.scrapeOld = Math.max(events.scrapeOld, hBefore - Math.hypot(rx, rz));
+            const oldLost = hBefore - Math.hypot(rx, rz);
+            if (oldLost > events.scrapeOld) {
+              events.scrapeOld = oldLost;
+              // round 40 (Codex C): the round 38 rules took the column top at this contact for the pad-edge exemption
+              events.scrapeTop = this.columnTop(world, p);
+            }
           }
           v.addScaledVector(n, -(1 + F.scrapeBounce) * vn);
           const on = v.dot(n);
@@ -825,6 +875,8 @@ export class Drone {
     }
 
     this.speed = Math.hypot(v.x, v.z);
+    // round 40: the boost tail never outlives the speed (a wall, a brake or a turn that took the speed off ends it)
+    if (!this.boosting) this.carry = Math.min(this.carry, Math.max(0, this.speed - F.maxSpeed * (1 - F.headwindSlow * this.headwind)));
     this.animate(dt, intent);
   }
 

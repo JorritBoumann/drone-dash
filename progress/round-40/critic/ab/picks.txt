@@ -1,0 +1,20 @@
+# Round 40 critic blind picks, written before opening key.json
+22-desk-straight A  target 95 m ahead-right in 3D: A marks it at 1 o'clock, B at 6 o'clock (behind). A clearer marker.
+22-desk-turn B      target ahead-left in 3D: B at 11 o'clock, A at 7 o'clock (behind-left).
+22-desk-shore A     both: sea on the right, target arrow at 9. B draws water ahead where the city goes on; A has city ahead, south shore behind. A has N badge.
+22-desk-ahead B     target dead ahead: B at 12, A at 6. A shows the boulevard and the sea on the wrong side.
+22-desk-behind B    target 205 m behind: B edge arrow at 6, A arrow at 12.
+22-desk-shortcut A  target 8 deg right: A at 12-1, B below the drone. B shows sea ahead. No shortcut mark on either here.
+58-phone-straight A B has no map on screen at all. A correct (target 10-11 o'clock).
+58-phone-turn A     B no map. A target at 9, sea right: correct.
+58-phone-shore A    B no map. A correct.
+58-phone-ahead B    A no map. B target at 12: correct.
+58-phone-behind A   B no map. A arrow at 6, island corner ahead: correct.
+58-phone-shortcut A B no map. A shows the alley entrance arch ahead of the drone and the target beyond it.
+130-desk-turn B     target 27 m behind-left: B diamond at 7-8 o'clock; A dot at about 9 with its "27 m" label on top of the drone arrow.
+130-desk-shore B    A draws the south shore ahead (water at top); B city ahead, correct. Both: sea right, target left.
+130-desk-behind A   target behind: A arrow at 6, B arrow at 12.
+130-phone-straight A B no map. A correct, marker touches the drone arrow at 26 m.
+130-phone-ahead A   B no map. A correct.
+130-phone-shortcut A B no map. A correct.
+Look (desktop): the cream map with white streets, tinted roof blocks, N badge and big distance pill reads better at a glance than the grey/tan grid with red diagonals; the dark-teal sea of the grey map is heavy. Small labels on the grey map (8-9 px) are hard to read.

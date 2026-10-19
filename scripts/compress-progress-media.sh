@@ -6,17 +6,25 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Read the tracked files once (rounds 1 to 11 committed their originals).
+tracked=$(mktemp)
+trap 'rm -f "$tracked"' EXIT
+git ls-files progress | sort > "$tracked"
+
 converted=0
-while IFS= read -r -d '' f; do
-  git ls-files --error-unmatch "$f" >/dev/null 2>&1 && continue   # already tracked (rounds 1 to 11)
+while IFS= read -r f; do
   case "$f" in
-    *.png|*.jpg|*.jpeg)
-      out="${f%.*}.webp"
-      [ -e "$out" ] || { cwebp -quiet -q 80 "$f" -o "$out"; converted=$((converted + 1)); } ;;
-    *.wav)
-      out="${f%.*}.ogg"
-      [ -e "$out" ] || { opusenc --quiet --bitrate 96 "$f" "$out"; converted=$((converted + 1)); } ;;
+    *.png|*.jpg|*.jpeg) out="${f%.*}.webp" ;;
+    *.wav) out="${f%.*}.ogg" ;;
+    *) continue ;;
   esac
-done < <(find progress -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.wav' \) -print0)
+  [ -e "$out" ] && continue                                  # already converted
+  grep -qxF "$f" "$tracked" && continue                      # original is tracked
+  case "$f" in
+    *.wav) opusenc --quiet --bitrate 96 "$f" "$out" ;;
+    *) cwebp -quiet -q 80 "$f" -o "$out" ;;
+  esac
+  converted=$((converted + 1))
+done < <(find progress -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.wav' \) | sort)
 
 echo "compress-progress-media: $converted new files"

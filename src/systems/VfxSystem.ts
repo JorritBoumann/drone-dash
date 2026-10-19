@@ -160,7 +160,8 @@ export class VfxSystem {
 
 /**
  * Round 39: speed streaks. Thin quads in a loose tube round the view axis that rush past the camera, drawn straight in
- * camera space by the vertex shader (one draw, no per-frame buffer upload). They fade in above about 20 m/s. The CPU
+ * camera space by the vertex shader (one draw, no per-frame buffer upload). They fade in above about 20 m/s (round 40:
+ * plus a faint layer from 12 m/s). The CPU
  * side only advances the travel and sets the level.
  */
 export class SpeedStreaks {
@@ -207,7 +208,7 @@ export class SpeedStreaks {
           vec3 c = vec3(cos(ang) * rad * 1.5, sin(ang) * rad * 0.9 + 0.4, z + aCorner.y * uLen);
           c.xy += vec2(-sin(ang), cos(ang)) * aCorner.x * (0.008 + 0.006 * aSeed.y);
           float fadeFar = smoothstep(-(L + 1.5), -(L - 6.0), z);
-          float fadeNear = smoothstep(-0.8, -4.0, z);
+          float fadeNear = 1.0 - smoothstep(-4.0, -0.8, z); // round 40: ordered edges (GLSL leaves e0 >= e1 undefined)
           vA = uLevel * fadeFar * fadeNear;
           vT = aCorner.y;
           gl_Position = projectionMatrix * vec4(c, 1.0);
@@ -229,7 +230,10 @@ export class SpeedStreaks {
 
   /** speed in m/s; on: only while flying (title and game over show none). */
   update(dt: number, speed: number, boosting: boolean, on: boolean): void {
-    const want = on ? THREE.MathUtils.smoothstep(speed, 19, 27) * (boosting ? 1 : 0.85) : 0;
+    // round 40: a faint cruise layer (0.18 at the 16.8 m/s cruise cap, none under 12 m/s), so normal flight reads as
+    // fast too; boost and the boost tail build on it up to full
+    const cruise = 0.18 * THREE.MathUtils.smoothstep(speed, 12, 16.5);
+    const want = on ? Math.max(cruise, THREE.MathUtils.smoothstep(speed, 19, 27) * (boosting ? 1 : 0.85)) : 0;
     this.level += (want - this.level) * (1 - Math.exp(-(want > this.level ? 4 : 3) * dt));
     if (this.level < 0.003) this.level = 0;
     this.uniforms.uLevel.value = this.level;

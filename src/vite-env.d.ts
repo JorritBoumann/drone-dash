@@ -110,6 +110,10 @@ interface DroneDashApi {
   tune?(patch: Record<string, Record<string, unknown>>): void;
   readonly state: string;
   diagnostics(): ThreeGameDiagnostics | undefined;
+  /** Round 40: the minimap (visible, radius in m) and probe data. */
+  readonly minimap?: { visible: boolean; radius: number; draws: number; msMean: number; msMax: number; box: { l: number; t: number; r: number; b: number } | null; last: Record<string, number | boolean> | null };
+  minimapToggle?(): void;
+  minimapStats?(reset?: boolean): { draws: number; msMean: number; msMax: number };
   /** Debug: move the drone (yaw 0 faces -z) and set its horizontal speed along the heading. */
   camCorridors(): Array<{ axis: "x" | "z"; c: number; hw: number; a0: number; a1: number; roofY: number }>;
   place(x: number, y: number, z: number, yaw: number, speed?: number): void;

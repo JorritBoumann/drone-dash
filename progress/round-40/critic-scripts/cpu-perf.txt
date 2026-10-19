@@ -1,0 +1,3 @@
+ %CPU COMM
+  8.7 /usr/sbin/coreaudiod
+  5.1 /System/Library/CoreServices/launchservicesd

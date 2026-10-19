@@ -104,13 +104,14 @@ const MEDAL = ['#9aa3b0', '#e0955a', '#eef2f7', '#ffd166', '#5ff5d4'];
 export class CanvasHud {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.OrthographicCamera(0, 1, 0, -1, -10, 10);
-  readonly panels: Record<'score' | 'clock' | 'objective' | 'slip' | 'event', Panel>;
+  readonly panels: Record<'score' | 'clock' | 'objective' | 'slip' | 'event' | 'over', Panel>;
   readonly map: Panel;
   private readonly el = {
     score: document.querySelector('.hud-score') as HTMLElement, scoreValue: $('score-value'), pending: $('score-pending'),
     goal: $('goal'), goalName: $('goal-name'), goalScore: $('goal-score'), combo: $('combo-chip'), comboValue: $('combo-value'),
     timer: $('timer'), timerValue: $('timer-value'), objective: $('objective'), objVerb: $('objective-verb'), objName: $('objective-name'),
     rush: $('objective-rush'), rushValue: $('objective-rush-value'), slip: $('slip'), slipChain: $('slip-chain'), minimap: $('minimap'),
+    right: document.querySelector('.hud-right') as HTMLElement,
   };
   private boxes: Record<string, Box | null> = {};
   private flags = { goal: false, combo: false, pending: false, slipOn: 0, rush: false };
@@ -128,7 +129,7 @@ export class CanvasHud {
   constructor(private readonly app: HTMLElement, minimapCanvas: HTMLCanvasElement, private readonly pr: () => number) {
     this.panels = {
       score: new Panel('score', 20), clock: new Panel('clock', 20), objective: new Panel('objective', 12),
-      slip: new Panel('slip', 20), event: new Panel('event', 30),
+      slip: new Panel('slip', 20), event: new Panel('event', 30), over: new Panel('over', 4),
     };
     this.map = new Panel('minimap', 30, minimapCanvas);
     for (const p of [...Object.values(this.panels), this.map]) this.scene.add(p.mesh);
@@ -147,6 +148,18 @@ export class CanvasHud {
   /** A centre message (pop, medal, event, payout) was shown by the HTML HUD: the canvas shows the same words. */
   centre(kind: string, main: string, sub: string, tone: string, el: HTMLElement, durMs: number): void {
     this.ev = { kind, main, sub, tone, el, at: performance.now(), dur: durMs };
+    // round 42: where the HTML message rests, read now (the old box, measured up to 250 ms ago, put a new label on the
+    // objective pill for a frame or two)
+    this.evAnchor = this.anchorOf(el);
+  }
+
+  /** Round 42: the resting centre of a centre message (left / top of an element centred with translate(-50%, -50%)). */
+  private evAnchor: { x: number; y: number } | null = null;
+  private anchorOf(el: HTMLElement): { x: number; y: number } | null {
+    const p = el.offsetParent as HTMLElement | null;
+    if (!p) return null;
+    const r = p.getBoundingClientRect();
+    return { x: r.left + el.offsetLeft, y: r.top + el.offsetTop };
   }
 
   clearEvents(): void {
@@ -167,12 +180,13 @@ export class CanvasHud {
     this.boxes.objective = vis(E.objective);
     this.boxes.slip = vis(E.slip);
     this.boxes.minimap = E.minimap.hidden ? null : vis(E.minimap);
+    this.boxes.right = vis(E.right);
     this.flags.goal = !!vis(E.goal);
     this.flags.combo = !E.combo.hidden && !!vis(E.combo);
     this.flags.pending = !E.pending.hidden && !!vis(E.pending);
     this.flags.rush = !E.rush.hidden && !!vis(E.rush);
     this.flags.slipOn = this.boxes.slip ? Number(getComputedStyle(E.slip).opacity) : 0;
-    if (this.ev) this.boxes.event = vis(this.ev.el);
+    if (this.ev) this.evAnchor = this.anchorOf(this.ev.el) ?? this.evAnchor;
   }
 
   /** Every frame in play or pause. Redraws only panels whose content changed (each at most its own rate). */
@@ -190,7 +204,7 @@ export class CanvasHud {
       const key = `${E.scoreValue.textContent}|${this.flags.pending ? E.pending.textContent : ''}|${this.flags.goal ? `${E.goalName.textContent}${E.goalScore.textContent}${E.goal.dataset.m}${Math.round(n.goalQ * 100)}` : ''}|${this.flags.combo ? E.comboValue.textContent : ''}|${pr}|${touch}`;
       if (due(P.score, key)) { P.score.key = key; this.drawScore(P.score, pr, n, touch); P.score.commit(t0); this.uploads++; }
       P.score.place(sb.x - 8, sb.y - 6);
-      P.score.box = { x: sb.x - 8, y: sb.y - 6, w: P.score.allocW, h: P.score.allocH };
+      P.score.box = { x: sb.x - 8, y: sb.y - 6, w: this.scoreW, h: this.scoreH };
     }
     this.show(P.score, !!sb);
 
@@ -209,8 +223,9 @@ export class CanvasHud {
     if (ob) {
       const kind = E.objective.dataset.rush === '1' ? 'rush' : E.objective.dataset.kind ?? 'pickup';
       const dist = n.objDist >= 0 ? `${Math.round(n.objDist)} m` : '';
-      const key = `${kind}|${E.objVerb.textContent}|${E.objName.textContent}|${dist}|${this.flags.rush ? E.rushValue.textContent : ''}|${pr}|${touch}`;
-      if (due(P.objective, key)) { P.objective.key = key; this.drawObjective(P.objective, pr, kind, dist, touch); P.objective.commit(t0); this.uploads++; }
+      const maxW = this.objMax();
+      const key = `${kind}|${E.objVerb.textContent}|${E.objName.textContent}|${dist}|${this.flags.rush ? E.rushValue.textContent : ''}|${pr}|${touch}|${maxW}`;
+      if (due(P.objective, key)) { P.objective.key = key; this.drawObjective(P.objective, pr, kind, dist, touch, maxW); P.objective.commit(t0); this.uploads++; }
       const x = ob.x + ob.w / 2 - P.objective.allocW / 2;
       P.objective.place(x, ob.y);
       P.objective.box = { x: ob.x + ob.w / 2 - this.objW / 2, y: ob.y, w: this.objW, h: this.objH };
@@ -274,9 +289,11 @@ export class CanvasHud {
     const pw = F.pending ? tmp.measureText(E.pending.textContent ?? '').width + 14 : 0;
     const goalText = F.goal ? `${E.goalName.textContent} ${E.goalScore.textContent}` : '';
     const gw = F.goal ? tmp.measureText(goalText).width + 26 : 0;
-    const w = Math.max(150, 24 + sw + (pw ? pw + 8 : 0), 24 + gw);
+    const w = Math.ceil(Math.max(150, 24 + sw + (pw ? pw + 8 : 0), 24 + gw));
     const h = 18 + big + (F.goal ? 24 : 0) + (F.combo ? 24 : 0) + 8;
     const c = p.begin(w, h, pr);
+    this.scoreW = w;
+    this.scoreH = h;
     c.fillStyle = 'rgba(29, 34, 48, 0.46)';
     roundRect(c, 0, 0, w, h, 12);
     c.fill();
@@ -347,9 +364,24 @@ export class CanvasHud {
     c.textBaseline = 'alphabetic';
   }
 
+  private scoreW = 0;
+  private scoreH = 0;
   private objW = 0;
   private objH = 0;
-  private drawObjective(p: Panel, pr: number, kind: string, dist: string, touch: boolean): void {
+  /**
+   * Round 42: the widest the objective pill may be. It is centred, so twice the smaller gap to the score panel (as drawn
+   * here) and to the right chips, and never wider than the HTML pill's own cap (--obj-max, set by Hud.fitObjective).
+   */
+  private objMax(): number {
+    const css = parseFloat(this.el.objective.style.getPropertyValue('--obj-max')) || 420;
+    let half = this.vw / 2 - 12;
+    const sb = this.panels.score.box;
+    if (sb) half = Math.min(half, this.vw / 2 - (sb.x + sb.w) - 12);
+    const rb = this.boxes.right;
+    if (rb) half = Math.min(half, rb.x - this.vw / 2 - 12);
+    return Math.max(120, Math.min(css, 420, Math.floor(half * 2)));
+  }
+  private drawObjective(p: Panel, pr: number, kind: string, dist: string, touch: boolean, maxW: number): void {
     const E = this.el, c0 = p.ctx;
     const verb = (E.objVerb.textContent ?? '').toUpperCase();
     const name = E.objName.textContent ?? '';
@@ -361,14 +393,23 @@ export class CanvasHud {
     const maxName = touch ? 170 : 240;
     while (nm.length > 3 && c0.measureText(nm).width > maxName) nm = nm.slice(0, -2);
     if (nm !== name) nm = `${nm.trimEnd()}…`;
-    const nw = c0.measureText(nm).width;
     c0.font = font(800, fs - 1);
     const dw = dist ? c0.measureText(dist).width + 14 : 0;
     const rush = this.flags.rush ? `RUSH ${E.rushValue.textContent}` : '';
     c0.font = font(900, 11);
     const rw = rush ? c0.measureText(rush).width + 16 : 0;
     const h = touch ? 30 : 34;
-    const w = Math.ceil(30 + vw + 8 + nw + dw + (rw ? rw + 8 : 0) + 14);
+    // round 42: a long name is cut so the pill keeps to its slot (it never reaches the score panel)
+    const rest = 30 + vw + 8 + dw + (rw ? rw + 8 : 0) + 14;
+    c0.font = font(800, fs);
+    let nw = c0.measureText(nm).width;
+    if (rest + nw > maxW) {
+      let cut = nm.replace(/…$/, '');
+      while (cut.length > 1 && rest + c0.measureText(`${cut.trimEnd()}…`).width > maxW) cut = cut.slice(0, -1);
+      nm = `${cut.trimEnd()}…`;
+      nw = c0.measureText(nm).width;
+    }
+    const w = Math.ceil(rest + nw);
     const aw = Math.max(w, 480);
     const c = p.begin(aw, h, pr);
     this.objW = w;
@@ -469,22 +510,139 @@ export class CanvasHud {
       this.evW = w;
       this.evH = h;
     }
-    const b = this.boxes.event;
-    let cx = b ? b.x + b.w / 2 : this.vw / 2, cy = b ? b.y + b.h / 2 : this.vh * 0.32;
+    const a = this.evAnchor;
+    let cx = a ? a.x : this.vw / 2, cy = a ? a.y : this.vh * 0.32;
     const w = this.evW, h = this.evH;
     cx = Math.max(w / 2 + 8, Math.min(this.vw - w / 2 - 8, cx));
     cy = Math.max(h / 2 + 8, Math.min(this.vh - h / 2 - 8, cy));
     let x = cx - w / 2;
-    const y = cy - h / 2;
+    let y = cy - h / 2;
     if (x < 72 && y < 64) x = 72; // the platform's back arrow corner
-    P.place(x, y);
-    P.box = { x, y, w, h };
+    // round 42: never on (or touching) the score panel, the clock, the objective pill or the minimap: below them
+    const gap = 6;
+    for (let i = 0; i < 4; i++) {
+      let moved = false;
+      for (const q of [this.panels.score.box, this.panels.clock.box, this.panels.objective.box, this.map.box]) {
+        if (q && x < q.x + q.w + gap && q.x < x + w + gap && y < q.y + q.h + gap && q.y < y + h + gap) { y = q.y + q.h + gap; moved = true; }
+      }
+      if (!moved) break;
+    }
     const age = now - e.at;
     const fadeIn = Math.min(1, age / 120), fadeOut = Math.max(0, Math.min(1, (e.dur + 300 - age) / 300));
     P.mat.opacity = Math.min(fadeIn, fadeOut);
+    // round 42: the pop-in scale is set from the base size every frame (it multiplied the current scale before), and
+    // grows about the label's centre
     const s = age < 160 ? 0.9 + 0.1 * (age / 160) : 1;
-    P.mesh.scale.multiplyScalar(s);
+    this.evScale = s;
+    this.evAge = age;
+    if (s === 1) P.place(x, y);
+    else {
+      const pr2 = P.pr, sx = Math.round((x + (w * (1 - s)) / 2) * pr2) / pr2, sy = Math.round((y + (h * (1 - s)) / 2) * pr2) / pr2;
+      P.mesh.position.set(sx + (P.allocW * s) / 2, -(sy + (P.allocH * s) / 2), 0);
+      P.mesh.scale.set(P.allocW * s, P.allocH * s, 1);
+    }
+    P.box = { x, y, w, h };
     this.show(P, true);
+  }
+  private evScale = 1;
+  private evAge = 0;
+
+  /**
+   * Round 42: the game-over card, on the canvas (the recorder sees only the canvas). Score, medal, a short breakdown and
+   * the city seed, read from the HTML game-over card (so both say the same). Drawn once per run end, centred.
+   */
+  private overKey = '';
+  private overAt = 0;
+  updateOver(seed: number, touch: boolean): void {
+    const now = performance.now();
+    const pr = this.pr();
+    for (const p of [...Object.values(this.panels), this.map]) if (p !== this.panels.over) this.show(p, false);
+    const P = this.panels.over;
+    const t = (id: string) => (document.getElementById(id)?.textContent ?? '').trim();
+    const rows: [string, string][] = [];
+    for (const d of Array.from(document.querySelectorAll('#over-breakdown > div'))) {
+      const dt = d.querySelector('dt'), dd = d.querySelector('dd');
+      if (!dt || !dd || d.classList.contains('total')) continue;
+      const small = dt.querySelector('small')?.textContent ?? '';
+      const label = (dt.firstChild?.textContent ?? '').trim();
+      rows.push([small ? `${label} ${small}` : label, (dd.textContent ?? '').trim()]);
+    }
+    const tier = Number((document.getElementById('over-medal') as HTMLElement | null)?.dataset.m ?? 0) || 0;
+    const key = `${t('over-score')}|${t('over-medal-name')}|${rows.map((r) => r.join('=')).join(';')}|${seed}|${pr}|${touch}|${this.vw}x${this.vh}`;
+    if (key !== this.overKey) {
+      if (!this.overKey) this.overAt = now;
+      this.overKey = key;
+      this.drawOver(P, pr, touch, t('over-score'), t('over-medal-name'), tier, rows, seed, t('over-city'));
+      P.commit(now);
+      this.uploads++;
+    }
+    const w = this.overW, h = this.overH;
+    const x = Math.max(72, (this.vw - w) / 2), y = Math.max(8, (this.vh - h) / 2);
+    P.place(x, y);
+    P.box = { x, y, w, h };
+    P.mat.opacity = Math.min(1, (now - this.overAt) / 250);
+    this.show(P, true);
+  }
+  hideOver(): void {
+    this.show(this.panels.over, false);
+    this.overKey = '';
+  }
+  private overW = 0;
+  private overH = 0;
+  private drawOver(p: Panel, pr: number, touch: boolean, score: string, medal: string, tier: number, rows: [string, string][], seed: number, city: string): void {
+    const small = touch || this.vh < 460;
+    const S = small ? 0.8 : 1;
+    const pad = Math.round(18 * S), rowH = Math.round(17 * S), big = Math.round(46 * S);
+    const c0 = p.ctx;
+    const seedLine = city && !/\d/.test(city) ? `${city} · seed ${seed}` : `City seed ${seed}`;
+    c0.font = font(800, Math.round(13 * S));
+    let w = Math.round(280 * S);
+    for (const [l, v] of rows) w = Math.max(w, c0.measureText(l).width + c0.measureText(v).width + 2 * pad + 24);
+    c0.font = font(800, Math.round(12 * S));
+    w = Math.ceil(Math.min(Math.max(w, c0.measureText(seedLine).width + 2 * pad), this.vw - 88));
+    const h = Math.ceil(pad + 14 * S + 8 + 22 * S + 6 + big + 10 + rows.length * rowH + 8 + 16 * S + pad);
+    const c = p.begin(w, h, pr);
+    this.overW = w;
+    this.overH = h;
+    c.fillStyle = 'rgba(29, 34, 48, 0.82)';
+    roundRect(c, 0, 0, w, h, 16);
+    c.fill();
+    c.textAlign = 'center';
+    c.textBaseline = 'alphabetic';
+    let y = pad + 11 * S;
+    c.fillStyle = '#ffb02e';
+    c.font = font(900, Math.round(12 * S));
+    c.fillText("TIME'S UP", w / 2, y);
+    y += 8 + 20 * S;
+    c.font = font(900, Math.round(16 * S));
+    const mw = c.measureText(medal).width;
+    c.fillStyle = MEDAL[Math.min(4, Math.max(0, tier))];
+    c.beginPath(); c.arc(w / 2 - mw / 2 - 12 * S, y - 5 * S, 7 * S, 0, Math.PI * 2); c.fill();
+    c.fillStyle = tier > 0 ? MEDAL[Math.min(4, tier)] : '#fff7ea';
+    c.fillText(medal, w / 2 + 6 * S, y);
+    y += 6 + big * 0.9;
+    c.fillStyle = '#fff7ea';
+    c.font = font(900, big);
+    c.fillText(score, w / 2, y);
+    y += 10 + big * 0.1;
+    c.font = font(800, Math.round(13 * S));
+    for (const [l, v] of rows) {
+      y += rowH;
+      c.textAlign = 'left';
+      c.fillStyle = 'rgba(255, 247, 234, 0.82)';
+      c.fillText(l, pad, y);
+      c.textAlign = 'right';
+      c.fillStyle = '#fff7ea';
+      c.fillText(v, w - pad, y);
+    }
+    c.fillStyle = 'rgba(255, 247, 234, 0.22)';
+    c.fillRect(pad, y + 6, w - 2 * pad, 1);
+    y += 8 + 14 * S;
+    c.textAlign = 'center';
+    c.fillStyle = 'rgba(255, 247, 234, 0.7)';
+    c.font = font(800, Math.round(12 * S));
+    c.fillText(seedLine, w / 2, y);
+    c.textAlign = 'left';
   }
   private evW = 0;
   private evH = 0;
@@ -493,7 +651,7 @@ export class CanvasHud {
   stats(): Record<string, unknown> {
     const out: Record<string, unknown> = { on: true, uploads: this.uploads, msMean: this.frames ? this.msSum / this.frames : 0, msMax: this.msMax, frames: this.frames };
     out.panels = [...Object.values(this.panels), this.map].map((p) => ({ name: p.name, visible: p.mesh.visible, box: p.box, draws: p.draws, tex: [p.canvas.width, p.canvas.height], opacity: p.mat.opacity }));
-    out.event = this.ev ? { main: this.ev.main, sub: this.ev.sub, kind: this.ev.kind } : null;
+    out.event = this.ev ? { main: this.ev.main, sub: this.ev.sub, kind: this.ev.kind, age: this.evAge, scale: this.evScale, meshScale: [this.panels.event.mesh.scale.x, this.panels.event.mesh.scale.y], alloc: [this.panels.event.allocW, this.panels.event.allocH] } : null;
     return out;
   }
   resetStats(): void {

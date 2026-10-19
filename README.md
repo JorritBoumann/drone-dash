@@ -14,8 +14,8 @@ The game runs on desktop and on phones held sideways. It uses Three.js, TypeScri
 | Boost | E or left click | Boost button |
 | Look around | Right-drag, or a two-finger trackpad swipe | Drag with one finger on an empty part of the screen |
 | Zoom | Mouse wheel or trackpad pinch | Not available |
-| Map on or off | M | Map button |
-| Music on or off | N | Music button |
+| Map on or off | M | Always on |
+| Music on or off | N | Music chip on the title and pause screens |
 | Pause | Escape or P | Pause button |
 
 ## Play locally
@@ -37,6 +37,14 @@ You need Node.js 20 or later.
 3. Open http://127.0.0.1:5188 in a browser.
 
 To play a specific city, add a seed to the address, for example http://127.0.0.1:5188/?seed=22.
+
+Seed format (`?seed=`):
+
+- A whole number from 0 to 4294967295 is that city. `22`, `022` and ` 22 ` are all city 22.
+- A negative whole number keeps its sign as a 32-bit value: `-N` is city 4294967296 − N. So `-22` is city 4294967274, a different city from `22`.
+- A larger whole number wraps around 4294967296 (`4294967318` is city 22). A number past 2^53 is hashed to a fixed city (the same number always gives the same city).
+- Any other text (for example a hex string or a uuid) is turned into a fixed city from 10000 to 99999. The same text always gives the same city.
+- An empty seed gives a random city. The game-over card shows the city number, so you can share it.
 
 ## Build
 

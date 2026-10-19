@@ -276,7 +276,7 @@ body { background: #f0b98a; }
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: min(78vw, 420px);
+  max-width: min(78vw, 420px, var(--obj-max, 420px)); /* round 42: --obj-max keeps it off the score panel (Hud.fitObjective) */
   padding: 6px 14px 6px 10px;
   border-radius: 12px;
   background: var(--glass-dark);
@@ -285,6 +285,7 @@ body { background: #f0b98a; }
   font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
 }
 .objective-dot {
   flex: none;
@@ -304,7 +305,7 @@ body { background: #f0b98a; }
   color: var(--amber);
 }
 .objective[data-kind='drop'] .objective-verb { color: var(--teal); }
-.objective-name { overflow: hidden; text-overflow: ellipsis; }
+.objective-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .objective.flash { animation: obj-flash 0.6s ease; }
 /* round 14: street bonus banked on this parcel run, paid on delivery */
 .objective-bank {
@@ -1099,7 +1100,7 @@ kbd {
   .hud-score strong { font-size: 1.8rem; }
   .timer strong { font-size: 1.35rem; }
   .timer-ring { width: 28px; height: 28px; }
-  .objective { font-size: 0.72rem; max-width: 60vw; }
+  .objective { font-size: 0.72rem; max-width: min(60vw, var(--obj-max, 60vw)); }
   .objective-bank small { display: none; }
   .boost { width: 150px; }
   .slip { width: 150px; }

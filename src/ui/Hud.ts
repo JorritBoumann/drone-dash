@@ -244,6 +244,23 @@ export class Hud {
   private readonly touchButtonsEl = document.querySelector('.touch-buttons') as HTMLElement;
   private readonly hudEl = $('hud');
   private readonly minimapEl = document.getElementById('minimap');
+  /**
+   * Round 42: when the score panel or the centre column changes size (a combo chip or medal row appears, a route hint
+   * shows), the touch layout is re-measured at once and the pop that is up moves below it in the same frame (the 300 ms
+   * re-measure let a fresh pop touch the score panel for a few frames).
+   */
+  readonly topWatch: ResizeObserver | null = (() => {
+    if (typeof ResizeObserver === 'undefined') return null;
+    const ro = new ResizeObserver(() => {
+      if (!this.isTouch || !this.touchGeo) return;
+      this.touchAt = -1e9;
+      this.touchLayout(this.touchGeo.w, this.touchGeo.h);
+      const a = this.cActive;
+      if (a && performance.now() - a.shownAt < a.durMs + 300) this.touchPlace(a.el, a.kind);
+    });
+    for (const el of [this.hudScoreEl, this.hudCenterEl]) if (el) ro.observe(el);
+    return ro;
+  })();
 
   /**
    * Round 24: where things sit on a touch screen. `controls` are the stick and the button cluster (the objective marker
@@ -298,6 +315,51 @@ export class Hud {
     this.popLower = lower;
     this.touchGeo = { w, h, controls, top, pillBottom, bottomTop: bottom ? bottom.t : h - 80, slot };
     return this.touchGeo;
+  }
+
+  /**
+   * Round 42: the platform's 64 px top-left corner (plus the safe-area inset and a 4 px margin), in CSS px. Every
+   * screen-space marker, label and edge arrow keeps out of it. A hidden probe sized with env() is read every 500 ms.
+   */
+  private cornerProbe: HTMLElement | null = null;
+  private cornerAt = -1e9;
+  private corner: Box = { l: -1e4, t: -1e4, r: 68, b: 68 };
+  cornerBox(): Box {
+    const now = performance.now();
+    if (now - this.cornerAt < 500) return this.corner;
+    this.cornerAt = now;
+    if (!this.cornerProbe) {
+      const d = document.createElement('div');
+      d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'position:fixed;left:0;top:0;width:calc(64px + env(safe-area-inset-left, 0px));height:calc(64px + env(safe-area-inset-top, 0px));visibility:hidden;pointer-events:none';
+      document.body.appendChild(d);
+      this.cornerProbe = d;
+    }
+    const r = this.cornerProbe.getBoundingClientRect();
+    this.corner = { l: -1e4, t: -1e4, r: Math.max(64, r.width) + 4, b: Math.max(64, r.height) + 4 };
+    return this.corner;
+  }
+
+  /**
+   * Round 42: the objective pill keeps to its slot between the score panel and the right chips (it is centred, so its
+   * width is twice the smaller half-gap). A long name is cut with an ellipsis. Measured every 300 ms, never per frame.
+   */
+  private objFitAt = -1e9;
+  private objMax = '';
+  fitObjective(w: number): void {
+    const now = performance.now();
+    if (now - this.objFitAt < 300) return;
+    this.objFitAt = now;
+    const s = this.hudScoreEl.getBoundingClientRect(), r = this.hudRightEl.getBoundingClientRect();
+    let half = w / 2 - 12;
+    if (s.width > 0) half = Math.min(half, w / 2 - s.right - 12);
+    if (r.width > 0) half = Math.min(half, r.left - w / 2 - 12);
+    // the pill pops to 1.08 when the objective changes (obj-flash): leave room for that too
+    const mx = `${Math.max(120, Math.floor((half * 2) / 1.08))}px`;
+    if (mx !== this.objMax) {
+      this.objMax = mx;
+      this.objective.style.setProperty('--obj-max', mx);
+    }
   }
 
   // round 34: desktop pop slot. Like the round 24 touch slot, the centre pops leave the drone: they sit just left of

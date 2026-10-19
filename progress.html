@@ -16,7 +16,220 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-19 21:44 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-19 23:53 UTC.</p>
+<section><h2>round 42</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 42 critic report
+
+**Verdict:** Yes for the Vercel link. No for the platform upload yet: after a long run on an iPhone, the HTML game-over card goes into the 64 px top-left corner.
+
+## Setup
+
+- My servers were 5191 (dev, my own Vite cache, no HMR), 5193 (`dist/` at the root, as Vercel serves it), 5194 (`dist/` under `/nested/game/`) and 5195 (the outer page on `localhost`, a different origin, with a device-width viewport). I stopped all four. I did not touch the owner's server on 5188.
+- `npm run build`: tsc was clean, the build took 0.3 s, and there was no chunk warning (`critic-scripts/build42c.log`). The largest chunk is three.js at 588 kB.
+- Every browser job ran alone, one after the other (`queue42c.sh`, `jobs42c.txt`). The GPU was the real Apple M5 (`gpu42c.log`).
+- I did not read `builder.md`.
+
+## Results 1 to 5
+
+### 1. The 64 px corner
+
+Method: `play42.mjs` with `sampler42.js`. The video pilot plays a full real-time run to its natural end. On every frame the sampler checks the nav marker, the gate tag, the pops and the canvas HUD panels against the corner. Every third frame it checks every painted element on the page. The corner box is 64 px plus the safe-area inset, read from `env()`.
+
+| Run (full run to game over) | Frames in play and on game over | Frames in the corner |
+|---|---|---|
+| iPhone 13, seed 22, HTML HUD | 14,878 | 0 |
+| iPhone 13, seed 22, canvas HUD | 16,153 | 2 (game-over card, see below) |
+| iPhone 13, seed 130, HTML / canvas | 13,365 / 13,369 | 0 / 0 |
+| 915x412, seed 22, HTML / canvas | 14,866 / 14,843 | 0 / 0 |
+| 915x412, seed 130, HTML / canvas | 13,323 / 13,306 | 0 / 0 |
+| Pixel 7 (863x360), seed 22, HTML / canvas | 14,878 / 14,885 | 0 / 0 |
+
+- During play: **pass**. 0 frames in all 10 runs, in both HUD modes. The round 41 marker problem is fixed.
+- On the game-over screen: **fail**. The iPhone seed 22 run had 5 deliveries and a long time line ("56 s start +46 s drops ... −3 s 1 crash"). That made the HTML game-over card 670 px wide. At rest its top-left corner is at x 40, y 32 (`blocker-overcard-corner-iphone-s22.jpg`, `over-iphone-s22-canvas.jpg`). It stays there for the whole game-over screen. Only blank card shows in the corner, but it is in the corner.
+  - My sampler counted only 2 frames. Its filter for full-screen effects also skipped this wide card. So I measured the card in the final screenshots of all runs. Only this run had it in the corner. The other runs had cards starting at x 107 (iPhone) and x 163 to 189 (Pixel, 915x412).
+  - The card CSS did not change in round 42. This is old and was missed before, because earlier corner checks ended runs with a score of 0 (a short card).
+  - The canvas copy of the card is fine. It is drawn at x 72 or more.
+- Safe area (extra check, `SAFE=1`, CDP inset emulation of iPhone landscape: 47 left, 47 right, 21 bottom). The corner box grows to 111 x 64. The score panel stays at x 76, so it is in that box on every frame, in both HUD modes (`safe-area-score-corner-iphone.jpg`). The game's own `Hud.cornerBox()` adds the inset, but the score panel position does not. This matters only if the portal moves its arrow by the safe area. On Vercel there is no arrow.
+
+### 2. Canvas centre messages keep their size
+
+**Pass.**
+- Per frame, in all 5 canvas runs: 7,370 samples in the first 400 ms of a message. The mesh scale always matched the planned value (0.90 growing to 1.00). The lowest value was 0.900 and there were 0 wrong samples.
+- In the canvas-only recordings, the frame strips show the label growing slightly and then holding its size. It never shrinks (`rec42-desk1-s22-fadein-strip.jpg`, `rec42-phone-s130-fadein-strip.jpg`).
+
+### 3. Seeds
+
+**Pass** (`seeds42c.log`, production build).
+- `22` gives city 22 and `-22` gives city 4294967274. Their mood and sites differ: Bright morning against Hazy noon.
+- `4294967274` gives the same city as `-22`. `4294967318`, `022` and `" 22 "` all give city 22. `-5` and `5` now differ.
+- Past 2^53, the number is hashed to a fixed city. Text (`abc`, a uuid, `22.7`) gives a fixed city from 10000 to 99999. An empty seed gives a random city.
+- Every value gave the same city twice and 0 errors. The README seed section matches what the game does. The game-over card shows "City 22".
+
+### 4. Overlaps on phones
+
+**Pass.**
+- 0 overlap frames and 0 near-touches (gap under 2 px) between event labels, the objective pill and the score panel. That held in all 10 phone runs, in both HUD modes.
+- Medal pops against the drone's screen box: 0 of 2,780 samples over 10 runs. I could not reproduce the builder's 12 of 281. Even if it happens now and then, a medal pop is up for about 1 s, so a player would hardly notice.
+
+### 5. Canvas-only recording shows the game-over card
+
+**Pass** (`rec42c.mjs`, `canvas.captureStream(30)` to WebM).
+- Desktop 1280x720 at seed 22, and iPhone at seed 130. The last frame of each recording shows TIME'S UP, the medal, the score, the breakdown and "City seed N" (`rec42-desk1-s22-lastframe.jpg`, `rec42-phone-s130-lastframe.jpg`).
+- The score on the canvas matches the HTML card (1,196 and 1,436).
+
+## Items the builder did not run
+
+| Check | Result |
+|---|---|
+| Phone hull probe, seeds 130 and 22 (`hull42-m.log`, sweep 24) | **Not zero.** Sea showed in a hull in 18 of 122 views and in 16 of 864 sweep frames (1.9%), up to 3,934 px. It is almost all sail boats. With the caps off, it is 49 views and 438 frames, so the caps still remove most of it. Round 40 (phone, sweep 2) had 6 views and 5 frames. The boat and water code did not change. This is the old residual, not a regression. I did not look at the frames themselves. |
+| People on active pads, 4 seeds, 48 legs (`padpeople42.log`) | Pass. 0 of 1,536 samples, by the game's count and by my own. |
+| Harbour perf, no frame cap (`perf-harbour42-*.log`) | Pass. Desktop p95 8.1 ms overall: marina 9.3, sail 7.2, rib 7.4, ferry 9.1. Ferry-follow had 3 frames over 20 ms, the worst 32 ms. Phone p95 4.0 ms overall, marina 3.9 ms. |
+
+## Release smoke test
+
+| Check | Result |
+|---|---|
+| Nested path in a cross-origin iframe, `?seed=22&amp;slLaunch=x&amp;foo=bar` | Pass. 0 failed requests and 0 HTTP errors. 3 resource requests per load. 0 page errors and 0 console errors. |
+| Playable | Pass. A real click on Play, then W moved the drone 31.6 m on desktop. A real tap on the phone, then a full pilot run: 4 deliveries, Silver, 5,289. |
+| Session complete with the mock | Pass. Exactly 1 call per run: 1, then 2 after run 2. An abandoned run added 0. The phone detail was sensible: `{score 5289, medal Silver, medalTier 2, deliveries 4, seed 22, cityMode "seed", runSeconds 119.3, run 1}`. |
+| Without the mock | Pass. 0 errors. The `stateloop:session-complete` event still fired once per run. |
+| Escape | Pass. A single Escape pauses and a second one resumes. A double Escape had 0 preventDefault or stopPropagation calls. |
+| Cold-load flash (`fouc42.log`) | Pass. 0 bad frames, at the root and in the iframe, on desktop and iPhone. Styles were on from the first frame. |
+| Seed parity, iframe build against dev | Pass. The same sites and the same first pickup. |
+| Root path (5193, as Vercel serves `dist/`) | Pass. 0 failed requests and 0 page errors, desktop and iPhone. The only console lines are 4 Chrome autoplay warnings ("AudioContext was not allowed to start"). These are not errors. The HTML HUD shows: no `canvas-hud` class, and the score, timer, objective, minimap and boost meter are visible. |
+
+README controls table against real input (`root42.log`, `root42-phone.log`):
+- Desktop: every row works. W and the arrows fly and turn. Space climbs, and Shift and C descend. E and a left click boost. A right-drag orbits the camera. The mouse wheel zooms. M toggles the map, N the music, and Escape and P pause.
+- Phone: the stick, the Up, Down and Boost buttons, and a one-finger look all work. Pinch does nothing ("Not available" is right). The pause button works.
+- **Mismatch:** the README says "Map button" for phones. There is no map button, and tapping the minimap does nothing. So phones cannot turn the map off.
+- **Note:** the phone music button exists only on the title and pause screens, not during play. It works there.
+
+## Regressions
+
+| Check | Result |
+|---|---|
+| Flat-frame probe, bloom on | 940 frames, 0 flat, 0 errors |
+| Crash-classify, 12 m, seeds 22, 58 and 130 | 16 charged crashes in 176 s. **0 pad lip**: the 6 crashes near a target all hit walls 7 to 14 m tall, and the pad is at 0.4 m. 0 hop-like. |
+| Round 41 fixes (platform calls, Escape, seed parity) | Still pass. |
+
+I found no new regressions from round 42.
+
+## Perf (no frame cap)
+
+| | Desktop 1280x720 | iPhone 13 |
+|---|---|---|
+| Street, HTML HUD, p95 normal / rush | 7.4 / 7.8 ms | 5.7 / 5.1 ms |
+| Street, canvas HUD, p95 normal / rush | not rerun (round 41: 5.0 / 5.9) | 3.5 / 3.6 ms |
+| Harbour, p95 | 8.1 ms | 4.0 ms |
+| Draw calls, max | 114 | 101 |
+| Triangles, max | 401k | 369k |
+
+Every p95 is under 12 ms.
+
+## Release verdicts
+
+- **(a) Vercel link for colleagues: yes.** It loads clean at the root and plays on desktop and phone. The HTML HUD shows, there are no console errors, perf is well inside budget and there is no unstyled flash. Before sharing, fix the README phone "Map button" row (docs only).
+- **(b) Platform upload: no.** One blocker:
+  1. **Game-over card in the 64 px corner on iPhone** (at x 40, y 32), when the result has 5 breakdown rows and a long time line. Keep `.over-card` clear of the corner. For example, cap its width at `calc(100vw - 2 * (64px + 12px))`, or wrap the time line so the card stays narrow. Then check a long-run card at 750x342.
+- Also before upload (not blockers):
+  2. Decide the safe-area case. If the portal draws its arrow inside the safe area on notched phones, move the score panel to `max(76px, env(safe-area-inset-left) + 76px)`. That matches `Hud.cornerBox()`.
+  3. Sea in sail-boat hulls: about 2% of close harbour frames. It is unchanged since round 40.
+  4. Leave the `.map` files out of the platform ZIP unless you want the source public.
+
+## Files
+
+- Scripts in `progress/round-42/critic-scripts/`:
+  - New: `play42.mjs` with `sampler42.js`, `rec42c.mjs`, `fade42.py`, `seeds42c.mjs`, `root42.mjs`, `fouc42.mjs`, `overcard42.mjs`, `sa42.mjs` and `serve42.mjs`.
+  - Copied from round 41 and earlier, with only the output folders changed.
+  - Logs sit next to them.
+- Screenshots in `progress/round-42/critic/` (19 JPEGs):
+  - `blocker-overcard-corner-iphone-s22.jpg`, `safe-area-score-corner-iphone.jpg`
+  - `over-*.jpg` (game-over at the end of the full runs)
+  - `rec42-*-lastframe.jpg`, `rec42-*-fadein-strip.jpg`, `rec42-desk1-s22-over-page.jpg`
+  - `plat-*.jpg`, `root-*.jpg`, `safe-*.jpg`
+</pre></details><details><summary>builder.md</summary><pre># Drone Dash: round 42 builder notes (release fixes)
+
+All five fixes are in. Every acceptance check passed. The full regression list ran (one browser at a time, through `builder-scripts/queue42.sh`). My servers: 5191 for dev (own Vite cache) and 5193 for the build at the root. 5194 served the build under `/nested/game/`. 5195 served the outer page on another origin. All four are stopped. I did not touch the owner's server on 5188.
+
+## Fixes
+
+1. **Corner (blocker).** `Hud.cornerBox()` measures the 64 px top-left corner plus the safe-area inset, and adds 4 px. A hidden probe that uses `env()` is read every 500 ms. `Game.navTouch` and `Game.gateTagPlace` now treat that box as blocked, so the round 24 edge walk slides the marker past it. After each placement, `Game.cornerPush` checks the nav marker (diamond, pill and arrow) and the gate tag (pill and arrow). If a footprint is in the corner, it moves down or right, whichever move is smaller. This works on desktop and touch. The canvas event label already kept out of the corner.
+2. **Shrinking centre message (Codex P1).** `CanvasHud.updateEvent` now sets the scale from the base size on every frame: `allocW * s`, `allocH * s`, with `s = 0.9 + 0.1 * age / 160` for the first 160 ms and 1 after that. The label grows around its own centre. Before, it multiplied the current scale.
+3. **Seed sign (Codex P2).** In `parseSeed`, a negative whole number now keeps its sign as a 32-bit two's complement value: -22 is city 4294967274. README "Play locally" now explains the seed format: whole numbers, negatives, the wrap at 2^32, text seeds and empty seeds.
+4. **Phone overlaps.**
+   - The objective pill's width now fits its slot. `Hud.fitObjective` sets `--obj-max` every 300 ms. It is twice the smaller gap to the score panel and to the right chips, with room for the 1.08 flash. A long name gets an ellipsis (`min-width: 0` on the name and `overflow: hidden` on the pill).
+   - The canvas pill uses the same cap and its own drawn score box, and cuts the name with an ellipsis.
+   - At the start of a message, the canvas event label now reads the resting centre of the HTML message (offsetLeft and offsetTop). Before, it used a box that was up to 250 ms old. The label then moves below the score, clock, objective and minimap boxes, with a 6 px gap.
+   - HTML HUD: a `ResizeObserver` on the score panel and the centre column re-measures the touch layout and moves the pop that is up at once. Before, this waited up to 300 ms. A combo chip that appeared together with a pop let the pop touch the score panel for 18 frames.
+5. **Game-over card on the canvas.** At game over with the canvas HUD on, `CanvasHud.updateOver` draws a compact card. It shows "Time's up", the medal, the score, the breakdown rows and "City seed N". It reads them from the HTML game-over card, so both say the same. It fades in over 250 ms. During game over the other canvas panels are hidden. At the start of a new run the card goes away.
+
+Kept: the bloom clamps in ObjectiveMarker.ts, the `#app` visibility rule (index.html, styles.css), and all bot hooks. The canvas `stats().event` now also reports age, scale, meshScale and alloc.
+
+## Acceptance (scripts in `builder-scripts/`)
+
+| # | Check | Result |
+|---|---|---|
+| 1 + 4 | `phone42.mjs`: full piloted runs that end at game over. iPhone 13 on its side (750x342) and Android 915x412, seeds 22, 58 and 130, canvas and HTML HUD (12 runs). It checks **every animation frame**: nav parts, gate tag, HTML panels and pops, and canvas panels against the corner. It also checks event labels against the objective pill and the score panel, and the pill against the score panel. | **Corner: 0 frames in all 12 runs** (about 13,000 to 15,800 frames each). Overlaps: 0 in 11 runs. HTML iPhone seed 130 had 18 frames of a pop on the score panel (2 px). I fixed that with the ResizeObserver, then reran HTML iPhone 22, 58 and 130 and Android 130: **0 overlaps, 0 corner**. Logs: `phone42.log`, `phone42-html-rerun.log`. |
+| 2 | `scale42.mjs`: first 3 events, every frame for the first 300 ms, desktop and iPhone | 110 and 109 frames. Largest difference between the measured scale and the intended curve, and between the quad scale and alloc times s: **0.0001** (rounding). Starts at 0.9016 at 3 ms and reaches 1 at 160 ms (`logs/scale42-*.log`). |
+| 3 | `seeds42.mjs` | 22 is "Bright morning" (seed 22). -22 is seed 4294967274 ("Hazy noon"), a different sites list. 5 and -5 are different too. -22 gives the same city as 4294967274, as the README says. 0 and -0 are the same. 0 errors. |
+| 5 | Canvas-only capture at game over: all HTML hidden, then a page shot | The card shows on all 6 canvas runs: `builder-shots/over-canvas-{iphone,android}-{22,58,130}.jpg`. Example: iPhone seed 22, Gold medal, 6,573, five breakdown rows, "City seed 22". |
+
+The canvas runs and one HTML run were done before the ResizeObserver change. That change only moves HTML pops, and only further from the top boxes. The canvas label follows the resting point of the HTML pop.
+
+## Regression list (`builder-scripts/jobs42.txt`, logs in `builder-scripts/logs/`)
+
+| Check | Result |
+|---|---|
+| Flat-frame probe, bloom on | 897 frames, 0 flat, 0 errors |
+| Crash-classify, 12 m, seeds 22, 58, 130 | 18 charged crashes, **0 pad lip** (`ccv-sum.py`). 1 "hop-like" rise without climb. This round did not touch flight or collision code. |
+| Nested path, cross-origin iframe (`platform41c.mjs`, build under `/nested/game/`) | 0 failed requests, 0 errors, desktop with mock, without mock, and phone. Same sites and first objective as dev. |
+| Session complete | Exactly 1 call per run (1, then 2 after run 2, still 2 after an abandoned run). Event once per run without the mock. Double Escape leaves the game playing. |
+| Desktop HUD probe 22 / 58 / 130 | Marker on controls 0. Drone under a pill 0/0/0. Pops on the drone 5/308, 0/275, 1/328 (round 40: 0). Pops over the top boxes 0. |
+| Phone HUD probe 22 / 58 / 130 | Marker on controls 0. Pops over the top boxes 0, pops over the controls 0. Drone under a pill 0, 2/795, 0. Pops on the drone 12/281 (medal and teach pops), 0, 0. Shot `fr42-m-22-ov1` (in scratchpad `c42/shots`): the drone sat far left of centre, near a building, and the medal pop below the tall score column touched its rotor. Desktop pop placement code was not changed this round, so the desktop counts are not from these fixes. I count these as noise or older behaviour to watch, not new regressions. |
+| Minimap (`mm-measure40.mjs`) | Bearing over 360 poses: median 0.10 deg, p95 0.59, max 5.7, 0 over 20. Real time: median 1.0, p95 4.1. Placement: on screen with 0 overlaps on 6 screens (3 desktop, iPhone 13, iPhone SE, Pixel 7). |
+| Medal gate, street bot | 22: Bronze 1,824 on the first run (2 deliveries, the bot flew high), then a repeat gave **Gold 6,483**. 58: Silver 2,818. 130: Silver 5,689. Breakdown and end screen exact (bdOk, domOk) on all. |
+| Medal gate, lazy bot | Bronze 1,159, no medal 926, Bronze 1,029. Breakdown exact on all three. |
+| No-delivery farm 22 / 58 / 130 | 0 / 0 / 0 |
+| Carry farm (points per minute vs honest) | 0.22 / 0 / 0.24, all under 0.5 |
+| boats32, seed 22 | 0 inside a hull, 0 mast, 0 stuck, longest contact 70 |
+| Hull probe, desktop, seeds 130 and 22 | 8 leak views + 3 in the sweep, 0 flat (round 40: 7 + 3). Water code unchanged. The phone hull pass was not run. |
+| Traffic overlap, 6 runs | 0 pair frames |
+| climb30, desktop and phone | 32 climbs each: 0 with hf over 0.40, 0 frames in a solid, largest jump 0.89 m |
+| cam-clip24, phone, seed 22, no orbit | 0 in a solid, 0 hidden, 0 pops |
+| Unstyled flash on cold load (dev and build, desktop and iPhone, 2 loads each) | 8 loads, 0 bad frames |
+| Perf p95, street, no frame cap | Desktop: HTML HUD 7.9 normal and 7.6 rush, canvas HUD 5.1 and 5.2. iPhone 13: HTML 5.4 and 4.9, canvas 3.5 and 3.5. All under 12 ms. |
+| Draw calls and triangles | Street: up to 119 calls (canvas HUD, rush). Triangle sweep seeds 130 and 22: up to 446k and 434k triangles, up to 116 calls. All under 480k and 125. |
+| `npm run build` | tsc clean, no chunk warning. Game chunk 410.7 kB (+6 kB), three 588 kB. |
+
+Not run: the phone hull pass, the people-on-pads probe and harbour perf. These were not on this round's list, and nothing they cover changed.
+
+## Files changed
+
+- `src/game/Game.ts`: the corner block in `navTouch` and `gateTagPlace`, and `cornerPush` for the nav marker and the gate tag. `updateNav` calls `hud.fitObjective`. `render` draws the game-over card.
+- `src/ui/Hud.ts`: `cornerBox()`, `fitObjective()`, and the ResizeObserver (`topWatch`).
+- `src/ui/CanvasHud.ts`: the base-size scale, the event anchor and avoidance, the objective cap and ellipsis, and the drawn score box. New: `updateOver`, `hideOver`, `drawOver` and the event stats.
+- `src/styles.css`: `--obj-max` on the objective pill, `overflow: hidden` on the pill, `min-width: 0` on the name.
+- `src/game/cities.ts`: the seed keeps its sign.
+- `README.md`: seed format under "Play locally".
+- New scripts: `builder-scripts/phone42.mjs`, `scale42.mjs`, `seeds42.mjs`, `queue42.sh` and `jobs42.txt`. `builder-scripts/reg/` holds copies of the round 41 critic scripts, run unchanged.
+</pre></details><div class="grid"><figure><a href="progress/round-42/critic/blocker-overcard-corner-iphone-s22.webp"><img loading="lazy" src="progress/round-42/critic/blocker-overcard-corner-iphone-s22.webp" alt="blocker-overcard-corner-iphone-s22.webp"></a><figcaption>blocker-overcard-corner-iphone-s22.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/over-iphone-s130-html.webp"><img loading="lazy" src="progress/round-42/critic/over-iphone-s130-html.webp" alt="over-iphone-s130-html.webp"></a><figcaption>over-iphone-s130-html.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/over-iphone-s22-canvas.webp"><img loading="lazy" src="progress/round-42/critic/over-iphone-s22-canvas.webp" alt="over-iphone-s22-canvas.webp"></a><figcaption>over-iphone-s22-canvas.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/over-iphone-s22-html.webp"><img loading="lazy" src="progress/round-42/critic/over-iphone-s22-html.webp" alt="over-iphone-s22-html.webp"></a><figcaption>over-iphone-s22-html.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/over-p915-s130-html.webp"><img loading="lazy" src="progress/round-42/critic/over-p915-s130-html.webp" alt="over-p915-s130-html.webp"></a><figcaption>over-p915-s130-html.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/over-p915-s22-canvas.webp"><img loading="lazy" src="progress/round-42/critic/over-p915-s22-canvas.webp" alt="over-p915-s22-canvas.webp"></a><figcaption>over-p915-s22-canvas.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/plat-desk-mock-play.webp"><img loading="lazy" src="progress/round-42/critic/plat-desk-mock-play.webp" alt="plat-desk-mock-play.webp"></a><figcaption>plat-desk-mock-play.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/plat-phone-iframe-over.webp"><img loading="lazy" src="progress/round-42/critic/plat-phone-iframe-over.webp" alt="plat-phone-iframe-over.webp"></a><figcaption>plat-phone-iframe-over.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/plat-phone-iframe-play.webp"><img loading="lazy" src="progress/round-42/critic/plat-phone-iframe-play.webp" alt="plat-phone-iframe-play.webp"></a><figcaption>plat-phone-iframe-play.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/rec42-desk1-s22-fadein-strip.webp"><img loading="lazy" src="progress/round-42/critic/rec42-desk1-s22-fadein-strip.webp" alt="rec42-desk1-s22-fadein-strip.webp"></a><figcaption>rec42-desk1-s22-fadein-strip.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/rec42-desk1-s22-lastframe.webp"><img loading="lazy" src="progress/round-42/critic/rec42-desk1-s22-lastframe.webp" alt="rec42-desk1-s22-lastframe.webp"></a><figcaption>rec42-desk1-s22-lastframe.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/rec42-desk1-s22-over-page.webp"><img loading="lazy" src="progress/round-42/critic/rec42-desk1-s22-over-page.webp" alt="rec42-desk1-s22-over-page.webp"></a><figcaption>rec42-desk1-s22-over-page.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/rec42-phone-s130-fadein-strip.webp"><img loading="lazy" src="progress/round-42/critic/rec42-phone-s130-fadein-strip.webp" alt="rec42-phone-s130-fadein-strip.webp"></a><figcaption>rec42-phone-s130-fadein-strip.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/rec42-phone-s130-lastframe.webp"><img loading="lazy" src="progress/round-42/critic/rec42-phone-s130-lastframe.webp" alt="rec42-phone-s130-lastframe.webp"></a><figcaption>rec42-phone-s130-lastframe.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/root-desk.webp"><img loading="lazy" src="progress/round-42/critic/root-desk.webp" alt="root-desk.webp"></a><figcaption>root-desk.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/root-phone.webp"><img loading="lazy" src="progress/round-42/critic/root-phone.webp" alt="root-phone.webp"></a><figcaption>root-phone.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/safe-area-score-corner-iphone.webp"><img loading="lazy" src="progress/round-42/critic/safe-area-score-corner-iphone.webp" alt="safe-area-score-corner-iphone.webp"></a><figcaption>safe-area-score-corner-iphone.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/safe-iphone-s22-canvas-play.webp"><img loading="lazy" src="progress/round-42/critic/safe-iphone-s22-canvas-play.webp" alt="safe-iphone-s22-canvas-play.webp"></a><figcaption>safe-iphone-s22-canvas-play.webp</figcaption></figure>
+<figure><a href="progress/round-42/critic/safe-iphone-s22-html-play.webp"><img loading="lazy" src="progress/round-42/critic/safe-iphone-s22-html-play.webp" alt="safe-iphone-s22-html-play.webp"></a><figcaption>safe-iphone-s22-html-play.webp</figcaption></figure></div></section>
 <section><h2>round 41</h2><details open><summary>critic.md</summary><pre># Drone Dash: round 41 critic report
 
 **Verdict:** Ready for a Vercel link to colleagues. Not ready for the platform yet: on phones the target marker still goes into the 64 px top-left corner. Also fix a smaller recording glitch on phones.

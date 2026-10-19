@@ -1648,9 +1648,12 @@ export class Game {
     // top panels and a showing centre pop (it walks the screen edge to the nearest free spot, as the pad marker does)
     if (ok) {
       const name = m.stage === 'entrance' ? m.name : 'Way out';
-      const r = this.gateTagPlace(w, h, x, y, off, angle, behind, v.x, v.y, this.hud.gateTagSize(name, Math.round(dist)));
-      x = r.x;
-      y = r.y;
+      const size = this.hud.gateTagSize(name, Math.round(dist));
+      const r = this.gateTagPlace(w, h, x, y, off, angle, behind, v.x, v.y, size);
+      // round 42: never in the platform's 64 px top-left corner, whatever the placement found
+      const k = this.cornerPush(this.gateFoot(r.x, r.y, r.angle, r.off, size.w, size.h));
+      x = r.x + k.dx;
+      y = r.y + k.dy;
       off = r.off;
       angle = r.angle;
       ok = Number.isFinite(x) && Number.isFinite(y);
@@ -2010,7 +2013,7 @@ export class Game {
     const geo = this.hud.touchLayout(w, h);
     if (!geo) return { x, y, off, angle };
     const hit = (a: Box, list: Box[]) => list.some((q) => a.l < q.r && q.l < a.r && a.t < q.b && q.t < a.b);
-    const blocks = [...geo.controls, ...geo.top];
+    const blocks = [...geo.controls, ...geo.top, this.hud.cornerBox()];
     if (this.hud.popShowing) blocks.push(geo.slot);
     if (!hit(this.gateFoot(x, y, angle, off, size.w, size.h), blocks)) return { x, y, off, angle };
     // walk the edge rectangle both ways; the first free spot wins
@@ -2039,7 +2042,8 @@ export class Game {
 
   private navTouch(geo: TouchLayout, w: number, h: number, x: number, y: number, tx: number, ty: number, off: boolean, dist: number): { x: number; y: number; off: boolean; angle: number } {
     const hit = (a: Box, list: Box[]) => list.some((q) => a.l < q.r && q.l < a.r && a.t < q.b && q.t < a.b);
-    const blocks = [...geo.controls, ...geo.top];
+    // round 42: the platform's 64 px top-left corner is blocked too
+    const blocks = [...geo.controls, ...geo.top, this.hud.cornerBox()];
     if (this.hud.popShowing) blocks.push(geo.slot);
     const ang = (px: number, py: number) => Math.atan2(ty - py, tx - px) + Math.PI / 2;
     const a0 = off ? ang(x, y) : 0;
@@ -2129,7 +2133,22 @@ export class Game {
         else x = mm.l - cl;
       }
     }
+    // round 42: whatever the placement above did, the marker (diamond, pill, arrow) stays out of the platform's corner
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      const k = this.cornerPush(this.navFootprint(x, y, angle, off, dist));
+      x += k.dx;
+      y += k.dy;
+    }
+    this.hud.fitObjective(w);
     this.hud.setNav(x, y, off, angle, dist, Number.isFinite(x) && Number.isFinite(y));
+  }
+
+  /** Round 42: the smallest move (down or right) that takes a footprint out of the 64 px top-left corner. */
+  private cornerPush(f: Box): { dx: number; dy: number } {
+    const c = this.hud.cornerBox();
+    if (!(f.l < c.r && f.t < c.b)) return { dx: 0, dy: 0 };
+    const dx = c.r - f.l, dy = c.b - f.t;
+    return dy <= dx ? { dx: 0, dy } : { dx, dy: 0 };
   }
 
   // round 40: the minimap box in CSS px, measured every 500 ms (never per frame)
@@ -2186,9 +2205,14 @@ export class Game {
     this.pipeline.render();
     // round 41: the canvas HUD goes on after post-processing (no bloom on it); its quads count in the draw calls
     if (this.chud && !this.chudOff && (this.state === 'playing' || this.state === 'paused')) {
+      this.chud.hideOver();
       this.chud.update(this.hudNumbers(), this.hud.isTouch);
       this.chud.render(this.renderer);
-    }
+    } else if (this.chud && !this.chudOff && this.state === 'over') {
+      // round 42: the game-over card on the canvas, so a recording ends on the result
+      this.chud.updateOver(this.seed, this.hud.isTouch);
+      this.chud.render(this.renderer);
+    } else this.chud?.hideOver();
     this.drawCalls = this.renderer.info.render.calls;
     this.triangles = this.renderer.info.render.triangles;
   }

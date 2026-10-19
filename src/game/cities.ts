@@ -45,7 +45,8 @@ export function randomSeed(): number {
 
 /**
  * Round 41: `?seed=` as the Stateloop Play Worker may send it. A whole number is used as it is (22 stays 22; a huge one
- * is folded into 32 bits, which is all the generators use). Anything else that is not empty (a hex string, a uuid) is
+ * is folded into 32 bits, which is all the generators use; round 42: a negative one keeps its sign as its 32-bit two's
+ * complement, so -22 is city 4294967274, not city 22). Anything else that is not empty (a hex string, a uuid) is
  * hashed to a five-digit seed, so the same string always builds the same city. Empty or missing: null.
  */
 export function parseSeed(raw: string | null): number | null {
@@ -53,7 +54,8 @@ export function parseSeed(raw: string | null): number | null {
   if (!v) return null;
   if (/^-?\d+$/.test(v)) {
     const n = Number(v);
-    if (Number.isSafeInteger(n)) return Math.abs(n) % 4294967296;
+    // round 42: the sign is kept (two's complement, 32 bits), so -22 and 22 are different cities
+    if (Number.isSafeInteger(n)) return ((n % 4294967296) + 4294967296) % 4294967296;
     let h = 0;
     for (const c of v) h = (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0;
     return h;

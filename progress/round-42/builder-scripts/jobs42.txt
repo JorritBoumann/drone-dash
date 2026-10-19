@@ -1,0 +1,30 @@
+(cd .. && node scale42.mjs > logs/scale42-desktop.log 2>&1; DEV=iphone node scale42.mjs > logs/scale42-iphone.log 2>&1)
+(cd .. && node seeds42.mjs > logs/seeds42.log 2>&1)
+node acceptance-probe.mjs > ../logs/flat.log 2>&1
+ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ../logs/ccv12.log 2>&1
+node platform41c.mjs > ../logs/platform41c.log 2>&1
+NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=fd42- node hud-probe34.mjs > ../logs/fr-d-22.log 2>&1
+NEW=1 DEV=desktop SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=fd42- node hud-probe34.mjs > ../logs/fr-d-58.log 2>&1
+NEW=1 DEV=desktop SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=fd42- node hud-probe34.mjs > ../logs/fr-d-130.log 2>&1
+NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=fr42- node hud-probe34.mjs > ../logs/fr-m-22.log 2>&1
+NEW=1 DEV=iphone SEED=58 LOWT=80 HIGHT=0 CAM=1 PFX=fr42- node hud-probe34.mjs > ../logs/fr-m-58.log 2>&1
+NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=fr42- node hud-probe34.mjs > ../logs/fr-m-130.log 2>&1
+TAG=r42 PARTS=bearing,realtime,place OUT=$OUTDIR/mm/ node mm-measure40.mjs > ../logs/mm42.log 2>&1
+for s in 22 58 130; do SEED=$s ROAD=66 OFF=6.5 SIMT=600 OUTDIR=$OUTDIR/raw/ node farm-probe.mjs > ../logs/farm-$s.log 2>&1; done
+for m in honest carry; do for s in 22 58 130; do SEED=$s MODE=$m SIMT=600 OUTDIR=$OUTDIR/raw/ node capfarm.mjs > ../logs/capfarm-$m-$s.log 2>&1; done; done
+LINE=low SEEDS=22,58,130 SIMT=600 OUTDIR=$OUTDIR/a- node route-play-rt-x-m-esc17.mjs > ../logs/m-low.log 2>&1
+CRUISE=10 NOBOOST=1 SEEDS=22,58,130 SIMT=600 node balance-probe-m-esc17.mjs > ../logs/m-lazy.log 2>&1
+SEEDS=22 SHOTS=0 node boats32.mjs > ../logs/boats32-22.log 2>&1
+TAG=r42 SEEDS=130,22 SWEEP=2 node hullwater35.mjs > ../logs/hw42-d.log 2>&1
+node traffic-det29.mjs > ../logs/traffic-det.log 2>&1
+node climb30.mjs > ../logs/climb30-d.log 2>&1; MOBILE=1 node climb30.mjs > ../logs/climb30-m.log 2>&1
+MOBILE=1 NOORBIT=1 SEED=22 TOTAL=62 node cam-clip24.mjs > ../logs/cam-clip24-m-22.log 2>&1
+PORTS=5191,5193 DEVS=desktop,iphone RUNS=2 node fouc34.mjs > ../logs/fouc42.log 2>&1
+UNCAP=1 node perf-street41.mjs > ../logs/perf-street-d.log 2>&1
+UNCAP=1 Q="&hud=canvas" node perf-street41.mjs > ../logs/perf-street-d-chud.log 2>&1
+UNCAP=1 MOBILE=1 node perf-street41.mjs > ../logs/perf-street-m.log 2>&1
+UNCAP=1 MOBILE=1 Q="&hud=canvas" node perf-street41.mjs > ../logs/perf-street-m-chud.log 2>&1
+SEED=130 node trisweep41.mjs > ../logs/trisweep-d-130.log 2>&1
+SEED=22 node trisweep41.mjs > ../logs/trisweep-d-22.log 2>&1
+LINE=low SEEDS=22 SIMT=600 OUTDIR=$OUTDIR/b- node route-play-rt-x-m-esc17.mjs > ../logs/m-low-22b.log 2>&1
+END

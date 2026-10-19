@@ -1,0 +1,10 @@
+TAG=r38c SEEDS=130,22,33 SWEEP=3 node hullwater35.mjs > hw38c-d.log 2>&1
+TAG=r38c MOBILE=1 SEEDS=130,22,33 SWEEP=2 node hullwater35.mjs > hw38c-m.log 2>&1
+for k in 1 2 3; do SEEDS=22 SHOTS=0 node boats32.mjs > boats32-22-c$k.log 2>&1; done
+SEEDS=22,58,4711,9001 node boats33.mjs > boats33c.log 2>&1
+SEEDS=22,58,5150 T=120 node boats31.mjs > boats31c-overlap.log 2>&1
+SEEDS=4711,22 node boattrace33.mjs > boattrace33c.log 2>&1
+SEED=130 node trisweep31.mjs > trisweep-d-130c.log 2>&1; SEED=22 node trisweep31.mjs > trisweep-d-22c.log 2>&1; MOBILE=1 SEED=130 node trisweep31.mjs > trisweep-m-130c.log 2>&1
+UNCAP=1 node perf-harbour35.mjs > perf-harbour-dc.log 2>&1; UNCAP=1 MOBILE=1 node perf-harbour35.mjs > perf-harbour-mc.log 2>&1
+PORT=5195 node load34.mjs > load38c.log 2>&1
+END

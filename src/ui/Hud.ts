@@ -325,6 +325,36 @@ export class Hud {
     return this.deskGeo;
   }
 
+  /**
+   * Round 38: place a centre pop on a touch screen. The round 26 rule (stay above the stick's "Fly" label) let a tall pop
+   * (a two-line hint, the medal banner) climb into the top column: the objective pill, the score panel and its chips.
+   * The pop now keeps below every top box it shares columns with, through its whole animation (pop-in overshoot, and the
+   * rise as it fades: up to 0.72 of its height for the payout pop), and above the "Fly" label. If both do not fit, the
+   * pop goes compact ("pop-squeeze": smaller type, one-line sub); if it still does not fit, the top column wins and the
+   * pop may reach down over the label.
+   */
+  private touchPlacedGeo: TouchLayout | null = null;
+  private touchPlace(el: HTMLElement, kind: CentreKind): void {
+    const g = this.touchGeo;
+    if (!g) return;
+    this.touchPlacedGeo = g;
+    const rise = kind === 'slip' ? 0.74 : kind === 'pop' ? 0.6 : 0.65; // how far above its centre line the pop reaches, by height
+    const fit = () => {
+      const W = el.offsetWidth, H = el.offsetHeight;
+      const cx = (g.slot.l + g.slot.r) / 2;
+      const l = cx - W * 0.56, r = cx + W * 0.56;
+      let upper = 0;
+      for (const b of g.top) if (b.l < r && l < b.r) upper = Math.max(upper, b.b);
+      const min = upper + 6 + rise * H, max = this.popLower - 0.56 * H;
+      return { min, max };
+    };
+    el.classList.remove('pop-squeeze');
+    let f = fit();
+    if (f.min > f.max) { el.classList.add('pop-squeeze'); f = fit(); }
+    const top = f.min > f.max ? f.min : Math.min(Math.max(this.popCy, f.min), f.max);
+    el.style.top = `${top.toFixed(1)}px`;
+  }
+
   /** Round 34: where a desktop centre pop goes now (its centre, and the slot width), from the drone's screen box. */
   private deskTarget(el: HTMLElement, size: { ew: number; eh: number; mw: string } | null): { x: number; y: number; ew: number; eh: number; mw: string } {
     const w = window.innerWidth, h = window.innerHeight;
@@ -477,10 +507,9 @@ export class Hud {
     // round 26: on a touch screen a tall message (a two-line hint or medal banner) is lifted so its bottom stays above
     // the stick's "Fly" label (offsetHeight ignores the pop-in scale; 0.56 of it covers the 1.1 overshoot)
     if (this.isTouch && this.popLower > 0) {
-      const half = m.el.offsetHeight * 0.56;
-      m.el.style.top = `${Math.min(this.popCy, this.popLower - half).toFixed(1)}px`;
       m.el.style.left = '';
       m.el.style.maxWidth = '';
+      this.touchPlace(m.el, m.kind);
     } else if (!this.isTouch) this.deskPlace(m.el, true);
     else {
       m.el.style.top = '';
@@ -496,6 +525,9 @@ export class Hud {
     const a = this.cActive;
     // round 34: on desktop the pop that is up stays beside the drone
     if (a && !this.isTouch && now - a.shownAt < a.durMs + 300) this.deskPlace(a.el, false);
+    // round 38: on touch, the pop that is up moves down if the top column grew under it (a combo chip, a route hint);
+    // only when the layout was re-measured (every 300 ms), so no layout read per frame
+    if (a && this.isTouch && this.touchGeo && this.touchGeo !== this.touchPlacedGeo && now - a.shownAt < a.durMs + 300) this.touchPlace(a.el, a.kind);
     if (!this.cQueue.length) return;
     if (a && now - a.shownAt < a.durMs && now - a.shownAt < a.minMs) return;
     while (this.cQueue.length) {

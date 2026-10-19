@@ -90,7 +90,7 @@ const MOOD_WATER: Array<{ deep: string; shallow: string; foam: string; refl: num
   { deep: '#14425a', shallow: '#2f7f86', foam: '#fff1e2', refl: 0.92, chop: 1.0, near: 1.32 }, // golden hour
   { deep: '#134b6b', shallow: '#2f8f98', foam: '#f6fbff', refl: 0.88, chop: 1.15, near: 1.45 }, // bright morning
   { deep: '#1c3358', shallow: '#3a6f86', foam: '#ffe9e6', refl: 0.95, chop: 1.15, near: 0.95 }, // rose dusk
-  { deep: '#16506a', shallow: '#3a9a96', foam: '#fffaf0', refl: 0.85, chop: 0.68, near: 1.5 }, // hazy noon
+  { deep: '#16506a', shallow: '#3a9a96', foam: '#fffaf0', refl: 0.85, chop: 0.76, near: 1.5 }, // hazy noon (r38: chop 0.68 -> 0.76)
 ];
 
 export const MAX_WAKES = 8;
@@ -224,7 +224,8 @@ export class Water {
   constructor(mood: number, readonly lite: boolean) {
     const mw = MOOD_WATER[mood] ?? MOOD_WATER[0];
     this.normalTex = detailNormalTexture(lite ? 128 : 256);
-    this.nearTex = lite ? null : detailNormalTexture(256, true);
+    // round 38: the phone gets the near ripple texture too (128 px: the same ripples, a quarter of the memory and load time)
+    this.nearTex = detailNormalTexture(lite ? 128 : 256, true);
     this.snap = lite ? GRID.lite.step : GRID.full.step;
     const gp = lite ? GRID.lite : GRID.full;
     const geo = gridGeometry(gp.step, gp.grow, 1300, gp.uniform);
@@ -252,7 +253,7 @@ export class Water {
       color: mw.deep, roughness: 0.16, metalness: 0, envMapIntensity: 0.35,
     });
     this.material.onBeforeCompile = (shader) => this.patch(shader);
-    this.material.customProgramCacheKey = () => `water37-${lite ? 'lite' : 'full'}`;
+    this.material.customProgramCacheKey = () => `water38-${lite ? 'lite' : 'full'}`;
     this.mesh = new THREE.Mesh(geo, this.material);
     this.mesh.position.y = WATER_Y;
     this.mesh.receiveShadow = true;
@@ -297,16 +298,19 @@ ${GLSL_WAVES(lite)}
 #define NEAR_A 0.24
 #define MID_A 0.2
 #define FINE_A 0.2
-#define HI_MID 0.17
-#define HI_FINE 0.15
+// round 38: from height (hiK = 1) the round 37 water lost most of its fine detail (soft, hazy at cruise height): more
+// mid and fine slope, and the grazing Fresnel / reflection keep more of it (0.25 / 0.3 were 0.6 / 0.72); low views unchanged
+#define HI_MID 0.21
+#define HI_FINE 0.19
 #define NEAR_B 0.16
 #define NEAR_C 0.12
 #define FRES_S 0.5
 #define REFL_S 0.75
-#define HI_FRES_S 0.25
-#define HI_REFL_S 0.3
+#define HI_FRES_S 0.6
+#define HI_REFL_S 0.72
 #define SLOPE_K 3.0
 #define BODY_K 0.4
+#define NEAR_MIX_LITE 0.7
 float shoreD(vec2 p){ vec2 q = abs(p) - vec2(${SHORE.toFixed(1)}); return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0); }
 float rectD(vec2 p, vec4 r){ vec2 q = abs(p - r.xy) - r.zw; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0); }
 vec3 skyRefl(vec3 d){
@@ -351,6 +355,9 @@ vec3 skyRefl(vec3 d){
   if (kFine > 0.001) d2 = textureGrad(uDetail, uv2, uv2dx, uv2dy);
   dn += (d2.xy * 2.0 - 1.0) * mix(FINE_A, HI_FINE, hiK) * kFine;
   foamN = foamN * 0.6 + mix(d1.w, d2.w, smoothstep(0.001, 0.05, kFine)) * 0.4;
+`}
+  // round 38: the phone (lite) shader gets the near layers too, without the capillary octave (two fetches, only within
+  // 45 m of a low camera)
   // round 33: a fine near layer (ripples about 2 m across) right round the camera, where one pixel covers less than a
   // few centimetres, so the water under a low drone stays crisp instead of smearing into soft streaks
   // round 34: reaches further (14 to 45 m, pixel footprint to 11 cm): the whole bottom third of a low view; only for a
@@ -370,13 +377,13 @@ vec3 skyRefl(vec3 d){
     vec2 nn = (d3.xy * 2.0 - 1.0) * NEAR_A + (d4.xy * 2.0 - 1.0) * NEAR_B * k4;
     // and capillary ripples (3 to 7 cm) for the water right under a skimming camera, only while one pixel covers
     // under about a centimetre
-    float k5 = 1.0 - smoothstep(0.004, 0.014, foot);
+    ${lite ? '' : `float k5 = 1.0 - smoothstep(0.004, 0.014, foot);
     if (k5 > 0.001) {
       vec2 uv5 = mat2(0.96, 0.28, -0.28, 0.96) * wxz * 2.1 + vec2(uTime * 0.09, -uTime * 0.07);
       nn += (textureGrad(uNear, uv5, dFdx(uv5), dFdy(uv5)).xy * 2.0 - 1.0) * NEAR_C * k5;
-    }
-    dn = mix(dn, nn, kNear * 0.85);
-  }`}
+    }`}
+    dn = mix(dn, nn, kNear * ${lite ? 'NEAR_MIX_LITE' : '0.85'});
+  }
   dn *= mix(uNearChop, mix(0.55, 1.05, wind) * uChop, hiK); // uChop: how breezy the mood's bay looks from above
   dn += dnB;
   // shore: shallow colour and lapping foam along the seawall, foam round the pier legs

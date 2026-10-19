@@ -1,0 +1,5 @@
+# Round 38 builder picks, written before opening .key-cruise.json. Pick = the image I think looks better (more natural, crisper, less hazy).
+1 bottom  moderate: crisper wavelet rows and sky reflection in the far band; top is hazier and softer up there
+2 top     weak to moderate: more sparkle and ripple detail round the boats; bottom is smoother, satin-like
+3 top     weak to moderate: visible ripple texture in the marina; bottom is smoother with soft swirls
+4 bottom  moderate: defined ripples across the band; top is hazier, softer

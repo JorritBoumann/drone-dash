@@ -1,0 +1,9 @@
+Round 38 critic picks, written before opening .key-cruise.json and .key-phone.json
+cruise-1 (golden marina 15 m): top better, moderate. Top has crisper chop in the marina basins; bottom is smoother and smeared.
+cruise-2 (morning sea 24 m): top better, weak to moderate. Top has finer, more varied ripples on the open water; bottom shows more regular parallel stripes.
+cruise-3 (dusk sea 15 m): top better, weak. Top has more varied glints and depth; bottom is flatter with regular stripes.
+cruise-4 (noon marina 24 m): top better, weak. Nearly the same; top has a little more ripple texture, bottom is milkier.
+phone-1 (golden sea 4 m): bottom better, clear. Bottom has fine ripples near the camera; top is soft satin bands, blurred near.
+phone-2 (morning sea 1 m): bottom better, clear. Top has big glossy blobs; bottom has fine chop with sparkle. Bottom shows a visible edge where the fine near band fades into the smooth swell.
+phone-3 (dusk marina 1 m): bottom better, clear. Fine chop vs smeared dark bands.
+phone-4 (noon marina 1 m): bottom better, clear. Fine teal chop vs large soft blobs.

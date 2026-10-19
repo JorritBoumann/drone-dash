@@ -1453,3 +1453,10 @@ kbd {
   white-space: normal;
   text-align: center;
 }
+
+/* Round 38: a centre pop with no room between the top column and the stick on a touch screen goes compact (Hud.touchPlace) */
+#app.touch .pop-squeeze strong { font-size: 1.1rem !important; -webkit-text-stroke-width: 4px; }
+#app.touch .pop-squeeze span { margin-top: 2px !important; padding: 1px 7px !important; font-size: 0.58rem !important; }
+#app.touch .pop-squeeze .pop-icon { display: none; }
+#app.touch .pop-squeeze .medal { width: 22px !important; height: 22px !important; }
+#app.touch .pop-squeeze::before { display: none; }

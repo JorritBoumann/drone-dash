@@ -90,9 +90,19 @@ All new parts are modelled in the script and reuse the round 35 baked textures (
 
 `boats.glb` is now 459 KB (round 35: 211 KB): sail 2,368 triangles, rib 626, ferry 2,642, row 2,632, lids 18 (sail) / 82 (row) / 82 (rib), dock 388. Textures unchanged (369 KB).
 
+## Round 38: smoother rib tubes
+
+Tool: Blender 5.2.2 through the Blender MCP (`execute_blender_code`), in the same unsaved round 35/36 scene. No new asset, no paid or free-tier generation, no .blend file saved.
+Script: `progress/round-38/builder-scripts/blender_rib38.py`.
+
+- Rib (CC0 Quaternius "Lifeboat", as before): every gently curved hull edge (tubes, white bands, rubbing strake; under 62 degrees) cut once with the new points on the smooth surface, so the tube cross-section goes from 8 to 16 sides and the bow cone rounds off. The seats are smooth shaded across their sides (not cut: a smooth cut pinched them). Rib 626 -> 1,908 triangles. No texture changed.
+
+`boats.glb` is now 500 KB (round 36: 459 KB). All lazy assets now about 2.4 MB.
+
 ## Totals
 
 - Models: 385 KB. Textures: 1,182 KB. All round 28 assets: about 1.5 MB, loaded after the first frame.
 - Round 31: boats.glb 240 KB. All lazy assets now about 1.8 MB.
 - Round 35: boats.glb 211 KB plus 369 KB of boat textures. All lazy assets now about 2.1 MB.
 - Round 36: boats.glb 459 KB, textures unchanged. All lazy assets now about 2.4 MB.
+- Round 38: boats.glb 500 KB (rib tubes smoothed), textures unchanged.

@@ -1,0 +1,44 @@
+DEV=iphone SEED=22 Q="" SAFE=1 node play43.mjs >> logs/play43.log 2>&1
+DEV=iphone SEED=22 Q="&hud=canvas" SAFE=1 node play43.mjs >> logs/play43.log 2>&1
+DEV=iphone SEED=130 Q="" SAFE=1 node play43.mjs >> logs/play43.log 2>&1
+DEV=iphone SEED=130 Q="&hud=canvas" SAFE=1 node play43.mjs >> logs/play43.log 2>&1
+DEV=pixel SEED=22 Q="" node play43.mjs >> logs/play43.log 2>&1
+DEV=pixel SEED=22 Q="&hud=canvas" node play43.mjs >> logs/play43.log 2>&1
+DEV=pixel SEED=130 Q="" node play43.mjs >> logs/play43.log 2>&1
+DEV=pixel SEED=130 Q="&hud=canvas" node play43.mjs >> logs/play43.log 2>&1
+DEV=p915 SEED=22 Q="" node play43.mjs >> logs/play43.log 2>&1
+DEV=p915 SEED=22 Q="&hud=canvas" node play43.mjs >> logs/play43.log 2>&1
+DEV=p915 SEED=130 Q="" node play43.mjs >> logs/play43.log 2>&1
+DEV=p915 SEED=130 Q="&hud=canvas" node play43.mjs >> logs/play43.log 2>&1
+DEV=iphone SEED=22 Q="" SAFE=1 TAGX=b node play43.mjs >> logs/play43.log 2>&1
+DEV=iphone SEED=22 Q="&hud=canvas" SAFE=1 TAGX=b node play43.mjs >> logs/play43.log 2>&1
+DEV=pixel SEED=130 Q="" node play43.mjs >> logs/play43.log 2>&1
+DEV=p915 SEED=22 Q="" node play43.mjs >> logs/play43.log 2>&1
+DEV=p915 SEED=130 Q="" node play43.mjs >> logs/play43.log 2>&1
+DEV=iphone SEED=130 Q="" SAFE=1 node play43.mjs >> logs/play43.log 2>&1
+DEV=iphone SEED=22 Q="&hud=canvas" SAFE=1 TAGX=c node play43.mjs >> logs/play43.log 2>&1
+OUTDIR=$OUTDIR node overcard43.mjs > logs/overcard43.log 2>&1
+OUTDIR=$OUTDIR node unit43.mjs > logs/unit43.log 2>&1
+(cd reg && node acceptance-probe.mjs > ../logs/flat.log 2>&1)
+(cd reg && ALT=12 SEEDS=22,58,130 node crash-classify-v.mjs > ../logs/ccv12.log 2>&1)
+(cd reg && node platform41c.mjs > ../logs/platform41c.log 2>&1)
+(cd reg && node platform41c-phone.mjs > ../logs/platform41c-phone.log 2>&1)
+(cd reg && node root42.mjs > ../logs/root42.log 2>&1)
+(cd reg && DEVS="iPhone 13 landscape" node root42.mjs > ../logs/root42-phone.log 2>&1)
+(cd reg && PORTS=5193 RUNS=1 node fouc42.mjs > ../logs/fouc42.log 2>&1; IFRAME=1 PORTS=5194 RUNS=1 node fouc42.mjs >> ../logs/fouc42.log 2>&1)
+(cd reg && NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=fd43- node hud-probe34.mjs > ../logs/fr-d-22.log 2>&1)
+(cd reg && NEW=1 DEV=desktop SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=fd43- node hud-probe34.mjs > ../logs/fr-d-130.log 2>&1)
+(cd reg && NEW=1 DEV=iphone SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=fr43- node hud-probe34.mjs > ../logs/fr-m-22.log 2>&1)
+(cd reg && NEW=1 DEV=iphone SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=fr43- node hud-probe34.mjs > ../logs/fr-m-130.log 2>&1)
+(cd reg && TAG=r43 PARTS=bearing,realtime,place OUT=$OUTDIR/mm/ node mm-measure40.mjs > ../logs/mm43.log 2>&1)
+(cd reg && LINE=low SEEDS=22,58,130 SIMT=600 OUTDIR=$OUTDIR/a- node route-play-rt-x-m-esc17.mjs > ../logs/m-low.log 2>&1)
+(cd reg && UNCAP=1 node perf-street41.mjs > ../logs/perf-street-d.log 2>&1)
+(cd reg && UNCAP=1 Q="&hud=canvas" node perf-street41.mjs > ../logs/perf-street-d-chud.log 2>&1)
+(cd reg && UNCAP=1 MOBILE=1 node perf-street41.mjs > ../logs/perf-street-m.log 2>&1)
+(cd reg && UNCAP=1 MOBILE=1 Q="&hud=canvas" node perf-street41.mjs > ../logs/perf-street-m-chud.log 2>&1)
+(cd reg && PORT=5192 NEW=1 DEV=desktop SEED=22 LOWT=80 HIGHT=0 CAM=1 PFX=fd43b- node hud-probe34.mjs > ../logs/fr-d-22b.log 2>&1)
+(cd reg && PORT=5192 NEW=1 DEV=desktop SEED=130 LOWT=80 HIGHT=0 CAM=1 PFX=fd43b- node hud-probe34.mjs > ../logs/fr-d-130b.log 2>&1)
+(cd reg && node platform41c.mjs > ../logs/platform41c-final.log 2>&1)
+(cd reg && node root42.mjs > ../logs/root42-final.log 2>&1)
+MOBILE=1 SHOTS=0 SEEDS=130,22 SWEEP=12 OUTDIR=$OUTDIR/raw/ node hull43.mjs > logs/hull43-m.log 2>&1
+END

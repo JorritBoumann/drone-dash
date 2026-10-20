@@ -93,6 +93,43 @@ export function roundRect(c: Ctx, x: number, y: number, w: number, h: number, r:
 export const font = (weight: number, px: number): string => `${weight} ${px}px ${HUD_FONT}`;
 export const fmt = (n: number): string => Math.round(n).toLocaleString('en-US');
 
+/** Round 43: split text into user-perceived characters (grapheme clusters), so a cut never splits an emoji or an accent. */
+type Seg = { segment(s: string): Iterable<{ segment: string }> };
+let segmenter: Seg | null | undefined;
+export function graphemes(text: string): string[] {
+  if (segmenter === undefined) {
+    const I = Intl as unknown as { Segmenter?: new (loc?: string, o?: { granularity: string }) => Seg };
+    segmenter = I.Segmenter ? new I.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+  }
+  if (segmenter) return Array.from(segmenter.segment(text), (g) => g.segment);
+  // fallback: code points, with combining marks, variation selectors and joiners kept on the character before them
+ const out: string[] = [];
+  let join = false;
+  const ri = (c: string) => /^\ud83c[\udde6-\uddff]$/.test(c); // regional indicator (flags are pairs)
+  for (const ch of text) {
+    const last = out.length ? out[out.length - 1] : '';
+    if (ri(ch) && ri(last)) { out[out.length - 1] += ch; join = false; continue; }
+    const glue = /[\u0300-\u036f\u1ab0-\u1aff\u20d0-\u20ff\ufe00-\ufe0f\u200d]|\ud83c[\udffb-\udfff]|\udb40[\udc20-\udc7f]/.test(ch);
+    if (out.length && (glue || join)) out[out.length - 1] += ch;
+    else out.push(ch);
+    join = ch === '\u200d';
+  }
+  return out;
+}
+
+/** Round 43: the longest start of `text` (whole graphemes) that, with an ellipsis, is at most maxW px wide in c's font. */
+export function fitText(c: CanvasRenderingContext2D, text: string, maxW: number): string {
+  if (c.measureText(text).width <= maxW) return text;
+  const g = graphemes(text);
+  let lo = 0, hi = g.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (c.measureText(`${g.slice(0, mid).join('').trimEnd()}…`).width <= maxW) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo > 0 ? `${g.slice(0, lo).join('').trimEnd()}…` : '…';
+}
+
 /** Numbers the game passes each frame (text comes from the hidden HTML HUD, so both always say the same). */
 export type HudNumbers = { timeFrac: number; goalQ: number; slipLevel: number; objDist: number };
 type Ev = { kind: string; main: string; sub: string; tone: string; el: HTMLElement; at: number; dur: number };
@@ -126,14 +163,25 @@ export class CanvasHud {
   msMax = 0;
   frames = 0;
 
-  constructor(private readonly app: HTMLElement, minimapCanvas: HTMLCanvasElement, private readonly pr: () => number) {
+  private readonly all: Panel[];
+  private readonly overObs: MutationObserver | null = null;
+  private overDirty = true;
+  constructor(private readonly app: HTMLElement, minimapCanvas: HTMLCanvasElement, private readonly pr: () => number,
+    private readonly corner: () => { r: number; b: number } = () => ({ r: 68, b: 68 })) {
     this.panels = {
       score: new Panel('score', 20), clock: new Panel('clock', 20), objective: new Panel('objective', 12),
       slip: new Panel('slip', 20), event: new Panel('event', 30), over: new Panel('over', 4),
     };
     this.map = new Panel('minimap', 30, minimapCanvas);
-    for (const p of [...Object.values(this.panels), this.map]) this.scene.add(p.mesh);
+    this.all = [...Object.values(this.panels), this.map];
+    for (const p of this.all) this.scene.add(p.mesh);
     app.classList.add('canvas-hud');
+    // round 43: the game-over card is read from the HTML card only when that card changes (never per frame)
+    const card = document.getElementById('over-screen');
+    if (card && typeof MutationObserver !== 'undefined') {
+      this.overObs = new MutationObserver(() => { this.overDirty = true; });
+      this.overObs.observe(card, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['data-m', 'hidden'] });
+    }
     window.addEventListener('resize', this.onResize);
   }
 
@@ -141,7 +189,8 @@ export class CanvasHud {
 
   dispose(): void {
     window.removeEventListener('resize', this.onResize);
-    for (const p of [...Object.values(this.panels), this.map]) p.dispose();
+    this.overObs?.disconnect();
+    for (const p of this.all) p.dispose();
     this.app.classList.remove('canvas-hud');
   }
 
@@ -276,7 +325,7 @@ export class CanvasHud {
   }
 
   hideAll(): void {
-    for (const p of [...Object.values(this.panels), this.map]) this.show(p, false);
+    for (const p of this.all) this.show(p, false);
   }
 
   private drawScore(p: Panel, pr: number, n: HudNumbers, touch: boolean): void {
@@ -379,7 +428,8 @@ export class CanvasHud {
     if (sb) half = Math.min(half, this.vw / 2 - (sb.x + sb.w) - 12);
     const rb = this.boxes.right;
     if (rb) half = Math.min(half, rb.x - this.vw / 2 - 12);
-    return Math.max(120, Math.min(css, 420, Math.floor(half * 2)));
+    // round 43: the 120 px floor never makes the pill wider than its slot
+    return Math.max(0, Math.min(Math.floor(half * 2), Math.max(120, Math.min(css, 420))));
   }
   private drawObjective(p: Panel, pr: number, kind: string, dist: string, touch: boolean, maxW: number): void {
     const E = this.el, c0 = p.ctx;
@@ -389,26 +439,22 @@ export class CanvasHud {
     c0.font = font(900, 11);
     const vw = c0.measureText(verb).width;
     c0.font = font(800, fs);
-    let nm = name;
     const maxName = touch ? 170 : 240;
-    while (nm.length > 3 && c0.measureText(nm).width > maxName) nm = nm.slice(0, -2);
-    if (nm !== name) nm = `${nm.trimEnd()}…`;
+    // round 43: cut by grapheme (an emoji or an accented letter is never split)
+    let nm = fitText(c0, name, maxName);
     c0.font = font(800, fs - 1);
-    const dw = dist ? c0.measureText(dist).width + 14 : 0;
+    let dw = dist ? c0.measureText(dist).width + 14 : 0;
     const rush = this.flags.rush ? `RUSH ${E.rushValue.textContent}` : '';
     c0.font = font(900, 11);
     const rw = rush ? c0.measureText(rush).width + 16 : 0;
     const h = touch ? 30 : 34;
     // round 42: a long name is cut so the pill keeps to its slot (it never reaches the score panel)
-    const rest = 30 + vw + 8 + dw + (rw ? rw + 8 : 0) + 14;
+    let rest = 30 + vw + 8 + dw + (rw ? rw + 8 : 0) + 14;
     c0.font = font(800, fs);
-    let nw = c0.measureText(nm).width;
-    if (rest + nw > maxW) {
-      let cut = nm.replace(/…$/, '');
-      while (cut.length > 1 && rest + c0.measureText(`${cut.trimEnd()}…`).width > maxW) cut = cut.slice(0, -1);
-      nm = `${cut.trimEnd()}…`;
-      nw = c0.measureText(nm).width;
-    }
+    // round 43: a slot too narrow for the fixed parts drops the distance first (the minimap and marker still show it)
+    if (dw && rest + c0.measureText('M…').width > maxW) { rest -= dw; dw = 0; dist = ''; }
+    if (rest + c0.measureText(nm).width > maxW) nm = fitText(c0, name, Math.max(0, maxW - rest));
+    const nw = c0.measureText(nm).width;
     const w = Math.ceil(rest + nw);
     const aw = Math.max(w, 480);
     const c = p.begin(aw, h, pr);
@@ -512,38 +558,69 @@ export class CanvasHud {
     }
     const a = this.evAnchor;
     let cx = a ? a.x : this.vw / 2, cy = a ? a.y : this.vh * 0.32;
-    const w = this.evW, h = this.evH;
+    // round 43: a label too big for the screen is drawn smaller (fit), so it can always be fully on screen
+    const fit = Math.min(1, (this.vw - 16) / this.evW, (this.vh - 16) / this.evH);
+    const w = this.evW * fit, h = this.evH * fit;
     cx = Math.max(w / 2 + 8, Math.min(this.vw - w / 2 - 8, cx));
     cy = Math.max(h / 2 + 8, Math.min(this.vh - h / 2 - 8, cy));
     let x = cx - w / 2;
     let y = cy - h / 2;
-    if (x < 72 && y < 64) x = 72; // the platform's back arrow corner
+    const cn = this.corner();
+    if (x < cn.r && y < cn.b) x = cn.r; // the platform's back arrow corner (plus the safe-area inset)
     // round 42: never on (or touching) the score panel, the clock, the objective pill or the minimap: below them
     const gap = 6;
+    const B = this.evBlocks;
+    B[0] = this.panels.score.box; B[1] = this.panels.clock.box; B[2] = this.panels.objective.box; B[3] = this.map.box;
+    const hits = (px: number, py: number): boolean => {
+      for (const q of B) if (q && px < q.x + q.w + gap && q.x < px + w + gap && py < q.y + q.h + gap && q.y < py + h + gap) return true;
+      return false;
+    };
     for (let i = 0; i < 4; i++) {
       let moved = false;
-      for (const q of [this.panels.score.box, this.panels.clock.box, this.panels.objective.box, this.map.box]) {
+      for (const q of B) {
         if (q && x < q.x + q.w + gap && q.x < x + w + gap && y < q.y + q.h + gap && q.y < y + h + gap) { y = q.y + q.h + gap; moved = true; }
       }
       if (!moved) break;
+    }
+    // round 43: then back on screen (the moves above can push it past the bottom on a short screen). If the clamped spot
+    // is on a panel again, try above the start point, then the left and right halves; failing all, on screen wins.
+    const clampX = (v: number) => Math.max(8, Math.min(this.vw - w - 8, v));
+    const clampY = (v: number) => Math.max(8, Math.min(this.vh - h - 8, v));
+    x = clampX(x);
+    y = clampY(y);
+    if (x < cn.r && y < cn.b) x = clampX(cn.r);
+    if (hits(x, y)) {
+      const y0 = clampY(cy - h / 2);
+      for (let k = 0; k < 24; k++) {
+        const ty = clampY(y0 - k * 12);
+        if (!(x < cn.r && ty < cn.b) && !hits(x, ty)) { y = ty; break; }
+        const ty2 = clampY(y0 + k * 12);
+        if (!(x < cn.r && ty2 < cn.b) && !hits(x, ty2)) { y = ty2; break; }
+      }
     }
     const age = now - e.at;
     const fadeIn = Math.min(1, age / 120), fadeOut = Math.max(0, Math.min(1, (e.dur + 300 - age) / 300));
     P.mat.opacity = Math.min(fadeIn, fadeOut);
     // round 42: the pop-in scale is set from the base size every frame (it multiplied the current scale before), and
     // grows about the label's centre
-    const s = age < 160 ? 0.9 + 0.1 * (age / 160) : 1;
+    const s = (age < 160 ? 0.9 + 0.1 * (age / 160) : 1) * fit;
     this.evScale = s;
+    this.evFit = fit;
     this.evAge = age;
     if (s === 1) P.place(x, y);
     else {
-      const pr2 = P.pr, sx = Math.round((x + (w * (1 - s)) / 2) * pr2) / pr2, sy = Math.round((y + (h * (1 - s)) / 2) * pr2) / pr2;
+      const pr2 = P.pr, sx = Math.round((x + (this.evW * (fit - s)) / 2) * pr2) / pr2, sy = Math.round((y + (this.evH * (fit - s)) / 2) * pr2) / pr2;
       P.mesh.position.set(sx + (P.allocW * s) / 2, -(sy + (P.allocH * s) / 2), 0);
       P.mesh.scale.set(P.allocW * s, P.allocH * s, 1);
     }
-    P.box = { x, y, w, h };
+    const eb = this.evBox;
+    eb.x = x; eb.y = y; eb.w = w; eb.h = h;
+    P.box = eb;
     this.show(P, true);
   }
+  private readonly evBox: Box = { x: 0, y: 0, w: 0, h: 0 };
+  private readonly evBlocks: (Box | null)[] = [null, null, null, null];
+  private evFit = 1;
   private evScale = 1;
   private evAge = 0;
 
@@ -553,54 +630,84 @@ export class CanvasHud {
    */
   private overKey = '';
   private overAt = 0;
+  private overPr = 0;
+  private overTouch = false;
+  private overVw = 0;
+  private overVh = 0;
+  private overCr = 0;
+  private overSeed = NaN;
+  private readonly overBox: Box = { x: 0, y: 0, w: 0, h: 0 };
   updateOver(seed: number, touch: boolean): void {
     const now = performance.now();
     const pr = this.pr();
-    for (const p of [...Object.values(this.panels), this.map]) if (p !== this.panels.over) this.show(p, false);
-    const P = this.panels.over;
-    const t = (id: string) => (document.getElementById(id)?.textContent ?? '').trim();
-    const rows: [string, string][] = [];
-    for (const d of Array.from(document.querySelectorAll('#over-breakdown > div'))) {
-      const dt = d.querySelector('dt'), dd = d.querySelector('dd');
-      if (!dt || !dd || d.classList.contains('total')) continue;
-      const small = dt.querySelector('small')?.textContent ?? '';
-      const label = (dt.firstChild?.textContent ?? '').trim();
-      rows.push([small ? `${label} ${small}` : label, (dd.textContent ?? '').trim()]);
+    const P = this.panels.over, all = this.all;
+    for (let i = 0; i < all.length; i++) if (all[i] !== P) this.show(all[i], false);
+    const cn = this.corner();
+    // round 43: the card is read and drawn only when its content or the screen changes (it allocated every frame before)
+    if (this.overDirty || !this.overKey || pr !== this.overPr || touch !== this.overTouch || this.vw !== this.overVw || this.vh !== this.overVh || cn.r !== this.overCr || seed !== this.overSeed) {
+      this.overDirty = false;
+      this.overPr = pr; this.overTouch = touch; this.overVw = this.vw; this.overVh = this.vh; this.overCr = cn.r; this.overSeed = seed;
+      const t = (id: string) => (document.getElementById(id)?.textContent ?? '').trim();
+      const rows: [string, string][] = [];
+      for (const d of Array.from(document.querySelectorAll('#over-breakdown > div'))) {
+        const dt = d.querySelector('dt'), dd = d.querySelector('dd');
+        if (!dt || !dd || d.classList.contains('total')) continue;
+        const small = dt.querySelector('small')?.textContent ?? '';
+        const label = (dt.firstChild?.textContent ?? '').trim();
+        rows.push([small ? `${label} ${small}` : label, (dd.textContent ?? '').trim()]);
+      }
+      const tier = Number((document.getElementById('over-medal') as HTMLElement | null)?.dataset.m ?? 0) || 0;
+      const key = `${t('over-score')}|${t('over-medal-name')}|${rows.map((r) => r.join('=')).join(';')}|${seed}|${pr}|${touch}|${this.vw}x${this.vh}|${cn.r}`;
+      if (key !== this.overKey) {
+        if (!this.overKey) this.overAt = now;
+        this.overKey = key;
+        this.drawOver(P, pr, touch, t('over-score'), t('over-medal-name'), tier, rows, seed, t('over-city'), cn);
+        P.commit(now);
+        this.uploads++;
+      }
+      // round 43: centred, and clear of the corner box (plus the safe-area inset) on the left
+      const w = this.overW, h = this.overH, ob = this.overBox;
+      ob.w = w; ob.h = h;
+      ob.x = Math.max(cn.r + 4, (this.vw - w) / 2);
+      ob.y = Math.max(8, (this.vh - h) / 2);
+      P.place(ob.x, ob.y);
     }
-    const tier = Number((document.getElementById('over-medal') as HTMLElement | null)?.dataset.m ?? 0) || 0;
-    const key = `${t('over-score')}|${t('over-medal-name')}|${rows.map((r) => r.join('=')).join(';')}|${seed}|${pr}|${touch}|${this.vw}x${this.vh}`;
-    if (key !== this.overKey) {
-      if (!this.overKey) this.overAt = now;
-      this.overKey = key;
-      this.drawOver(P, pr, touch, t('over-score'), t('over-medal-name'), tier, rows, seed, t('over-city'));
-      P.commit(now);
-      this.uploads++;
-    }
-    const w = this.overW, h = this.overH;
-    const x = Math.max(72, (this.vw - w) / 2), y = Math.max(8, (this.vh - h) / 2);
-    P.place(x, y);
-    P.box = { x, y, w, h };
-    P.mat.opacity = Math.min(1, (now - this.overAt) / 250);
+    P.box = this.overBox;
+    if (P.mat.opacity !== 1 || now - this.overAt < 250) P.mat.opacity = Math.min(1, (now - this.overAt) / 250);
     this.show(P, true);
   }
   hideOver(): void {
     this.show(this.panels.over, false);
-    this.overKey = '';
+    if (this.overKey) { this.overKey = ''; this.overDirty = true; }
   }
   private overW = 0;
   private overH = 0;
-  private drawOver(p: Panel, pr: number, touch: boolean, score: string, medal: string, tier: number, rows: [string, string][], seed: number, city: string): void {
+  private drawOver(p: Panel, pr: number, touch: boolean, score: string, medal: string, tier: number, rows: [string, string][], seed: number, city: string, cn: { r: number; b: number }): void {
     const small = touch || this.vh < 460;
-    const S = small ? 0.8 : 1;
-    const pad = Math.round(18 * S), rowH = Math.round(17 * S), big = Math.round(46 * S);
+    // round 43: the card fits the screen minus the corner box on both sides (it is centred) and 8 px top and bottom;
+    // a short screen scales the whole card down, a long row gets smaller type and then an ellipsis
+    const maxW = Math.max(120, this.vw - 2 * (cn.r + 4));
+    const hAt = (k: number) => pad0(k) * 2 + 14 * k + 8 + 22 * k + 6 + Math.round(46 * k) + 10 + rows.length * Math.round(17 * k) + 8 + 16 * k;
+    const pad0 = (k: number) => Math.round(18 * k);
+    let S = small ? 0.8 : 1;
+    while (S > 0.5 && hAt(S) > this.vh - 16) S -= 0.05;
+    const pad = pad0(S), rowH = Math.round(17 * S), big = Math.round(46 * S);
     const c0 = p.ctx;
     const seedLine = city && !/\d/.test(city) ? `${city} · seed ${seed}` : `City seed ${seed}`;
-    c0.font = font(800, Math.round(13 * S));
-    let w = Math.round(280 * S);
-    for (const [l, v] of rows) w = Math.max(w, c0.measureText(l).width + c0.measureText(v).width + 2 * pad + 24);
+    let rf = Math.round(13 * S);
+    c0.font = font(800, rf);
+    let rowW = 0;
+    for (const [l, v] of rows) rowW = Math.max(rowW, c0.measureText(l).width + c0.measureText(v).width + 2 * pad + 24);
+    if (rowW > maxW) {
+      rf = Math.max(9, Math.floor((rf * (maxW - 2 * pad - 24)) / (rowW - 2 * pad - 24)));
+      c0.font = font(800, rf);
+      rowW = 0;
+      for (const [l, v] of rows) rowW = Math.max(rowW, c0.measureText(l).width + c0.measureText(v).width + 2 * pad + 24);
+    }
+    let w = Math.max(Math.round(280 * S), rowW);
     c0.font = font(800, Math.round(12 * S));
-    w = Math.ceil(Math.min(Math.max(w, c0.measureText(seedLine).width + 2 * pad), this.vw - 88));
-    const h = Math.ceil(pad + 14 * S + 8 + 22 * S + 6 + big + 10 + rows.length * rowH + 8 + 16 * S + pad);
+    w = Math.ceil(Math.min(Math.max(w, c0.measureText(seedLine).width + 2 * pad), maxW));
+    const h = Math.ceil(hAt(S));
     const c = p.begin(w, h, pr);
     this.overW = w;
     this.overH = h;
@@ -625,12 +732,12 @@ export class CanvasHud {
     c.font = font(900, big);
     c.fillText(score, w / 2, y);
     y += 10 + big * 0.1;
-    c.font = font(800, Math.round(13 * S));
+    c.font = font(800, rf);
     for (const [l, v] of rows) {
       y += rowH;
       c.textAlign = 'left';
       c.fillStyle = 'rgba(255, 247, 234, 0.82)';
-      c.fillText(l, pad, y);
+      c.fillText(fitText(c, l, w - 2 * pad - 12 - c.measureText(v).width), pad, y);
       c.textAlign = 'right';
       c.fillStyle = '#fff7ea';
       c.fillText(v, w - pad, y);
@@ -641,7 +748,7 @@ export class CanvasHud {
     c.textAlign = 'center';
     c.fillStyle = 'rgba(255, 247, 234, 0.7)';
     c.font = font(800, Math.round(12 * S));
-    c.fillText(seedLine, w / 2, y);
+    c.fillText(fitText(c, seedLine, w - 2 * pad), w / 2, y);
     c.textAlign = 'left';
   }
   private evW = 0;
@@ -651,7 +758,7 @@ export class CanvasHud {
   stats(): Record<string, unknown> {
     const out: Record<string, unknown> = { on: true, uploads: this.uploads, msMean: this.frames ? this.msSum / this.frames : 0, msMax: this.msMax, frames: this.frames };
     out.panels = [...Object.values(this.panels), this.map].map((p) => ({ name: p.name, visible: p.mesh.visible, box: p.box, draws: p.draws, tex: [p.canvas.width, p.canvas.height], opacity: p.mat.opacity }));
-    out.event = this.ev ? { main: this.ev.main, sub: this.ev.sub, kind: this.ev.kind, age: this.evAge, scale: this.evScale, meshScale: [this.panels.event.mesh.scale.x, this.panels.event.mesh.scale.y], alloc: [this.panels.event.allocW, this.panels.event.allocH] } : null;
+    out.event = this.ev ? { main: this.ev.main, sub: this.ev.sub, kind: this.ev.kind, age: this.evAge, scale: this.evScale, fit: this.evFit, meshScale: [this.panels.event.mesh.scale.x, this.panels.event.mesh.scale.y], alloc: [this.panels.event.allocW, this.panels.event.allocH] } : null;
     return out;
   }
   resetStats(): void {

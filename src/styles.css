@@ -66,7 +66,8 @@ body { background: #f0b98a; }
 .hud-score {
   position: absolute;
   top: max(16px, env(safe-area-inset-top));
-  left: max(76px, calc(env(safe-area-inset-left) + 18px));
+  /* round 43: the corner box grows with the safe-area inset (Hud.cornerBox), so the panel moves with it */
+  left: calc(76px + env(safe-area-inset-left, 0px));
   color: var(--cream);
   text-shadow: 0 2px 10px rgba(80, 30, 0, 0.35);
 }
@@ -1073,7 +1074,24 @@ kbd {
 .medal-row li.won { background: rgba(29, 34, 48, 0.72); box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.7); }
 
 /* game over: medal, score, what is left to the next medal, and where the points and seconds came from */
-.over-card { min-width: min(380px, 92vw); max-height: calc(100dvh - 24px); overflow: auto; }
+/* round 43: the card never reaches the platform's 64 px top-left corner (plus the safe-area inset). On a wide screen it
+   keeps that much room on both sides (it stays centred); on a tall one, above and below. Long rows wrap. */
+#over-screen {
+  --corner-x: calc(76px + max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)));
+  --corner-y: calc(76px + env(safe-area-inset-top, 0px));
+  --over-w: calc(100vw - 32px);
+  --over-h: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+@media (min-aspect-ratio: 1/1) {
+  #over-screen { padding-left: var(--corner-x); padding-right: var(--corner-x); --over-w: calc(100vw - 2 * var(--corner-x)); }
+}
+@media (max-aspect-ratio: 1/1) {
+  #over-screen { padding-top: var(--corner-y); padding-bottom: var(--corner-y); --over-h: calc(100dvh - 2 * var(--corner-y)); }
+}
+.over-card { min-width: min(380px, var(--over-w)); max-width: min(720px, var(--over-w)); max-height: var(--over-h); overflow: auto; }
+.over-card > * { min-width: 0; }
+.over-time, .over-breakdown dt { overflow-wrap: anywhere; }
+.over-breakdown dd { white-space: nowrap; }
 .over-head { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .over-medal { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 0.82rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
 .over-medal .medal { width: 30px; height: 30px; }
@@ -1115,9 +1133,9 @@ kbd {
   .hud-center { gap: 10px; }
   .timer-slow { font-size: 0.66rem; }
   .objective-bank small { display: none; }
-  .over-card { flex-direction: row; align-items: center; gap: 24px; padding: 16px 24px; }
-  .over-head { min-width: 160px; }
-  .over-body { gap: 7px; min-width: 250px; }
+  .over-card { flex-direction: row; align-items: center; align-items: safe center; gap: 24px; padding: 16px 24px; } /* r43: safe: a tall body scrolls from its top, never cut off above */
+  .over-head { min-width: min(160px, 40%); }
+  .over-body { gap: 7px; min-width: min(250px, 100%); }
   .over-breakdown div { font-size: 0.8rem; }
   .medal-row li { padding: 3px 9px 3px 4px; font-size: 0.7rem; }
   .medal-row li .medal { width: 15px; height: 15px; }

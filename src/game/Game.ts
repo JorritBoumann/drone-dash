@@ -15,6 +15,7 @@ import { DeliverySystem, JOBS } from '../systems/DeliverySystem';
 import { Slipstream } from '../systems/Slipstream';
 import { SpeedStreaks, VfxSystem } from '../systems/VfxSystem';
 import { Hud, fmtX, type Box, type TouchLayout } from '../ui/Hud';
+
 import { createCityMaterial, setCityDetailTextures, type CityMaterial } from '../world/CityMaterial';
 import { propAudit, propPlacementAudit } from '../world/StreetProps';
 import { BuildingDetail } from '../world/BuildingDetail';
@@ -40,6 +41,9 @@ const GATE_SAVE_SHARE = 0.08;
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
 import { completeSession, onPlatform, type SessionDetail } from '../core/platform';
 import { CanvasHud } from '../ui/CanvasHud';
+
+/** Round 43: the nav marker's edge inset. The edge arrow reaches 46 px out from the diamond, so 48 keeps it on screen (was 40). */
+const NAV_MX = 48;
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
@@ -369,7 +373,7 @@ export class Game {
     this.hud.setMusic(false, this.audio.musicEnabled);
     // round 41: inside the Stateloop platform the HUD is drawn on the canvas, so recordings show it (see CanvasHud)
     if (onPlatform(params)) {
-      const chud = new CanvasHud(this.hud.app, document.getElementById('minimap') as HTMLCanvasElement, () => this.renderer.getPixelRatio());
+      const chud = new CanvasHud(this.hud.app, document.getElementById('minimap') as HTMLCanvasElement, () => this.renderer.getPixelRatio(), () => this.hud.cornerBox());
       this.chud = chud;
       this.hud.onCentre = (kind, main, sub, tone, el, dur) => chud.centre(kind, main, sub, tone, el, dur);
       this.minimap.onDrawn = () => { chud.mapDirty = true; };
@@ -1649,11 +1653,11 @@ export class Game {
     if (ok) {
       const name = m.stage === 'entrance' ? m.name : 'Way out';
       const size = this.hud.gateTagSize(name, Math.round(dist));
+      // round 43: the corner box is part of the placement search itself (it was a push after it, which could undo the
+      // screen and control checks)
       const r = this.gateTagPlace(w, h, x, y, off, angle, behind, v.x, v.y, size);
-      // round 42: never in the platform's 64 px top-left corner, whatever the placement found
-      const k = this.cornerPush(this.gateFoot(r.x, r.y, r.angle, r.off, size.w, size.h));
-      x = r.x + k.dx;
-      y = r.y + k.dy;
+      x = r.x;
+      y = r.y;
       off = r.off;
       angle = r.angle;
       ok = Number.isFinite(x) && Number.isFinite(y);
@@ -2011,46 +2015,42 @@ export class Game {
     const cx = THREE.MathUtils.clamp(x, hw, w - hw), cy = THREE.MathUtils.clamp(y, hh + 46, h - hh);
     if (cx !== x || cy !== y) { x = cx; y = cy; off = true; angle = ang(x, y); }
     const geo = this.hud.touchLayout(w, h);
-    if (!geo) return { x, y, off, angle };
-    const hit = (a: Box, list: Box[]) => list.some((q) => a.l < q.r && q.l < a.r && a.t < q.b && q.t < a.b);
-    const blocks = [...geo.controls, ...geo.top, this.hud.cornerBox()];
-    if (this.hud.popShowing) blocks.push(geo.slot);
-    if (!hit(this.gateFoot(x, y, angle, off, size.w, size.h), blocks)) return { x, y, off, angle };
-    // walk the edge rectangle both ways; the first free spot wins
-    const mx = hw, y0 = 30 + hh, y1 = h - hh - 8;
-    const W = Math.max(1, w - 2 * mx), H = Math.max(1, y1 - y0), P = 2 * (W + H);
-    const at = (s: number): [number, number] => {
-      s = ((s % P) + P) % P;
-      if (s < W) return [mx + s, y0];
-      if (s < W + H) return [w - mx, y0 + s - W];
-      if (s < 2 * W + H) return [w - mx - (s - W - H), y1];
-      return [mx, y1 - (s - 2 * W - H)];
-    };
-    const ex = THREE.MathUtils.clamp(x, mx, w - mx), ey = THREE.MathUtils.clamp(y, y0, y1);
-    const dl = ex - mx, dr = w - mx - ex, dtp = ey - y0, db = y1 - ey;
-    const mm = Math.min(dl, dr, dtp, db);
-    const s0 = mm === dtp ? ex - mx : mm === dr ? W + ey - y0 : mm === db ? W + H + (w - mx - ex) : 2 * W + H + (y1 - ey);
-    for (let step = 4; step < P / 2; step += 4) {
-      for (const sgn of [1, -1]) {
-        const [px, py] = at(s0 + sgn * step);
-        const a = ang(px, py);
-        if (!hit(this.gateFoot(px, py, a, true, size.w, size.h), blocks)) return { x: px, y: py, off: true, angle: a };
-      }
-    }
-    return { x, y, off, angle };
+    const blocks = this.placeBlocks;
+    blocks.length = 0;
+    blocks.push(this.hud.cornerBox());
+    if (geo) {
+      blocks.push(...geo.controls);
+      this.placeHard = blocks.length;
+      blocks.push(...geo.top);
+      if (this.hud.popShowing) blocks.push(geo.slot);
+    } else this.placeHard = blocks.length;
+    const foot = (px: number, py: number, a: number, arrow: boolean) => this.gateFoot(px, py, a, arrow, size.w, size.h);
+    return this.placeSearch(w, h, x, y, off, angle, foot, ang, blocks, hw, 30 + hh, h - hh - 8, 6);
   }
 
-  private navTouch(geo: TouchLayout, w: number, h: number, x: number, y: number, tx: number, ty: number, off: boolean, dist: number): { x: number; y: number; off: boolean; angle: number } {
-    const hit = (a: Box, list: Box[]) => list.some((q) => a.l < q.r && q.l < a.r && a.t < q.b && q.t < a.b);
-    // round 42: the platform's 64 px top-left corner is blocked too
-    const blocks = [...geo.controls, ...geo.top, this.hud.cornerBox()];
-    if (this.hud.popShowing) blocks.push(geo.slot);
-    const ang = (px: number, py: number) => Math.atan2(ty - py, tx - px) + Math.PI / 2;
-    const a0 = off ? ang(x, y) : 0;
-    if (!hit(this.navFootprint(x, y, a0, off, dist), blocks)) return { x, y, off, angle: a0 };
-    // walk the edge rectangle both ways from the clamped point; the first free spot wins
-    const mx = 40, y0 = 30, y1 = h - 80;
-    const W = w - 2 * mx, H = y1 - y0, P = 2 * (W + H);
+  /**
+   * Round 43: one placement search for the nav marker and the gate tag. A spot is good when its footprint (marker,
+   * pill and edge arrow) is fully on screen and clear of every block: the platform corner box (64 px plus the safe-area
+   * inset), and on a touch screen the controls, the top panels and a showing pop. The start spot wins if it is good;
+   * otherwise the edge rectangle (mx, y0 .. w - mx, y1) is walked both ways and the first good spot wins. If none is
+   * good (a pop and the top panels can fill every edge spot on a phone), the start spot or the first edge spot that is
+   * on screen and clear of the hard blocks (the corner and the touch controls, blocks[0 .. placeHard)) wins.
+   */
+  private readonly placeBlocks: Box[] = [];
+  private placeHard = 1;
+  private placeSearch(w: number, h: number, x: number, y: number, off: boolean, a0: number, foot: (x: number, y: number, a: number, arrow: boolean) => Box, ang: (x: number, y: number) => number, blocks: Box[], mx: number, y0: number, y1: number, vpad: number): { x: number; y: number; off: boolean; angle: number } {
+    const corner = blocks[0];
+    const hit1 = (f: Box, q: Box) => f.l < q.r && q.l < f.r && f.t < q.b && q.t < f.b;
+    // on screen: the footprint less its spacing margin (vpad) is inside the viewport
+    const inView = (f: Box) => f.l + vpad >= 0 && f.t + vpad >= 0 && f.r - vpad <= w && f.b - vpad <= h;
+    const good = (f: Box) => inView(f) && !blocks.some((q) => hit1(f, q));
+    const nh = this.placeHard;
+    const hard = (f: Box) => { if (!inView(f)) return false; for (let i = 0; i < nh; i++) if (hit1(f, blocks[i])) return false; return true; };
+    const f0 = foot(x, y, a0, off);
+    if (good(f0)) return { x, y, off, angle: a0 };
+    let fallback: { x: number; y: number; off: boolean; angle: number } | null = hard(f0) ? { x, y, off, angle: a0 } : null;
+    let last: { x: number; y: number; off: boolean; angle: number } | null = inView(f0) && !hit1(f0, corner) ? { x, y, off, angle: a0 } : null;
+    const W = Math.max(1, w - 2 * mx), H = Math.max(1, y1 - y0), P = 2 * (W + H);
     const at = (s: number): [number, number] => {
       s = ((s % P) + P) % P;
       if (s < W) return [mx + s, y0];
@@ -2063,14 +2063,35 @@ export class Game {
     const dl = cx - mx, dr = w - mx - cx, dt = cy - y0, db = y1 - cy;
     const m = Math.min(dl, dr, dt, db);
     const s0 = m === dt ? cx - mx : m === dr ? W + cy - y0 : m === db ? W + H + (w - mx - cx) : 2 * W + H + (y1 - cy);
-    for (let step = 4; step < P / 2; step += 4) {
+    for (let step = 0; step <= P / 2; step += 4) {
       for (const sgn of [1, -1]) {
         const [px, py] = at(s0 + sgn * step);
         const a = ang(px, py);
-        if (!hit(this.navFootprint(px, py, a, true, dist), blocks)) return { x: px, y: py, off: true, angle: a };
+        const f = foot(px, py, a, true);
+        if (good(f)) return { x: px, y: py, off: true, angle: a };
+        if (!fallback && hard(f)) fallback = { x: px, y: py, off: true, angle: a };
+        if (!last && inView(f) && !hit1(f, corner)) last = { x: px, y: py, off: true, angle: a };
       }
     }
-    return { x, y, off, angle: a0 };
+    return fallback ?? last ?? { x, y, off, angle: a0 };
+  }
+
+  private navPlace(geo: TouchLayout | null, w: number, h: number, x: number, y: number, tx: number, ty: number, off: boolean, dist: number): { x: number; y: number; off: boolean; angle: number } {
+    // round 42: the platform's 64 px top-left corner is blocked too; round 43: it is part of this search (no push after)
+    const blocks = this.placeBlocks;
+    blocks.length = 0;
+    blocks.push(this.hud.cornerBox());
+    if (geo) {
+      blocks.push(...geo.controls);
+      this.placeHard = blocks.length;
+      blocks.push(...geo.top);
+      if (this.hud.popShowing) blocks.push(geo.slot);
+    } else this.placeHard = blocks.length; // desktop: the round 40 minimap nudge above keeps the marker off the minimap
+    const ang = (px: number, py: number) => Math.atan2(ty - py, tx - px) + Math.PI / 2;
+    const a0 = off ? ang(x, y) : 0;
+    const foot = (px: number, py: number, a: number, arrow: boolean) => this.navFootprint(px, py, a, arrow, dist);
+    // the walk's top edge leaves room for an arrow pointing up (it reaches 56 px above the diamond with its margin)
+    return this.placeSearch(w, h, x, y, off, a0, foot, ang, blocks, NAV_MX, 56, h - 80, 10);
   }
 
   private updateNav(): void {
@@ -2093,7 +2114,7 @@ export class Game {
       tx = w / 2 + (x - w / 2) * 50;
       ty = h / 2 + (y - h / 2 || 1) * 50;
     }
-    const mx = 40;
+    const mx = NAV_MX;
     const top = h < 460 ? 140 : 150; // round 20: below the objective pill and the route hint (was 120: it covered the hint on a phone)
     const bottom = h - 80;
     let off = behind || x < mx || x > w - mx || y < top || y > bottom;
@@ -2116,13 +2137,6 @@ export class Game {
     }
     if (!Number.isFinite(x) || !Number.isFinite(y)) off = false;
     const geo = this.hud.touchLayout(w, h);
-    if (geo && Number.isFinite(x) && Number.isFinite(y)) {
-      const r = this.navTouch(geo, w, h, x, y, tx, ty, off, dist);
-      x = r.x;
-      y = r.y;
-      off = r.off;
-      angle = r.angle;
-    }
     // round 40: on desktop the marker (diamond, arrow and distance pill) keeps off the minimap (bottom-right)
     if (!geo && this.minimap.visible && Number.isFinite(x) && Number.isFinite(y)) {
       const mm = this.mmBox(w, h);
@@ -2133,22 +2147,17 @@ export class Game {
         else x = mm.l - cl;
       }
     }
-    // round 42: whatever the placement above did, the marker (diamond, pill, arrow) stays out of the platform's corner
+    // round 43: one search for every constraint: on screen, out of the corner box, off the touch controls and top
+    // panels (touch) or the minimap (desktop). It runs after the desktop minimap nudge above, so nothing moves it after.
     if (Number.isFinite(x) && Number.isFinite(y)) {
-      const k = this.cornerPush(this.navFootprint(x, y, angle, off, dist));
-      x += k.dx;
-      y += k.dy;
+      const r = this.navPlace(geo, w, h, x, y, tx, ty, off, dist);
+      x = r.x;
+      y = r.y;
+      off = r.off;
+      angle = r.angle;
     }
     this.hud.fitObjective(w);
     this.hud.setNav(x, y, off, angle, dist, Number.isFinite(x) && Number.isFinite(y));
-  }
-
-  /** Round 42: the smallest move (down or right) that takes a footprint out of the 64 px top-left corner. */
-  private cornerPush(f: Box): { dx: number; dy: number } {
-    const c = this.hud.cornerBox();
-    if (!(f.l < c.r && f.t < c.b)) return { dx: 0, dy: 0 };
-    const dx = c.r - f.l, dy = c.b - f.t;
-    return dy <= dx ? { dx: 0, dy } : { dx, dy: 0 };
   }
 
   // round 40: the minimap box in CSS px, measured every 500 ms (never per frame)

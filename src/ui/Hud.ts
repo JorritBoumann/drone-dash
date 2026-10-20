@@ -309,7 +309,9 @@ export class Hud {
     if (!g || g.slot.l !== slot.l || g.slot.r !== slot.r || Math.abs(g.slot.t - slot.t) > 0.5) {
       this.hudEl.style.setProperty('--pop-x', `${((slot.l + slot.r) / 2).toFixed(1)}px`);
       this.hudEl.style.setProperty('--pop-y', `${cy.toFixed(1)}px`);
-      this.hudEl.style.setProperty('--pop-w', `${Math.max(120, slot.r - slot.l).toFixed(1)}px`);
+      // round 43: room for the pop-in overshoot (scale up to about 1.15): a slot-wide banner reached past the left edge
+      const sw = slot.r - slot.l;
+      this.hudEl.style.setProperty('--pop-w', `${Math.max(120, Math.min(sw, (sw + 2 * slot.l - 8) / 1.15)).toFixed(1)}px`);
     }
     this.popCy = cy;
     this.popLower = lower;
@@ -336,7 +338,9 @@ export class Hud {
       this.cornerProbe = d;
     }
     const r = this.cornerProbe.getBoundingClientRect();
-    this.corner = { l: -1e4, t: -1e4, r: Math.max(64, r.width) + 4, b: Math.max(64, r.height) + 4 };
+    // round 43: updated in place (no new object per read)
+    this.corner.r = Math.max(64, r.width) + 4;
+    this.corner.b = Math.max(64, r.height) + 4;
     return this.corner;
   }
 
@@ -355,7 +359,8 @@ export class Hud {
     if (s.width > 0) half = Math.min(half, w / 2 - s.right - 12);
     if (r.width > 0) half = Math.min(half, r.left - w / 2 - 12);
     // the pill pops to 1.08 when the objective changes (obj-flash): leave room for that too
-    const mx = `${Math.max(120, Math.floor((half * 2) / 1.08))}px`;
+    // round 43: no 120 px floor: on a narrow screen that floor made the pill wider than its slot
+    const mx = `${Math.max(0, Math.floor((half * 2) / 1.08))}px`;
     if (mx !== this.objMax) {
       this.objMax = mx;
       this.objective.style.setProperty('--obj-max', mx);

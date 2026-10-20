@@ -1,0 +1,1 @@
+No concrete audio or gameplay regressions found in the requested changes. Soundtrack switches reset the scheduler grid and fade the music bus; one-shot cleanup disconnects only nodes owned by each voice; effects and music use separate controls. The `?music=` value is validated, and storage access is guarded.

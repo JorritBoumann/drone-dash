@@ -1540,3 +1540,43 @@ kbd {
 #app.canvas-hud #slip-pop,
 #app.canvas-hud #medal-pop,
 #app.canvas-hud #event-pop { visibility: hidden !important; }
+
+/* ---------- Round 46: soundtrack choice (Classic / Breakbeat) and the effects switch ---------- */
+.sound-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.sound-label { font-size: 0.72rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+.sound-button {
+  padding: 4px 11px;
+  border: 2px solid rgba(255, 247, 234, 0.6);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cream);
+  font-family: var(--font);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-shadow: 0 2px 8px rgba(60, 20, 0, 0.6);
+}
+.sound-button:hover { background: rgba(255, 247, 234, 0.16); }
+.track-button[aria-pressed='true'] { border-color: var(--amber); background: rgba(255, 176, 46, 0.3); }
+.sfx-button { margin-left: 6px; }
+.sfx-button[aria-pressed='false'] { border-style: dashed; opacity: 0.75; }
+/* the pause card is cream: dark chips */
+.modal-card .sound-label { color: var(--ink-soft); }
+.modal-card .sound-button { border-color: rgba(29, 34, 48, 0.35); color: var(--ink); text-shadow: none; }
+.modal-card .sound-button:hover { background: rgba(29, 34, 48, 0.08); }
+.modal-card .track-button[aria-pressed='true'] { border-color: var(--amber); background: rgba(255, 176, 46, 0.35); }
+@media (max-height: 460px) {
+  .sound-pick { gap: 4px; }
+  .sound-label, .sound-button { font-size: 0.66rem; }
+  .sound-button { padding: 2px 8px; }
+}
+/* round 46: the sound row costs one line; on short landscape phones the title card tightens so the Best line stays on screen */
+@media (max-height: 400px) {
+  .title-card { gap: 3px; }
+  .sound-pick { gap: 3px; }
+  .sound-label, .sound-button { font-size: 0.62rem; }
+  .sound-button { padding: 1px 7px; border-width: 1.5px; }
+  .title-card .tagline { margin-block: 0; }
+}

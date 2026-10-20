@@ -1,0 +1,3305 @@
+{
+ "latency": {
+  "main": {
+   "ms": 170.67,
+   "match": 0.982
+  },
+  "fx": {
+   "ms": 170.67,
+   "match": 0.992
+  },
+  "ot": {
+   "ms": 170.67,
+   "match": 1.002
+  }
+ },
+ "clips": {
+  "01-title-music": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 3.1,
+     "len": 20,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 20.0,
+   "loudness": {
+    "I": -16.8,
+    "LRA": 0.4,
+    "TP": -5.3,
+    "Smin": -17.0,
+    "Smax": -16.5
+   },
+   "sample_peak_dbfs": -5.31,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 23.1,
+    "<150": 51.4,
+    "150-3k": 48.2,
+    "3k-6k": 0.2,
+    ">3k": 0.4,
+    ">6k": 0.2,
+    ">8k": 0.1
+   },
+   "bus_db": {
+    "music": -25.5,
+    "sfx": -240.0,
+    "bed": -240.0,
+    "amb": -240.0,
+    "rev": -55.3
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [],
+   "repetition_top": [
+    [
+     8,
+     11.43,
+     0.825
+    ],
+    [
+     10,
+     14.29,
+     0.787
+    ],
+    [
+     2,
+     2.86,
+     0.722
+    ],
+    [
+     1,
+     1.43,
+     0.665
+    ],
+    [
+     9,
+     12.86,
+     0.661
+    ]
+   ]
+  },
+  "02-takeoff-calm-flight-chain0": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 26.22,
+     "len": 20,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 20.0,
+   "loudness": {
+    "I": -16.1,
+    "LRA": 1.9,
+    "TP": -5.4,
+    "Smin": -17.1,
+    "Smax": -14.9
+   },
+   "sample_peak_dbfs": -5.47,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 26.0,
+    "<150": 53.8,
+    "150-3k": 40.8,
+    "3k-6k": 2.7,
+    ">3k": 5.4,
+    ">6k": 2.7,
+    ">8k": 1.3
+   },
+   "bus_db": {
+    "music": -27.6,
+    "sfx": -34.3,
+    "bed": -30.9,
+    "amb": -38.7,
+    "rev": -49.0
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 1,
+    "at": [
+     0.527
+    ]
+   },
+   "events": [
+    {
+     "t": 0.5,
+     "kind": "mark",
+     "desc": "enter"
+    },
+    {
+     "t": 0.72,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 0.72,
+     "kind": "state",
+     "desc": "state title -> playing"
+    },
+    {
+     "t": 5.25,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1 (no cue sound)",
+     "cue_db": -240.0,
+     "music_in_win_db": -31.2,
+     "cue_over_music": -208.8,
+     "cue_over_bed": -208.6
+    },
+    {
+     "t": 6.28,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 7.68,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -31.9,
+     "cue_over_music": 6.6,
+     "cue_over_bed": 8.2
+    },
+    {
+     "t": 8.63,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 9.25,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 10.35,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2 (no cue sound)",
+     "cue_db": -240.0,
+     "music_in_win_db": -28.6,
+     "cue_over_music": -211.4,
+     "cue_over_bed": -210.8
+    },
+    {
+     "t": 10.58,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 10.7,
+     "kind": "passby",
+     "desc": "Doppler pass-by (closeness 0.56)"
+    },
+    {
+     "t": 11.66,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.71)"
+    },
+    {
+     "t": 12.93,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -23.0,
+     "music_in_win_db": -33.5,
+     "cue_over_music": 10.5,
+     "duck_measured_db": -8.0,
+     "cue_over_bed": 9.9
+    },
+    {
+     "t": 12.93,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -24.0,
+     "music_in_win_db": -31.5,
+     "cue_over_music": 7.5,
+     "cue_over_bed": 9.0
+    },
+    {
+     "t": 16.51,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash",
+     "cue_db": -25.4,
+     "music_in_win_db": -25.0,
+     "cue_over_music": -0.4,
+     "cue_over_bed": 4.7
+    },
+    {
+     "t": 17.72,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -27.4,
+     "cue_over_music": 2.2,
+     "cue_over_bed": 4.5
+    },
+    {
+     "t": 17.76,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 18.87,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.2,
+     "music_in_win_db": -25.6,
+     "cue_over_music": 0.3,
+     "cue_over_bed": 5.7
+    },
+    {
+     "t": 19.34,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 19.54,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.5,
+     "music_in_win_db": -30.1,
+     "cue_over_music": 0.6,
+     "duck_measured_db": -3.5,
+     "cue_over_bed": -1.8
+    },
+    {
+     "t": 19.57,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.8,
+     "music_in_win_db": -32.5,
+     "cue_over_music": 4.7,
+     "cue_over_bed": -0.3
+    },
+    {
+     "t": 19.65,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    }
+   ]
+  },
+  "03-slipstream-chain-x3-payouts": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 42.81,
+     "len": 25,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 25.0,
+   "loudness": {
+    "I": -15.7,
+    "LRA": 3.1,
+    "TP": -5.1,
+    "Smin": -17.5,
+    "Smax": -13.7
+   },
+   "sample_peak_dbfs": -5.32,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 21.7,
+    "<150": 48.3,
+    "150-3k": 48.6,
+    "3k-6k": 1.7,
+    ">3k": 3.2,
+    ">6k": 1.4,
+    ">8k": 0.8
+   },
+   "bus_db": {
+    "music": -27.4,
+    "sfx": -32.2,
+    "bed": -30.6,
+    "amb": -38.0,
+    "rev": -46.1
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [
+    {
+     "t": 1.13,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -27.4,
+     "cue_over_music": 2.2,
+     "cue_over_bed": 4.5
+    },
+    {
+     "t": 1.17,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 2.28,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.2,
+     "music_in_win_db": -25.6,
+     "cue_over_music": 0.3,
+     "cue_over_bed": 5.7
+    },
+    {
+     "t": 2.75,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 2.95,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -3.6,
+     "cue_over_bed": -2.1
+    },
+    {
+     "t": 2.98,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.8,
+     "music_in_win_db": -32.5,
+     "cue_over_music": 4.7,
+     "cue_over_bed": -0.3
+    },
+    {
+     "t": 3.06,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 3.98,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 4.0,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.2,
+     "music_in_win_db": -29.6,
+     "cue_over_music": 1.5,
+     "duck_measured_db": -0.9,
+     "cue_over_bed": -1.4
+    },
+    {
+     "t": 4.02,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.5,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 2.3,
+     "cue_over_bed": 0.3
+    },
+    {
+     "t": 5.12,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -26.8,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 3.0,
+     "duck_measured_db": -2.1,
+     "cue_over_bed": -0.8
+    },
+    {
+     "t": 5.13,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -26.0,
+     "music_in_win_db": -26.6,
+     "cue_over_music": 0.6,
+     "cue_over_bed": -0.0
+    },
+    {
+     "t": 5.24,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 5.4,
+     "kind": "music",
+     "desc": "music run/lead-ride layer 4"
+    },
+    {
+     "t": 8.78,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 9.79,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.5,
+     "music_in_win_db": -29.5,
+     "cue_over_music": 4.0,
+     "duck_measured_db": -2.8,
+     "cue_over_bed": 3.8
+    },
+    {
+     "t": 9.79,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -25.5,
+     "music_in_win_db": -28.2,
+     "cue_over_music": 2.7,
+     "cue_over_bed": 3.7
+    },
+    {
+     "t": 12.17,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1370)",
+     "cue_db": -20.2,
+     "music_in_win_db": -26.4,
+     "cue_over_music": 6.3,
+     "cue_over_bed": 12.0
+    },
+    {
+     "t": 12.17,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 13.03,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "cue_db": -22.3,
+     "music_in_win_db": -38.3,
+     "cue_over_music": 16.0,
+     "duck_measured_db": -12.3,
+     "cue_over_bed": 11.8
+    },
+    {
+     "t": 18.83,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 19.69,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 19.77,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -2.7,
+     "cue_over_bed": 0.7
+    },
+    {
+     "t": 19.77,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -28.0,
+     "cue_over_music": 0.1,
+     "cue_over_bed": 2.6
+    },
+    {
+     "t": 21.12,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 24.05,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.3,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 1.5,
+     "duck_measured_db": -1.2,
+     "cue_over_bed": 3.7
+    },
+    {
+     "t": 24.06,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.6,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 2.2,
+     "cue_over_bed": 5.4
+    }
+   ]
+  },
+  "04-boost-and-tail-off": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 100.87,
+     "len": 10,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 10.0,
+   "loudness": {
+    "I": -14.5,
+    "LRA": 1.9,
+    "TP": -5.2,
+    "Smin": -15.6,
+    "Smax": -13.4
+   },
+   "sample_peak_dbfs": -5.27,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 18.2,
+    "<150": 32.1,
+    "150-3k": 54.5,
+    "3k-6k": 6.8,
+    ">3k": 13.3,
+    ">6k": 6.6,
+    ">8k": 2.9
+   },
+   "bus_db": {
+    "music": -27.3,
+    "sfx": -32.2,
+    "bed": -28.2,
+    "amb": -36.3,
+    "rev": -44.2
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [
+    {
+     "t": 1.07,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 2.0,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.5,
+     "music_in_win_db": -30.6,
+     "cue_over_music": 5.1,
+     "cue_over_bed": 6.9
+    },
+    {
+     "t": 2.82,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.2,
+     "music_in_win_db": -28.5,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -1.2,
+     "cue_over_bed": -1.0
+    },
+    {
+     "t": 2.83,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.5,
+     "music_in_win_db": -29.0,
+     "cue_over_music": 2.5,
+     "cue_over_bed": 0.6
+    },
+    {
+     "t": 3.07,
+     "kind": "music",
+     "desc": "music run/ghosts-arp+stabs layer 3"
+    },
+    {
+     "t": 3.78,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -26.7,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 3.1,
+     "duck_measured_db": -1.1,
+     "cue_over_bed": 0.3
+    },
+    {
+     "t": 3.81,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -25.3,
+     "music_in_win_db": -33.4,
+     "cue_over_music": 8.1,
+     "cue_over_bed": 1.7
+    },
+    {
+     "t": 4.47,
+     "kind": "music",
+     "desc": "music run/lead-ride+stabs layer 4"
+    },
+    {
+     "t": 4.79,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.85)"
+    },
+    {
+     "t": 5.54,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.5,
+     "music_in_win_db": -27.7,
+     "cue_over_music": 2.2,
+     "duck_measured_db": -0.1,
+     "cue_over_bed": -0.2
+    },
+    {
+     "t": 5.57,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -24.8,
+     "music_in_win_db": -28.7,
+     "cue_over_music": 3.9,
+     "cue_over_bed": 0.6
+    },
+    {
+     "t": 5.94,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.81)"
+    },
+    {
+     "t": 6.17,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 7.58,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -24.4,
+     "music_in_win_db": -29.3,
+     "cue_over_music": 4.9,
+     "duck_measured_db": -2.9,
+     "cue_over_bed": 4.6
+    },
+    {
+     "t": 7.58,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5",
+     "cue_db": -24.9,
+     "music_in_win_db": -25.3,
+     "cue_over_music": 0.3,
+     "cue_over_bed": 4.1
+    },
+    {
+     "t": 9.01,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    }
+   ]
+  },
+  "05-wall-scrape-and-head-on-crash": {
+   "src": "fx",
+   "segments": [
+    {
+     "session": "fx",
+     "start_ct": 8.2,
+     "len": 10,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 10.0,
+   "loudness": {
+    "I": -16.5,
+    "LRA": 1.2,
+    "TP": -5.0,
+    "Smin": -17.3,
+    "Smax": -15.9
+   },
+   "sample_peak_dbfs": -5.01,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 36.3,
+    "<150": 59.5,
+    "150-3k": 37.8,
+    "3k-6k": 1.4,
+    ">3k": 2.7,
+    ">6k": 1.3,
+    ">8k": 0.7
+   },
+   "bus_db": {
+    "music": -27.9,
+    "sfx": -29.9,
+    "bed": -32.7,
+    "amb": -38.9,
+    "rev": -47.4
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [
+    {
+     "t": 0.06,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 0.8,
+     "kind": "mark",
+     "desc": "scrape-setup"
+    },
+    {
+     "t": 1.08,
+     "kind": "scrape",
+     "desc": "wall scrape",
+     "cue_db": -30.3,
+     "music_in_win_db": -25.8,
+     "cue_over_music": -4.6,
+     "cue_over_bed": 2.4
+    },
+    {
+     "t": 1.58,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash",
+     "cue_db": -24.0,
+     "music_in_win_db": -25.2,
+     "cue_over_music": 1.2,
+     "cue_over_bed": 8.2
+    },
+    {
+     "t": 2.21,
+     "kind": "scrape",
+     "desc": "wall scrape",
+     "cue_db": -28.5,
+     "music_in_win_db": -30.8,
+     "cue_over_music": 2.4,
+     "cue_over_bed": 3.2
+    },
+    {
+     "t": 2.4,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -36.1,
+     "music_in_win_db": -27.8,
+     "cue_over_music": -8.3,
+     "cue_over_bed": -4.5
+    },
+    {
+     "t": 2.48,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 2.93,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 4.64,
+     "kind": "mark",
+     "desc": "crash-setup"
+    },
+    {
+     "t": 4.68,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -29.3,
+     "cue_over_music": 4.0,
+     "cue_over_bed": 9.4
+    },
+    {
+     "t": 5.3,
+     "kind": "duck:crash",
+     "desc": "music ducked to 0.35",
+     "cue_db": -18.9,
+     "music_in_win_db": -35.7,
+     "cue_over_music": 16.8,
+     "duck_measured_db": -6.8,
+     "cue_over_bed": 9.2
+    },
+    {
+     "t": 5.34,
+     "kind": "impact",
+     "desc": "head-on impact (hit-stop + slow motion)",
+     "cue_db": -17.6,
+     "music_in_win_db": -33.8,
+     "cue_over_music": 16.2,
+     "cue_over_bed": 10.3
+    },
+    {
+     "t": 5.53,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 5.53,
+     "kind": "crash",
+     "desc": "crash charged (time penalty)"
+    },
+    {
+     "t": 5.77,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 6.21,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 9.67,
+     "kind": "mark",
+     "desc": "harbour-start"
+    }
+   ]
+  },
+  "06-pickup-delivery-medal": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 37.65,
+     "len": 5,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "main",
+     "start_ct": 49.84,
+     "len": 10,
+     "at_clip_s": 4.7
+    }
+   ],
+   "seconds": 14.7,
+   "loudness": {
+    "I": -16.1,
+    "LRA": 2.0,
+    "TP": -5.1,
+    "Smin": -17.5,
+    "Smax": -15.1
+   },
+   "sample_peak_dbfs": -5.32,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 24.0,
+    "<150": 50.4,
+    "150-3k": 46.7,
+    "3k-6k": 1.6,
+    ">3k": 2.9,
+    ">6k": 1.3,
+    ">8k": 0.7
+   },
+   "bus_db": {
+    "music": -27.3,
+    "sfx": -31.0,
+    "bed": -32.2,
+    "amb": -38.1,
+    "rev": -45.2
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [
+    {
+     "t": 0.23,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.71)"
+    },
+    {
+     "t": 1.5,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -23.0,
+     "music_in_win_db": -33.5,
+     "cue_over_music": 10.5,
+     "duck_measured_db": -8.0,
+     "cue_over_bed": 9.9
+    },
+    {
+     "t": 1.5,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -24.0,
+     "music_in_win_db": -31.5,
+     "cue_over_music": 7.5,
+     "cue_over_bed": 9.0
+    },
+    {
+     "t": 6.45,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 7.46,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.5,
+     "music_in_win_db": -29.5,
+     "cue_over_music": 4.0,
+     "duck_measured_db": -2.8,
+     "cue_over_bed": 3.8
+    },
+    {
+     "t": 7.46,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -25.5,
+     "music_in_win_db": -28.2,
+     "cue_over_music": 2.7,
+     "cue_over_bed": 3.7
+    },
+    {
+     "t": 9.84,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1370)",
+     "cue_db": -20.2,
+     "music_in_win_db": -26.4,
+     "cue_over_music": 6.3,
+     "cue_over_bed": 12.0
+    },
+    {
+     "t": 9.84,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 10.7,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "cue_db": -22.3,
+     "music_in_win_db": -38.3,
+     "cue_over_music": 16.0,
+     "duck_measured_db": -12.3,
+     "cue_over_bed": 11.8
+    }
+   ]
+  },
+  "07-rush-hour-then-last-10s-into-overtime": {
+   "src": "mix",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 85.76,
+     "len": 8,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "ot",
+     "start_ct": 30.21,
+     "len": 21.602666666666668,
+     "at_clip_s": 7.7
+    }
+   ],
+   "seconds": 29.3,
+   "loudness": {
+    "I": -16.0,
+    "LRA": 2.7,
+    "TP": -4.7,
+    "Smin": -18.1,
+    "Smax": -14.5
+   },
+   "sample_peak_dbfs": -4.82,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 30.7,
+    "<150": 53.4,
+    "150-3k": 39.9,
+    "3k-6k": 3.6,
+    ">3k": 6.7,
+    ">6k": 3.1,
+    ">8k": 1.5
+   },
+   "bus_db": {
+    "music": -27.8,
+    "sfx": -30.3,
+    "bed": -31.5,
+    "amb": -38.3,
+    "rev": -46.6
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [
+    {
+     "t": 0.97,
+     "kind": "rush",
+     "desc": "rush hour starts"
+    },
+    {
+     "t": 1.01,
+     "kind": "music",
+     "desc": "music run/lead-ride+stabs layer 4"
+    },
+    {
+     "t": 3.0,
+     "kind": "duck:rush",
+     "desc": "music ducked to 0.4",
+     "cue_db": -22.4,
+     "music_in_win_db": -37.5,
+     "cue_over_music": 15.1,
+     "duck_measured_db": -11.6,
+     "cue_over_bed": 8.5
+    },
+    {
+     "t": 3.54,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 4.73,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 5.19,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -28.6,
+     "cue_over_music": -1.3,
+     "duck_measured_db": -0.8,
+     "cue_over_bed": 3.3
+    },
+    {
+     "t": 5.21,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -28.9,
+     "cue_over_music": 1.0,
+     "cue_over_bed": 5.3
+    },
+    {
+     "t": 5.32,
+     "kind": "music",
+     "desc": "music run/hats+stabs layer 2"
+    },
+    {
+     "t": 8.85,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1 (no cue sound)",
+     "cue_db": -240.0,
+     "music_in_win_db": -28.3,
+     "cue_over_music": -211.7,
+     "cue_over_bed": -208.8
+    },
+    {
+     "t": 9.08,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 9.2,
+     "kind": "tick",
+     "desc": "clock tick 10 s",
+     "cue_db": -28.8,
+     "music_in_win_db": -31.6,
+     "cue_over_music": 2.8,
+     "cue_over_bed": 2.9
+    },
+    {
+     "t": 9.2,
+     "kind": "music",
+     "desc": "music final/final layer 5"
+    },
+    {
+     "t": 10.18,
+     "kind": "tick",
+     "desc": "clock tick 9 s",
+     "cue_db": -29.5,
+     "music_in_win_db": -24.8,
+     "cue_over_music": -4.8,
+     "cue_over_bed": 3.3
+    },
+    {
+     "t": 11.19,
+     "kind": "tick",
+     "desc": "clock tick 8 s",
+     "cue_db": -24.0,
+     "music_in_win_db": -25.2,
+     "cue_over_music": 1.2,
+     "cue_over_bed": 10.4
+    },
+    {
+     "t": 11.23,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -24.0,
+     "music_in_win_db": -25.2,
+     "cue_over_music": 1.2,
+     "cue_over_bed": 10.4
+    },
+    {
+     "t": 12.62,
+     "kind": "tick",
+     "desc": "clock tick 7 s",
+     "cue_db": -30.5,
+     "music_in_win_db": -25.1,
+     "cue_over_music": -5.4,
+     "cue_over_bed": -2.7
+    },
+    {
+     "t": 13.4,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -52.0,
+     "music_in_win_db": -25.3,
+     "cue_over_music": -26.7,
+     "cue_over_bed": -25.7
+    },
+    {
+     "t": 13.53,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 14.55,
+     "kind": "tick",
+     "desc": "clock tick 6 s",
+     "cue_db": -31.1,
+     "music_in_win_db": -25.5,
+     "cue_over_music": -5.6,
+     "cue_over_bed": -0.3
+    },
+    {
+     "t": 14.96,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -23.0,
+     "music_in_win_db": -33.1,
+     "cue_over_music": 10.1,
+     "duck_measured_db": -7.9,
+     "cue_over_bed": 9.9
+    },
+    {
+     "t": 14.99,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -23.5,
+     "music_in_win_db": -31.5,
+     "cue_over_music": 7.9,
+     "cue_over_bed": 9.4
+    },
+    {
+     "t": 15.58,
+     "kind": "tick",
+     "desc": "clock tick 5 s",
+     "cue_db": -37.6,
+     "music_in_win_db": -28.3,
+     "cue_over_music": -9.3,
+     "cue_over_bed": -3.2
+    },
+    {
+     "t": 16.55,
+     "kind": "tick",
+     "desc": "clock tick 4 s",
+     "cue_db": -38.2,
+     "music_in_win_db": -25.4,
+     "cue_over_music": -12.8,
+     "cue_over_bed": -6.3
+    },
+    {
+     "t": 17.57,
+     "kind": "tick",
+     "desc": "clock tick 3 s",
+     "cue_db": -21.2,
+     "music_in_win_db": -24.9,
+     "cue_over_music": 3.7,
+     "cue_over_bed": 9.1
+    },
+    {
+     "t": 18.57,
+     "kind": "tick",
+     "desc": "clock tick 2 s",
+     "cue_db": -20.6,
+     "music_in_win_db": -30.6,
+     "cue_over_music": 10.1,
+     "cue_over_bed": 10.0
+    },
+    {
+     "t": 19.57,
+     "kind": "tick",
+     "desc": "clock tick 1 s",
+     "cue_db": -19.2,
+     "music_in_win_db": -30.1,
+     "cue_over_music": 10.9,
+     "cue_over_bed": 11.3
+    },
+    {
+     "t": 19.7,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -21.8,
+     "music_in_win_db": -30.0,
+     "cue_over_music": 8.2,
+     "cue_over_bed": 8.8
+    },
+    {
+     "t": 19.94,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 20.52,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -26.8,
+     "music_in_win_db": -32.4,
+     "cue_over_music": 5.6,
+     "duck_measured_db": -2.9,
+     "cue_over_bed": 0.1
+    },
+    {
+     "t": 20.53,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -26.0,
+     "music_in_win_db": -31.5,
+     "cue_over_music": 5.5,
+     "cue_over_bed": 0.9
+    },
+    {
+     "t": 20.65,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.85)"
+    },
+    {
+     "t": 21.06,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 21.83,
+     "kind": "duck:rush",
+     "desc": "music ducked to 0.4",
+     "cue_db": -24.7,
+     "music_in_win_db": -36.1,
+     "cue_over_music": 11.5,
+     "duck_measured_db": -6.1,
+     "cue_over_bed": 3.1
+    },
+    {
+     "t": 21.86,
+     "kind": "overtime",
+     "desc": "overtime starts"
+    },
+    {
+     "t": 22.84,
+     "kind": "tick",
+     "desc": "clock tick 7 s",
+     "cue_db": -30.5,
+     "music_in_win_db": -28.1,
+     "cue_over_music": -2.4,
+     "cue_over_bed": 4.7
+    },
+    {
+     "t": 22.84,
+     "kind": "music",
+     "desc": "music final/drop layer 5"
+    },
+    {
+     "t": 23.84,
+     "kind": "tick",
+     "desc": "clock tick 6 s",
+     "cue_db": -31.1,
+     "music_in_win_db": -25.8,
+     "cue_over_music": -5.3,
+     "cue_over_bed": 1.2
+    },
+    {
+     "t": 24.19,
+     "kind": "duck:delivery",
+     "desc": "music ducked to 0.45",
+     "cue_db": -22.1,
+     "music_in_win_db": -35.2,
+     "cue_over_music": 13.1,
+     "duck_measured_db": -7.5,
+     "cue_over_bed": 10.0
+    },
+    {
+     "t": 24.24,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 743)",
+     "cue_db": -20.7,
+     "music_in_win_db": -33.9,
+     "cue_over_music": 13.1,
+     "cue_over_bed": 11.5
+    },
+    {
+     "t": 24.24,
+     "kind": "music",
+     "desc": "music final/final layer 5"
+    },
+    {
+     "t": 25.79,
+     "kind": "duck:gameover",
+     "desc": "music ducked to 0.35",
+     "cue_db": -25.5,
+     "music_in_win_db": -46.0,
+     "cue_over_music": 20.4,
+     "duck_measured_db": -13.4,
+     "cue_over_bed": 9.9
+    },
+    {
+     "t": 25.8,
+     "kind": "music",
+     "desc": "music over/calm layer 1"
+    },
+    {
+     "t": 25.8,
+     "kind": "state",
+     "desc": "state playing -> over"
+    },
+    {
+     "t": 25.8,
+     "kind": "mark",
+     "desc": "run-end over"
+    }
+   ]
+  },
+  "08-harbour-boats-bus-then-street-people-traffic": {
+   "src": "fx",
+   "segments": [
+    {
+     "session": "fx",
+     "start_ct": 18.88,
+     "len": 12,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "fx",
+     "start_ct": 34.2,
+     "len": 10,
+     "at_clip_s": 11.7
+    }
+   ],
+   "seconds": 21.7,
+   "loudness": {
+    "I": -16.7,
+    "LRA": 0.3,
+    "TP": -5.7,
+    "Smin": -17.0,
+    "Smax": -16.5
+   },
+   "sample_peak_dbfs": -5.67,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 28.0,
+    "<150": 60.5,
+    "150-3k": 37.3,
+    "3k-6k": 1.3,
+    ">3k": 2.2,
+    ">6k": 1.0,
+    ">8k": 0.5
+   },
+   "bus_db": {
+    "music": -27.6,
+    "sfx": -61.1,
+    "bed": -33.0,
+    "amb": -37.8,
+    "rev": -54.8
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [
+    {
+     "t": 11.71,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 12.49,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 18.25,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    }
+   ]
+  },
+  "09-game-over-sting-and-loop": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 172.57,
+     "len": 21,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 21.0,
+   "loudness": {
+    "I": -16.8,
+    "LRA": 0.6,
+    "TP": -5.4,
+    "Smin": -17.7,
+    "Smax": -16.4
+   },
+   "sample_peak_dbfs": -5.39,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 28.1,
+    "<150": 56.2,
+    "150-3k": 43.3,
+    "3k-6k": 0.2,
+    ">3k": 0.5,
+    ">6k": 0.3,
+    ">8k": 0.2
+   },
+   "bus_db": {
+    "music": -25.9,
+    "sfx": -35.9,
+    "bed": -43.7,
+    "amb": -45.2,
+    "rev": -53.9
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 0,
+    "at": []
+   },
+   "events": [
+    {
+     "t": 0.0,
+     "kind": "tick",
+     "desc": "clock tick 1 s",
+     "cue_db": -20.3,
+     "music_in_win_db": -24.1,
+     "cue_over_music": 3.8
+    },
+    {
+     "t": 0.99,
+     "kind": "duck:gameover",
+     "desc": "music ducked to 0.35",
+     "cue_db": -22.4,
+     "music_in_win_db": -37.4,
+     "cue_over_music": 15.1,
+     "duck_measured_db": -10.0,
+     "cue_over_bed": 8.5
+    },
+    {
+     "t": 0.99,
+     "kind": "music",
+     "desc": "music over/gold layer 1"
+    },
+    {
+     "t": 0.99,
+     "kind": "state",
+     "desc": "state playing -> over"
+    },
+    {
+     "t": 1.0,
+     "kind": "mark",
+     "desc": "run-end over"
+    }
+   ],
+   "repetition_top": [
+    [
+     8,
+     11.43,
+     0.761
+    ],
+    [
+     10,
+     14.29,
+     0.69
+    ],
+    [
+     1,
+     1.43,
+     0.661
+    ],
+    [
+     9,
+     12.86,
+     0.646
+    ],
+    [
+     2,
+     2.86,
+     0.635
+    ]
+   ]
+  },
+  "10-full-run-60s-unedited": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 26.22,
+     "len": 60,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 60.0,
+   "loudness": {
+    "I": -15.8,
+    "LRA": 2.5,
+    "TP": -5.1,
+    "Smin": -17.5,
+    "Smax": -13.7
+   },
+   "sample_peak_dbfs": -5.27,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 24.5,
+    "<150": 50.2,
+    "150-3k": 45.8,
+    "3k-6k": 2.1,
+    ">3k": 4.0,
+    ">6k": 1.9,
+    ">8k": 1.0
+   },
+   "bus_db": {
+    "music": -27.5,
+    "sfx": -32.3,
+    "bed": -30.8,
+    "amb": -38.2,
+    "rev": -46.4
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 2,
+    "at": [
+     0.527,
+     55.631
+    ]
+   },
+   "events": [
+    {
+     "t": 0.5,
+     "kind": "mark",
+     "desc": "enter"
+    },
+    {
+     "t": 0.72,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 0.72,
+     "kind": "state",
+     "desc": "state title -> playing"
+    },
+    {
+     "t": 5.25,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1 (no cue sound)",
+     "cue_db": -240.0,
+     "music_in_win_db": -31.2,
+     "cue_over_music": -208.8,
+     "cue_over_bed": -208.6
+    },
+    {
+     "t": 6.28,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 7.68,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -31.9,
+     "cue_over_music": 6.6,
+     "cue_over_bed": 8.2
+    },
+    {
+     "t": 8.63,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 9.25,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 10.35,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2 (no cue sound)",
+     "cue_db": -240.0,
+     "music_in_win_db": -28.6,
+     "cue_over_music": -211.4,
+     "cue_over_bed": -210.8
+    },
+    {
+     "t": 10.58,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 10.7,
+     "kind": "passby",
+     "desc": "Doppler pass-by (closeness 0.56)"
+    },
+    {
+     "t": 11.66,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.71)"
+    },
+    {
+     "t": 12.93,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -23.0,
+     "music_in_win_db": -33.5,
+     "cue_over_music": 10.5,
+     "duck_measured_db": -8.0,
+     "cue_over_bed": 9.9
+    },
+    {
+     "t": 12.93,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -24.0,
+     "music_in_win_db": -31.5,
+     "cue_over_music": 7.5,
+     "cue_over_bed": 9.0
+    },
+    {
+     "t": 16.51,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash",
+     "cue_db": -25.4,
+     "music_in_win_db": -25.0,
+     "cue_over_music": -0.4,
+     "cue_over_bed": 4.7
+    },
+    {
+     "t": 17.72,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -27.4,
+     "cue_over_music": 2.2,
+     "cue_over_bed": 4.5
+    },
+    {
+     "t": 17.76,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 18.87,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.2,
+     "music_in_win_db": -25.6,
+     "cue_over_music": 0.3,
+     "cue_over_bed": 5.7
+    },
+    {
+     "t": 19.34,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 19.54,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -3.6,
+     "cue_over_bed": -2.1
+    },
+    {
+     "t": 19.57,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.8,
+     "music_in_win_db": -32.5,
+     "cue_over_music": 4.7,
+     "cue_over_bed": -0.3
+    },
+    {
+     "t": 19.65,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 20.57,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 20.59,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.2,
+     "music_in_win_db": -29.6,
+     "cue_over_music": 1.5,
+     "duck_measured_db": -0.9,
+     "cue_over_bed": -1.4
+    },
+    {
+     "t": 20.61,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.5,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 2.3,
+     "cue_over_bed": 0.3
+    },
+    {
+     "t": 21.71,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -26.8,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 3.0,
+     "duck_measured_db": -2.1,
+     "cue_over_bed": -0.8
+    },
+    {
+     "t": 21.72,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -26.0,
+     "music_in_win_db": -26.6,
+     "cue_over_music": 0.6,
+     "cue_over_bed": -0.0
+    },
+    {
+     "t": 21.83,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 21.99,
+     "kind": "music",
+     "desc": "music run/lead-ride layer 4"
+    },
+    {
+     "t": 25.37,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 26.38,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.5,
+     "music_in_win_db": -29.5,
+     "cue_over_music": 4.0,
+     "duck_measured_db": -2.8,
+     "cue_over_bed": 3.8
+    },
+    {
+     "t": 26.38,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -25.5,
+     "music_in_win_db": -28.2,
+     "cue_over_music": 2.7,
+     "cue_over_bed": 3.7
+    },
+    {
+     "t": 28.76,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1370)",
+     "cue_db": -20.2,
+     "music_in_win_db": -26.4,
+     "cue_over_music": 6.3,
+     "cue_over_bed": 12.0
+    },
+    {
+     "t": 28.76,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 29.62,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "cue_db": -22.3,
+     "music_in_win_db": -38.3,
+     "cue_over_music": 16.0,
+     "duck_measured_db": -12.3,
+     "cue_over_bed": 11.8
+    },
+    {
+     "t": 35.42,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 36.28,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 36.36,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -2.7,
+     "cue_over_bed": 0.7
+    },
+    {
+     "t": 36.36,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -28.0,
+     "cue_over_music": 0.1,
+     "cue_over_bed": 2.6
+    },
+    {
+     "t": 37.71,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 40.64,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.3,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 1.5,
+     "duck_measured_db": -1.2,
+     "cue_over_bed": 3.7
+    },
+    {
+     "t": 40.65,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.6,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 2.2,
+     "cue_over_bed": 5.4
+    },
+    {
+     "t": 41.6,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 42.0,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 42.2,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -23.0,
+     "music_in_win_db": -32.1,
+     "cue_over_music": 9.1,
+     "duck_measured_db": -3.2,
+     "cue_over_bed": 10.7
+    },
+    {
+     "t": 42.23,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -22.9,
+     "music_in_win_db": -27.6,
+     "cue_over_music": 4.8,
+     "cue_over_bed": 10.8
+    },
+    {
+     "t": 48.09,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.5,
+     "music_in_win_db": -29.9,
+     "cue_over_music": 4.4,
+     "cue_over_bed": 6.7
+    },
+    {
+     "t": 48.14,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 49.66,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 50.13,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.2,
+     "music_in_win_db": -27.0,
+     "cue_over_music": 1.8,
+     "cue_over_bed": 5.6
+    },
+    {
+     "t": 50.5,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.8,
+     "music_in_win_db": -30.8,
+     "cue_over_music": 1.0,
+     "duck_measured_db": -3.2,
+     "cue_over_bed": -0.4
+    },
+    {
+     "t": 50.53,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -35.4,
+     "cue_over_music": 7.5,
+     "cue_over_bed": 1.6
+    },
+    {
+     "t": 50.57,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 50.76,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.93)"
+    },
+    {
+     "t": 51.55,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.9)"
+    },
+    {
+     "t": 51.87,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.2,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 0.7,
+     "duck_measured_db": -0.5,
+     "cue_over_bed": -1.8
+    },
+    {
+     "t": 51.89,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.4,
+     "music_in_win_db": -32.7,
+     "cue_over_music": 6.3,
+     "cue_over_bed": -0.0
+    },
+    {
+     "t": 52.01,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 52.48,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 52.84,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -24.1,
+     "music_in_win_db": -30.9,
+     "cue_over_music": 6.7,
+     "duck_measured_db": -3.2,
+     "cue_over_bed": 3.0
+    },
+    {
+     "t": 52.87,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -22.4,
+     "music_in_win_db": -32.1,
+     "cue_over_music": 9.8,
+     "cue_over_bed": 4.9
+    },
+    {
+     "t": 52.96,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -22.0,
+     "music_in_win_db": -30.1,
+     "cue_over_music": 8.1,
+     "cue_over_bed": 5.5
+    },
+    {
+     "t": 53.16,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 53.43,
+     "kind": "music",
+     "desc": "music run/lead-ride layer 4"
+    },
+    {
+     "t": 55.26,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.6,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 4.7,
+     "duck_measured_db": -4.1,
+     "cue_over_bed": 3.2
+    },
+    {
+     "t": 55.29,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -25.0,
+     "music_in_win_db": -30.8,
+     "cue_over_music": 5.8,
+     "cue_over_bed": 3.8
+    },
+    {
+     "t": 58.02,
+     "kind": "delivery",
+     "desc": "delivery 2 (score 2956)",
+     "cue_db": -20.6,
+     "music_in_win_db": -25.7,
+     "cue_over_music": 5.1,
+     "cue_over_bed": 10.6
+    },
+    {
+     "t": 58.02,
+     "kind": "medal",
+     "desc": "medal tier 2"
+    },
+    {
+     "t": 58.87,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "cue_db": -22.2,
+     "music_in_win_db": -35.5,
+     "cue_over_music": 13.4,
+     "duck_measured_db": -9.1,
+     "cue_over_bed": 12.9
+    }
+   ],
+   "repetition_top": [
+    [
+     1,
+     1.43,
+     0.604
+    ],
+    [
+     32,
+     45.71,
+     0.603
+    ],
+    [
+     20,
+     28.57,
+     0.599
+    ],
+    [
+     21,
+     30.0,
+     0.567
+    ],
+    [
+     24,
+     34.29,
+     0.565
+    ]
+   ]
+  },
+  "11-breakbeat-90s-continuous": {
+   "src": "main",
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 26.22,
+     "len": 90,
+     "at_clip_s": 0.0
+    }
+   ],
+   "seconds": 90.0,
+   "loudness": {
+    "I": -15.8,
+    "LRA": 2.9,
+    "TP": -5.0,
+    "Smin": -17.5,
+    "Smax": -13.4
+   },
+   "sample_peak_dbfs": -5.09,
+   "clipped_samples": 0,
+   "bands_pct": {
+    "<100": 26.2,
+    "<150": 51.1,
+    "150-3k": 45.1,
+    "3k-6k": 2.0,
+    ">3k": 3.8,
+    ">6k": 1.8,
+    ">8k": 0.9
+   },
+   "bus_db": {
+    "music": -27.5,
+    "sfx": -32.5,
+    "bed": -30.7,
+    "amb": -38.1,
+    "rev": -46.4
+   },
+   "clicks_master": {
+    "n": 0,
+    "per_min": 0.0,
+    "at": []
+   },
+   "clicks_music_bus": {
+    "n": 2,
+    "at": [
+     0.527,
+     55.631
+    ]
+   },
+   "events": [
+    {
+     "t": 0.5,
+     "kind": "mark",
+     "desc": "enter"
+    },
+    {
+     "t": 0.72,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 0.72,
+     "kind": "state",
+     "desc": "state title -> playing"
+    },
+    {
+     "t": 5.25,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1 (no cue sound)",
+     "cue_db": -240.0,
+     "music_in_win_db": -31.2,
+     "cue_over_music": -208.8,
+     "cue_over_bed": -208.6
+    },
+    {
+     "t": 6.28,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 7.68,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -31.9,
+     "cue_over_music": 6.6,
+     "cue_over_bed": 8.2
+    },
+    {
+     "t": 8.63,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 9.25,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 10.35,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2 (no cue sound)",
+     "cue_db": -240.0,
+     "music_in_win_db": -28.6,
+     "cue_over_music": -211.4,
+     "cue_over_bed": -210.8
+    },
+    {
+     "t": 10.58,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 10.7,
+     "kind": "passby",
+     "desc": "Doppler pass-by (closeness 0.56)"
+    },
+    {
+     "t": 11.66,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.71)"
+    },
+    {
+     "t": 12.93,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -23.0,
+     "music_in_win_db": -33.5,
+     "cue_over_music": 10.5,
+     "duck_measured_db": -8.0,
+     "cue_over_bed": 9.9
+    },
+    {
+     "t": 12.93,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -24.0,
+     "music_in_win_db": -31.5,
+     "cue_over_music": 7.5,
+     "cue_over_bed": 9.0
+    },
+    {
+     "t": 16.51,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash",
+     "cue_db": -25.4,
+     "music_in_win_db": -25.0,
+     "cue_over_music": -0.4,
+     "cue_over_bed": 4.7
+    },
+    {
+     "t": 17.72,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.3,
+     "music_in_win_db": -27.4,
+     "cue_over_music": 2.2,
+     "cue_over_bed": 4.5
+    },
+    {
+     "t": 17.76,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 18.87,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.2,
+     "music_in_win_db": -25.6,
+     "cue_over_music": 0.3,
+     "cue_over_bed": 5.7
+    },
+    {
+     "t": 19.34,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 19.54,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -3.6,
+     "cue_over_bed": -2.1
+    },
+    {
+     "t": 19.57,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.8,
+     "music_in_win_db": -32.5,
+     "cue_over_music": 4.7,
+     "cue_over_bed": -0.3
+    },
+    {
+     "t": 19.65,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 20.57,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 20.59,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.2,
+     "music_in_win_db": -29.6,
+     "cue_over_music": 1.5,
+     "duck_measured_db": -0.9,
+     "cue_over_bed": -1.4
+    },
+    {
+     "t": 20.61,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.5,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 2.3,
+     "cue_over_bed": 0.3
+    },
+    {
+     "t": 21.71,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -26.8,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 3.0,
+     "duck_measured_db": -2.1,
+     "cue_over_bed": -0.8
+    },
+    {
+     "t": 21.72,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -26.0,
+     "music_in_win_db": -26.6,
+     "cue_over_music": 0.6,
+     "cue_over_bed": -0.0
+    },
+    {
+     "t": 21.83,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 21.99,
+     "kind": "music",
+     "desc": "music run/lead-ride layer 4"
+    },
+    {
+     "t": 25.37,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 26.38,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.5,
+     "music_in_win_db": -29.5,
+     "cue_over_music": 4.0,
+     "duck_measured_db": -2.8,
+     "cue_over_bed": 3.8
+    },
+    {
+     "t": 26.38,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -25.5,
+     "music_in_win_db": -28.2,
+     "cue_over_music": 2.7,
+     "cue_over_bed": 3.7
+    },
+    {
+     "t": 28.76,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1370)",
+     "cue_db": -20.2,
+     "music_in_win_db": -26.4,
+     "cue_over_music": 6.3,
+     "cue_over_bed": 12.0
+    },
+    {
+     "t": 28.76,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 29.62,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "cue_db": -22.3,
+     "music_in_win_db": -38.3,
+     "cue_over_music": 16.0,
+     "duck_measured_db": -12.3,
+     "cue_over_bed": 11.8
+    },
+    {
+     "t": 35.42,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 36.28,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 36.36,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -2.7,
+     "cue_over_bed": 0.7
+    },
+    {
+     "t": 36.36,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -28.0,
+     "cue_over_music": 0.1,
+     "cue_over_bed": 2.6
+    },
+    {
+     "t": 37.71,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 40.64,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.3,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 1.5,
+     "duck_measured_db": -1.2,
+     "cue_over_bed": 3.7
+    },
+    {
+     "t": 40.65,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.6,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 2.2,
+     "cue_over_bed": 5.4
+    },
+    {
+     "t": 41.6,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 42.0,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 42.2,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -23.0,
+     "music_in_win_db": -32.1,
+     "cue_over_music": 9.1,
+     "duck_measured_db": -3.2,
+     "cue_over_bed": 10.7
+    },
+    {
+     "t": 42.23,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -22.9,
+     "music_in_win_db": -27.6,
+     "cue_over_music": 4.8,
+     "cue_over_bed": 10.8
+    },
+    {
+     "t": 48.09,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.5,
+     "music_in_win_db": -29.9,
+     "cue_over_music": 4.4,
+     "cue_over_bed": 6.7
+    },
+    {
+     "t": 48.14,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 49.66,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 50.13,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.2,
+     "music_in_win_db": -27.0,
+     "cue_over_music": 1.8,
+     "cue_over_bed": 5.6
+    },
+    {
+     "t": 50.5,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.8,
+     "music_in_win_db": -30.8,
+     "cue_over_music": 1.0,
+     "duck_measured_db": -3.2,
+     "cue_over_bed": -0.4
+    },
+    {
+     "t": 50.53,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -35.4,
+     "cue_over_music": 7.5,
+     "cue_over_bed": 1.6
+    },
+    {
+     "t": 50.57,
+     "kind": "music",
+     "desc": "music run/hats layer 2"
+    },
+    {
+     "t": 50.76,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.93)"
+    },
+    {
+     "t": 51.55,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.9)"
+    },
+    {
+     "t": 51.87,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.2,
+     "music_in_win_db": -28.8,
+     "cue_over_music": 0.7,
+     "duck_measured_db": -0.5,
+     "cue_over_bed": -1.8
+    },
+    {
+     "t": 51.89,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.4,
+     "music_in_win_db": -32.7,
+     "cue_over_music": 6.3,
+     "cue_over_bed": -0.0
+    },
+    {
+     "t": 52.01,
+     "kind": "music",
+     "desc": "music run/ghosts-arp layer 3"
+    },
+    {
+     "t": 52.48,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 52.84,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -24.1,
+     "music_in_win_db": -30.9,
+     "cue_over_music": 6.7,
+     "duck_measured_db": -3.2,
+     "cue_over_bed": 3.0
+    },
+    {
+     "t": 52.87,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -22.4,
+     "music_in_win_db": -32.1,
+     "cue_over_music": 9.8,
+     "cue_over_bed": 4.9
+    },
+    {
+     "t": 52.96,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -22.0,
+     "music_in_win_db": -30.1,
+     "cue_over_music": 8.1,
+     "cue_over_bed": 5.5
+    },
+    {
+     "t": 53.16,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 53.43,
+     "kind": "music",
+     "desc": "music run/lead-ride layer 4"
+    },
+    {
+     "t": 55.26,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.6,
+     "music_in_win_db": -30.3,
+     "cue_over_music": 4.7,
+     "duck_measured_db": -4.1,
+     "cue_over_bed": 3.2
+    },
+    {
+     "t": 55.29,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -25.0,
+     "music_in_win_db": -30.8,
+     "cue_over_music": 5.8,
+     "cue_over_bed": 3.8
+    },
+    {
+     "t": 58.02,
+     "kind": "delivery",
+     "desc": "delivery 2 (score 2956)",
+     "cue_db": -20.6,
+     "music_in_win_db": -25.7,
+     "cue_over_music": 5.1,
+     "cue_over_bed": 10.6
+    },
+    {
+     "t": 58.02,
+     "kind": "medal",
+     "desc": "medal tier 2"
+    },
+    {
+     "t": 58.87,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "cue_db": -22.2,
+     "music_in_win_db": -35.5,
+     "cue_over_music": 13.4,
+     "duck_measured_db": -9.1,
+     "cue_over_bed": 12.9
+    },
+    {
+     "t": 60.51,
+     "kind": "rush",
+     "desc": "rush hour starts"
+    },
+    {
+     "t": 60.55,
+     "kind": "music",
+     "desc": "music run/lead-ride+stabs layer 4"
+    },
+    {
+     "t": 62.54,
+     "kind": "duck:rush",
+     "desc": "music ducked to 0.4",
+     "cue_db": -22.4,
+     "music_in_win_db": -37.5,
+     "cue_over_music": 15.1,
+     "duck_measured_db": -11.6,
+     "cue_over_bed": 8.5
+    },
+    {
+     "t": 63.08,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 64.27,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 64.73,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -28.6,
+     "cue_over_music": -1.3,
+     "duck_measured_db": -0.8,
+     "cue_over_bed": 3.3
+    },
+    {
+     "t": 64.75,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -28.9,
+     "cue_over_music": 1.0,
+     "cue_over_bed": 5.3
+    },
+    {
+     "t": 64.86,
+     "kind": "music",
+     "desc": "music run/hats+stabs layer 2"
+    },
+    {
+     "t": 68.23,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.5",
+     "cue_db": -22.9,
+     "music_in_win_db": -37.1,
+     "cue_over_music": 14.2,
+     "duck_measured_db": -10.8,
+     "cue_over_bed": 10.6
+    },
+    {
+     "t": 68.26,
+     "kind": "pickup",
+     "desc": "parcel picked up",
+     "cue_db": -23.0,
+     "music_in_win_db": -33.1,
+     "cue_over_music": 10.1,
+     "cue_over_bed": 10.6
+    },
+    {
+     "t": 68.26,
+     "kind": "rush-order",
+     "desc": "rush order",
+     "cue_db": -23.0,
+     "music_in_win_db": -33.1,
+     "cue_over_music": 10.1,
+     "cue_over_bed": 10.6
+    },
+    {
+     "t": 73.77,
+     "kind": "chain-reset",
+     "desc": "chain x1 -> x0"
+    },
+    {
+     "t": 73.96,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -29.9,
+     "music_in_win_db": -34.5,
+     "cue_over_music": 4.6,
+     "duck_measured_db": -7.7,
+     "cue_over_bed": 1.4
+    },
+    {
+     "t": 73.97,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1",
+     "cue_db": -27.9,
+     "music_in_win_db": -32.9,
+     "cue_over_music": 5.0,
+     "cue_over_bed": 3.4
+    },
+    {
+     "t": 75.72,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 76.65,
+     "kind": "boost-on",
+     "desc": "boost on",
+     "cue_db": -25.5,
+     "music_in_win_db": -30.6,
+     "cue_over_music": 5.1,
+     "cue_over_bed": 6.9
+    },
+    {
+     "t": 77.47,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -28.2,
+     "music_in_win_db": -28.5,
+     "cue_over_music": 0.4,
+     "duck_measured_db": -1.2,
+     "cue_over_bed": -1.0
+    },
+    {
+     "t": 77.48,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2",
+     "cue_db": -26.5,
+     "music_in_win_db": -29.0,
+     "cue_over_music": 2.5,
+     "cue_over_bed": 0.6
+    },
+    {
+     "t": 77.72,
+     "kind": "music",
+     "desc": "music run/ghosts-arp+stabs layer 3"
+    },
+    {
+     "t": 78.43,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -26.7,
+     "music_in_win_db": -29.8,
+     "cue_over_music": 3.1,
+     "duck_measured_db": -1.1,
+     "cue_over_bed": 0.3
+    },
+    {
+     "t": 78.46,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3",
+     "cue_db": -25.3,
+     "music_in_win_db": -33.4,
+     "cue_over_music": 8.1,
+     "cue_over_bed": 1.7
+    },
+    {
+     "t": 79.12,
+     "kind": "music",
+     "desc": "music run/lead-ride+stabs layer 4"
+    },
+    {
+     "t": 79.44,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.85)"
+    },
+    {
+     "t": 80.19,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -25.5,
+     "music_in_win_db": -27.7,
+     "cue_over_music": 2.2,
+     "duck_measured_db": -0.1,
+     "cue_over_bed": -0.2
+    },
+    {
+     "t": 80.22,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4",
+     "cue_db": -24.8,
+     "music_in_win_db": -28.7,
+     "cue_over_music": 3.9,
+     "cue_over_bed": 0.6
+    },
+    {
+     "t": 80.59,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 0.81)"
+    },
+    {
+     "t": 80.82,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 82.23,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "cue_db": -24.4,
+     "music_in_win_db": -29.3,
+     "cue_over_music": 4.9,
+     "duck_measured_db": -2.9,
+     "cue_over_bed": 4.6
+    },
+    {
+     "t": 82.23,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5",
+     "cue_db": -24.9,
+     "music_in_win_db": -25.3,
+     "cue_over_music": 0.3,
+     "cue_over_bed": 4.1
+    },
+    {
+     "t": 83.66,
+     "kind": "passby-close",
+     "desc": "Doppler pass-by (closeness 1)"
+    },
+    {
+     "t": 89.81,
+     "kind": "duck:delivery",
+     "desc": "music ducked to 0.45",
+     "cue_db": -19.4,
+     "music_in_win_db": -31.4,
+     "cue_over_music": 12.0,
+     "duck_measured_db": -5.0,
+     "cue_over_bed": 12.1
+    },
+    {
+     "t": 89.82,
+     "kind": "delivery",
+     "desc": "delivery 3 (score 4941)",
+     "cue_db": -21.1,
+     "music_in_win_db": -30.7,
+     "cue_over_music": 9.6,
+     "cue_over_bed": 10.5
+    }
+   ],
+   "repetition_top": [
+    [
+     1,
+     1.43,
+     0.603
+    ],
+    [
+     32,
+     45.71,
+     0.6
+    ],
+    [
+     20,
+     28.57,
+     0.581
+    ],
+    [
+     44,
+     62.86,
+     0.577
+    ],
+    [
+     52,
+     74.29,
+     0.576
+    ]
+   ],
+   "repetition_all": [
+    [
+     1,
+     1.43,
+     0.603
+    ],
+    [
+     2,
+     2.86,
+     0.534
+    ],
+    [
+     3,
+     4.29,
+     0.51
+    ],
+    [
+     4,
+     5.71,
+     0.524
+    ],
+    [
+     5,
+     7.14,
+     0.483
+    ],
+    [
+     6,
+     8.57,
+     0.482
+    ],
+    [
+     7,
+     10.0,
+     0.477
+    ],
+    [
+     8,
+     11.43,
+     0.5
+    ],
+    [
+     9,
+     12.86,
+     0.496
+    ],
+    [
+     10,
+     14.29,
+     0.506
+    ],
+    [
+     11,
+     15.71,
+     0.511
+    ],
+    [
+     12,
+     17.14,
+     0.525
+    ],
+    [
+     13,
+     18.57,
+     0.491
+    ],
+    [
+     14,
+     20.0,
+     0.475
+    ],
+    [
+     15,
+     21.43,
+     0.471
+    ],
+    [
+     16,
+     22.86,
+     0.51
+    ],
+    [
+     17,
+     24.29,
+     0.49
+    ],
+    [
+     18,
+     25.71,
+     0.508
+    ],
+    [
+     19,
+     27.14,
+     0.519
+    ],
+    [
+     20,
+     28.57,
+     0.581
+    ],
+    [
+     21,
+     30.0,
+     0.552
+    ],
+    [
+     22,
+     31.43,
+     0.547
+    ],
+    [
+     23,
+     32.86,
+     0.519
+    ],
+    [
+     24,
+     34.29,
+     0.534
+    ],
+    [
+     25,
+     35.71,
+     0.492
+    ],
+    [
+     26,
+     37.14,
+     0.482
+    ],
+    [
+     27,
+     38.57,
+     0.493
+    ],
+    [
+     28,
+     40.0,
+     0.519
+    ],
+    [
+     29,
+     41.43,
+     0.502
+    ],
+    [
+     30,
+     42.86,
+     0.5
+    ],
+    [
+     31,
+     44.29,
+     0.543
+    ],
+    [
+     32,
+     45.71,
+     0.6
+    ],
+    [
+     33,
+     47.14,
+     0.529
+    ],
+    [
+     34,
+     48.57,
+     0.479
+    ],
+    [
+     35,
+     50.0,
+     0.474
+    ],
+    [
+     36,
+     51.43,
+     0.49
+    ],
+    [
+     37,
+     52.86,
+     0.482
+    ],
+    [
+     38,
+     54.29,
+     0.494
+    ],
+    [
+     39,
+     55.71,
+     0.495
+    ],
+    [
+     40,
+     57.14,
+     0.523
+    ],
+    [
+     41,
+     58.57,
+     0.53
+    ],
+    [
+     42,
+     60.0,
+     0.55
+    ],
+    [
+     43,
+     61.43,
+     0.545
+    ],
+    [
+     44,
+     62.86,
+     0.577
+    ],
+    [
+     45,
+     64.29,
+     0.539
+    ],
+    [
+     46,
+     65.71,
+     0.518
+    ],
+    [
+     47,
+     67.14,
+     0.524
+    ],
+    [
+     48,
+     68.57,
+     0.571
+    ],
+    [
+     49,
+     70.0,
+     0.547
+    ],
+    [
+     50,
+     71.43,
+     0.537
+    ],
+    [
+     51,
+     72.86,
+     0.54
+    ],
+    [
+     52,
+     74.29,
+     0.576
+    ],
+    [
+     53,
+     75.71,
+     0.535
+    ],
+    [
+     54,
+     77.14,
+     0.491
+    ],
+    [
+     55,
+     78.57,
+     0.483
+    ],
+    [
+     56,
+     80.0,
+     0.482
+    ],
+    [
+     57,
+     81.43,
+     0.473
+    ],
+    [
+     58,
+     82.86,
+     0.504
+    ],
+    [
+     59,
+     84.29,
+     0.508
+    ]
+   ]
+  }
+ },
+ "session": {
+  "main": {
+   "music": -26.9,
+   "sfx": -32.7,
+   "bed": -32.0,
+   "amb": -39.3,
+   "rev": -47.4
+  },
+  "fx": {
+   "music": -27.6,
+   "sfx": -35.9,
+   "bed": -32.8,
+   "amb": -38.4,
+   "rev": -51.4
+  },
+  "ot": {
+   "music": -26.2,
+   "sfx": -34.8,
+   "bed": -35.8,
+   "amb": -42.2,
+   "rev": -50.4
+  }
+ }
+}

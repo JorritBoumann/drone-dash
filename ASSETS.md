@@ -138,3 +138,5 @@ Game file: `public/assets/audio/sfx.mp3` (MP3 96 kbps mono 48 kHz, 13.4 s, **161
 | `spaceEngineLow_001.ogg` | kenney_sci-fi-sounds | CC0 1.0 | Kenney (www.kenney.nl) | 1.6 to 4.9 s, loop with a baked 0.3 s crossfade | city ambience: distant low engine rumble (lowpassed, very quiet) | `cityLow` |
 
 Everything else in the audio stays procedural: the rotor, air and slipstream, the ambience beds (city hum and traffic, harbour water and wind, altitude wind), Doppler pass-bys, FM chimes, horns, the medal fanfare and all music.
+
+Round 46: the second soundtrack, "Breakbeat" (`src/systems/breakbeat.ts`), is procedural too: every drum (kick, snare, hats, shaker, ride, crash, riser), the sub and saw bass, the FM Rhodes, plucks, lead and stabs are synthesised in code from oscillators and the game's own generated noise buffer. It uses no sample and adds no file and no bytes to the load. The `toggle` sample above also clicks for the new Music: Classic / Breakbeat and Effects on / off buttons.

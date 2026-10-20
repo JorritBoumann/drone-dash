@@ -126,6 +126,9 @@ interface DroneDashApi {
   audioMeter?(on: boolean): void;
   /** Round 45: the mix's tap points (master output and the buses) for recordings. */
   audioTaps?(): Record<string, AudioNode> | null;
+  /** round 46: soundtrack choice and the effects switch */
+  soundtrack?(t: 'classic' | 'breakbeat'): void;
+  sfx?(on: boolean): void;
   musicForce?(chain: number | null, final?: boolean): void;
   /** Test: music on/off (same as the music chip, remembered). */
   music?(on: boolean): void;

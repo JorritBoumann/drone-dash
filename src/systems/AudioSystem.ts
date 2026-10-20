@@ -1,12 +1,32 @@
 import { storeGet, storeSet } from '../core/storage';
 import { ARP_ORDER, BPM, FINAL_PROG, midi, OVER_PROG_MEDAL, OVER_PROG_NONE, RUN_ARP_ORDERS, RUN_BASS_VARIANTS, RUN_FORM, RUN_LEAD, RUN_LEAD_ORDER, STEP, TITLE_PLUCK, TITLE_PROG, type Chord } from './music';
 import { SPRITE, SPRITE_SYNC } from './sfxSprite';
+import { BB_BPM, BB_STEP, bbChord, Breakbeat, type BeatScene } from './breakbeat';
 
 export type MusicScene = 'off' | 'title' | 'run' | 'final' | 'over';
 type Layer = 'pad' | 'bass' | 'drums' | 'arp' | 'lead' | 'urg';
 const LAYERS: Layer[] = ['pad', 'bass', 'drums', 'arp', 'lead', 'urg'];
 
 const MUSIC_KEY = 'drone-dash-music-v1';
+// Round 46: which soundtrack plays (Classic, the original; Breakbeat, the alternative) and the effects switch
+const TRACK_KEY = 'drone-dash-track-v1';
+const SFX_KEY = 'drone-dash-sfx-v1';
+export type Soundtrack = 'classic' | 'breakbeat';
+export const SOUNDTRACKS: Soundtrack[] = ['classic', 'breakbeat'];
+/**
+ * Round 46 (critic: menus 1.4 LU over the run): scene levels per soundtrack. Classic's title and game-over loops come
+ * down 1.4 dB; Breakbeat's levels are matched the same way (run near -16 LUFS, menus within 1 LU of it).
+ */
+const SCENE_GAIN: Record<Soundtrack, Record<'title' | 'run' | 'over', number>> = {
+  classic: { title: 0.85, run: 1, over: 0.85 },
+  breakbeat: { title: 1.78, run: 1, over: 1.64 },
+};
+/** Round 46: the music tone filter's resting cutoff (Breakbeat's hats and ride need the air above 6.5 kHz). */
+const TONE_OPEN: Record<Soundtrack, number> = { classic: 6500, breakbeat: 12000 };
+/** Rotor detune per motor (codex low: a constant, not a new array every frame). */
+const ROTOR_DET = [-0.011, -0.004, 0.005, 0.013] as const;
+/** Round 46: the crash's level against round 45 (-4 dB). */
+const CRASH_TRIM = 0.63;
 // Round 45: the music bus sits 2 dB higher (the rotor no longer covers it); the over loop gets its own lift below.
 const MUSIC_VOL = 0.63;
 // Master level into the glue compressor and the limiter. Round 45: the mix is built from four sub-buses (music, drone,
@@ -20,6 +40,8 @@ const FINAL_IN = 10; // s left on the clock: the tension section starts
 const FINAL_OUT = 12; // s left: a time bonus has to lift the clock this far before the run section comes back
 /** Round 45: the game-over loop is quiet pad and bells; it is lifted this much (and its sub cut) to sit near the run. */
 const OVER_LIFT = 1.95;
+/** Round 46: Breakbeat's level into the music chain (matched to Classic's run loudness). */
+const BB_LEVEL = 0.7;
 /** Round 45: rotor and air bed level (drone bus), a little under the music in cruise. */
 const DRONE_VOL = 0.21;
 const AMB_VOL = 0.55;
@@ -35,6 +57,31 @@ function readMusicPref(): boolean {
 function writeMusicPref(on: boolean): void {
   try {
     storeSet(MUSIC_KEY, on ? '1' : '0');
+  } catch {
+    /* storage unavailable */
+  }
+}
+/** Soundtrack: `?music=breakbeat` or `?music=classic` wins for this page (not saved), then the saved choice, then Classic. */
+function readTrackPref(): Soundtrack {
+  try {
+    const q = new URLSearchParams(window.location.search).get('music');
+    if (q === 'classic' || q === 'breakbeat') return q;
+    const v = storeGet(TRACK_KEY);
+    return v === 'breakbeat' ? 'breakbeat' : 'classic';
+  } catch {
+    return 'classic';
+  }
+}
+function readSfxPref(): boolean {
+  try {
+    return storeGet(SFX_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+function writePref(key: string, v: string): void {
+  try {
+    storeSet(key, v);
   } catch {
     /* storage unavailable */
   }
@@ -82,6 +129,7 @@ export class AudioSystem {
   private droneOut!: GainNode;
   private ambBus!: GainNode;
   private ambOut!: GainNode;
+  private ambGate!: GainNode;
   private fxReturn!: GainNode;
   private reverbSend!: GainNode;
   private slapSend!: GainNode;
@@ -131,6 +179,7 @@ export class AudioSystem {
   private passes = 0;
   private lastPass = 0;
   private passLive: number[] = [];
+  private lastPassNear = 0;
   private carrying = false;
   private noiseBuffer!: AudioBuffer;
   private noiseStereo!: AudioBuffer;
@@ -145,9 +194,22 @@ export class AudioSystem {
   private spriteMs = 0;
   private sampled = 0;
   muted = false;
+  /** Round 46: sound effects on/off (rotor, air, ambience, cues, UI clicks), remembered. Separate from the music. */
+  sfxEnabled = readSfxPref();
+  /** Round 46: one-shot sources started and not yet ended (their graphs are disconnected on `ended`). */
+  private live = 0;
+  private reaped = 0;
+  private pingL!: DelayNode;
+  private pingR!: DelayNode;
 
   // ----- music -----
   musicEnabled = readMusicPref();
+  /** Round 46: the active soundtrack (Classic by default). */
+  track: Soundtrack = readTrackPref();
+  /** step length of the active soundtrack (Classic 0.12 s at 125 BPM, Breakbeat 0.089 s at 168 BPM) */
+  private stepLen = this.track === 'breakbeat' ? BB_STEP : STEP;
+  private bb: Breakbeat | null = null;
+  private rush = false;
   private scene: MusicScene = 'off';
   private overTier = 0;
   private musicOut!: GainNode;
@@ -197,6 +259,11 @@ export class AudioSystem {
 
   get ready(): boolean {
     return !!this.ctx && this.ctx.state === 'running';
+  }
+
+  /** Round 46: effects play only while the context runs and the effects switch is on. */
+  private get fxOk(): boolean {
+    return this.sfxEnabled && !!this.ctx && this.ctx.state === 'running';
   }
 
   /**
@@ -287,18 +354,20 @@ export class AudioSystem {
 
     // ---- buses
     this.sfx = ctx.createGain();
-    this.sfx.gain.value = SFX_VOL;
+    this.sfx.gain.value = this.sfxEnabled ? SFX_VOL : 0;
     this.sfx.connect(this.master);
     this.musicBus = ctx.createGain();
     this.musicBus.connect(this.master);
     this.droneBus = ctx.createGain();
-    this.droneBus.gain.value = DRONE_VOL;
+    this.droneBus.gain.value = this.sfxEnabled ? DRONE_VOL : 0;
     this.droneOut = ctx.createGain(); // the priority duck of the drone
     this.droneBus.connect(this.droneOut).connect(this.master);
     this.ambBus = ctx.createGain();
     this.ambBus.gain.value = 0;
     this.ambOut = ctx.createGain(); // the priority duck of the ambience
-    this.ambBus.connect(this.ambOut).connect(this.master);
+    this.ambGate = ctx.createGain(); // round 46: the effects switch
+    this.ambGate.gain.value = this.sfxEnabled ? 1 : 0;
+    this.ambBus.connect(this.ambOut).connect(this.ambGate).connect(this.master);
     this.fxReturn = ctx.createGain();
     this.fxReturn.connect(this.master);
 
@@ -337,7 +406,7 @@ export class AudioSystem {
     this.droneOut.connect(dVerb).connect(this.reverbSend);
     const aVerb = ctx.createGain();
     aVerb.gain.value = 0.12;
-    this.ambOut.connect(aVerb).connect(this.reverbSend);
+    this.ambGate.connect(aVerb).connect(this.reverbSend);
 
     // ---- slapback: a short stereo echo off the walls, opened in narrow streets, alleys and tunnels
     this.slapSend = ctx.createGain();
@@ -358,8 +427,11 @@ export class AudioSystem {
     // ---- ping-pong delay for the chimes (a dotted eighth, 0.36 s, left then right, darker each bounce)
     this.pingSend = ctx.createGain();
     const pl = ctx.createDelay(1), pr = ctx.createDelay(1);
-    pl.delayTime.value = STEP * 3;
-    pr.delayTime.value = STEP * 3;
+    // round 46: a dotted eighth of the active soundtrack (Classic 0.36 s, Breakbeat 0.27 s)
+    pl.delayTime.value = this.stepLen * 3;
+    pr.delayTime.value = this.stepLen * 3;
+    this.pingL = pl;
+    this.pingR = pr;
     const pfb = ctx.createGain();
     pfb.gain.value = 0.38;
     const pLp = ctx.createBiquadFilter();
@@ -433,18 +505,21 @@ export class AudioSystem {
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(o.gain ?? 1, t + o.att);
     }
+    const nodes: AudioNode[] = [src, g];
     let node: AudioNode = src;
     if (o.lp) {
       const f = ctx.createBiquadFilter();
       f.type = 'lowpass';
       f.frequency.value = o.lp;
       node = node.connect(f);
+      nodes.push(f);
     }
     if (o.hp) {
       const f = ctx.createBiquadFilter();
       f.type = 'highpass';
       f.frequency.value = o.hp;
       node = node.connect(f);
+      nodes.push(f);
     }
     node.connect(g);
     let out: AudioNode = g;
@@ -452,23 +527,41 @@ export class AudioSystem {
       const p = ctx.createStereoPanner();
       p.pan.value = Math.max(-1, Math.min(1, o.pan));
       out = g.connect(p);
+      nodes.push(p);
     }
     out.connect(o.dest ?? this.sfx);
     if (o.verb) {
       const v = ctx.createGain();
       v.gain.value = o.verb;
       out.connect(v).connect(this.reverbSend);
+      nodes.push(v);
     }
     if (o.slap) {
       const v = ctx.createGain();
       v.gain.value = o.slap;
       out.connect(v).connect(this.slapSend);
+      nodes.push(v);
     }
-    const off = Math.max(0, s.o + this.spriteDelay);
-    src.start(t, off, s.d);
-    src.stop(t + s.d / rate + 0.02);
+    // round 46 (codex low): the decoder correction moves the window into the buffer. The length now follows the clamped
+    // start (a negative correction clamped at 0 keeps the sample's real end) and is bounded by the end of the buffer.
+    const want = s.o + this.spriteDelay;
+    const off = Math.max(0, want);
+    const dur = Math.max(0.005, Math.min(this.sprite.duration - off, want + s.d - off));
+    src.start(t, off, dur);
+    src.stop(t + dur / rate + 0.02);
     this.sampled++;
+    this.reap(src, nodes);
     return true;
+  }
+
+  /** Round 46 (codex high): disconnect a one-shot graph (its source and temporary nodes) when its source ends. */
+  private reap(src: AudioScheduledSourceNode, nodes: AudioNode[]): void {
+    this.live++;
+    src.onended = () => {
+      this.live--;
+      this.reaped++;
+      for (const n of nodes) n.disconnect();
+    };
   }
 
   // =====================================================================================================
@@ -638,11 +731,10 @@ export class AudioSystem {
     const load = carrying ? 0.955 : 1;
     const base = (92 + speed01 * 58 + effort * 24 + (boosting ? 36 : 0) + altitude01 * 6) * load;
     const bank = Math.max(-1, Math.min(1, turn));
-    const det = [-0.011, -0.004, 0.005, 0.013];
     for (let i = 0; i < 4; i++) {
       // outer rotors spin up on the outside of the turn (left pair i 0,1; right pair i 2,3)
       const side = i < 2 ? -1 : 1;
-      this.rotors[i].frequency.setTargetAtTime(base * (1 + det[i] + side * bank * 0.025 * (0.4 + effort)), t, 0.09 + i * 0.012);
+      this.rotors[i].frequency.setTargetAtTime(base * (1 + ROTOR_DET[i] + side * bank * 0.025 * (0.4 + effort)), t, 0.09 + i * 0.012);
     }
     const blade = base * 0.5;
     this.subOsc.frequency.setTargetAtTime(blade, t, 0.1);
@@ -807,7 +899,7 @@ export class AudioSystem {
    * closing speed (m/s), `miss` the closest distance (m), `dur` the time to the closest point (s).
    */
   passBy(kind: 'car' | 'boat', pan0: number, pan1: number, speed: number, miss: number, dur: number): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const ctx = this.ctx!;
     const t = ctx.currentTime;
     this.passLive = this.passLive.filter((e) => e > t);
@@ -819,9 +911,13 @@ export class AudioSystem {
     this.passLive.push(end);
     this.passes++;
     const near = Math.max(0, Math.min(1, (14 - miss) / 11));
+    this.lastPassNear = Math.round(near * 100) / 100;
     const v = Math.max(0, Math.min(1, (speed - 3) / 20));
     const boat = kind === 'boat';
-    const amp = (boat ? 0.09 : 0.11) * (0.35 + 0.65 * near) * (0.5 + 0.5 * v);
+    // round 46 (critic: pass-bys sat 4.5 dB under the music): about +11 dB, weighted harder to the close ones, so a car
+    // brushing past is clearly heard (+3 to +6 dB over the music for its half second) and a far one stays a background swish
+    // Breakbeat's music sits about 2 dB hotter on the bus than Classic's, so its pass-bys get the same lift
+    const amp = (boat ? 0.33 : 0.4) * (0.2 + 0.8 * near * near) * (0.5 + 0.5 * v) * (this.track === 'breakbeat' ? 1.26 : 1);
     const shift = 1 + 0.18 * v; // exaggerated Doppler ratio before / after the closest point
     const pan = ctx.createStereoPanner();
     pan.pan.setValueAtTime(Math.max(-1, Math.min(1, pan0)), t);
@@ -844,22 +940,37 @@ export class AudioSystem {
     src.connect(f).connect(g).connect(pan);
     src.start(t, Math.random() * 1.5);
     src.stop(end + 0.05);
+    this.reap(src, [src, f, g]);
     // engine tone: a soft saw (car) or a low thrum (boat), pitch falling through the pass
     const o = ctx.createOscillator();
     if (this.softSaw) o.setPeriodicWave(this.softSaw);
     const f0 = boat ? 58 : 86 + Math.random() * 20;
     o.frequency.setValueAtTime(f0 * shift, t);
     o.frequency.setTargetAtTime(f0 / shift, tc - 0.05, 0.1);
+    // round 46: a real engine: the saw through a lowpass that opens as it closes in, plus a growl an octave up (AM at
+    // the firing rate), so it reads as a motor over the rotor and the music
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = boat ? 260 : 520;
+    lp.frequency.setValueAtTime(boat ? 260 : 600, t);
+    lp.frequency.linearRampToValueAtTime(boat ? 420 : 1300, tc);
+    lp.frequency.linearRampToValueAtTime(boat ? 240 : 500, end);
     const og = this.envGain();
     og.gain.setValueAtTime(0.0001, t);
-    og.gain.exponentialRampToValueAtTime(amp * (boat ? 1.4 : 0.9), tc);
+    og.gain.exponentialRampToValueAtTime(amp * (boat ? 1.4 : 1.1), tc);
     og.gain.exponentialRampToValueAtTime(0.0001, end);
-    o.connect(lp).connect(og).connect(pan);
+    const am = ctx.createGain();
+    am.gain.value = 0.75;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = boat ? 9 : 23 + Math.random() * 8;
+    const lg = ctx.createGain();
+    lg.gain.value = 0.25;
+    lfo.connect(lg).connect(am.gain);
+    o.connect(lp).connect(am).connect(og).connect(pan);
     o.start(t);
     o.stop(end + 0.05);
+    lfo.start(t);
+    lfo.stop(end + 0.05);
+    this.reap(o, [o, lp, am, og, lfo, lg, pan]);
   }
 
   // =====================================================================================================
@@ -894,20 +1005,24 @@ export class AudioSystem {
     g.gain.linearRampToValueAtTime(gain, start + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     o.connect(g);
+    const nodes: AudioNode[] = [o, g];
     let out: AudioNode = g;
     if (pan) {
       const p = ctx.createStereoPanner();
       p.pan.value = pan;
       out = g.connect(p);
+      nodes.push(p);
     }
     out.connect(this.sfx);
     if (reverb > 0) {
       const s = ctx.createGain();
       s.gain.value = reverb * 0.5;
       out.connect(s).connect(this.reverbSend);
+      nodes.push(s);
     }
     o.start(start);
     o.stop(start + dur + 0.05);
+    this.reap(o, nodes);
   }
 
   private noise(start: number, dur: number, gain: number, type: BiquadFilterType, f0: number, f1: number, q = 1, pan = 0, verb = 0): void {
@@ -924,20 +1039,24 @@ export class AudioSystem {
     g.gain.linearRampToValueAtTime(gain, start + Math.min(0.03, dur * 0.2));
     g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
     src.connect(f).connect(g);
+    const nodes: AudioNode[] = [src, f, g];
     let out: AudioNode = g;
     if (pan) {
       const p = ctx.createStereoPanner();
       p.pan.value = pan;
       out = g.connect(p);
+      nodes.push(p);
     }
     out.connect(this.sfx);
     if (verb > 0) {
       const s = ctx.createGain();
       s.gain.value = verb;
       out.connect(s).connect(this.reverbSend);
+      nodes.push(s);
     }
     src.start(start, Math.random() * 1.5);
     src.stop(start + dur + 0.05);
+    this.reap(src, nodes);
   }
 
   /**
@@ -975,15 +1094,18 @@ export class AudioSystem {
     const v = ctx.createGain();
     v.gain.value = o.verb ?? 0.35;
     p.connect(v).connect(this.reverbSend);
+    const nodes: AudioNode[] = [car, mod, mg, oct, og, g, p, v];
     if (o.ping) {
       const s = ctx.createGain();
       s.gain.value = o.ping;
       p.connect(s).connect(this.pingSend);
+      nodes.push(s);
     }
     for (const x of [car, mod, oct]) {
       x.start(start);
       x.stop(start + dur + 0.05);
     }
+    this.reap(car, nodes);
   }
 
   /** A short sine sub-drop (the weight under an impact or the boost ignition). */
@@ -1011,6 +1133,7 @@ export class AudioSystem {
     o.connect(f).connect(g).connect(this.sfx);
     o.start(t);
     o.stop(t + dur + 0.05);
+    this.reap(o, [o, f, g]);
   }
 
   /** The notes (midi) of the chord the music is on right now: four arp tones (C major when the music is off). */
@@ -1018,14 +1141,43 @@ export class AudioSystem {
     const fallback = [72, 76, 79, 84];
     if (!this.ctx || this.scene === 'off') return fallback;
     const now = this.ctx.currentTime;
-    const stepNow = this.step - (this.nextStep - now) / STEP;
+    const stepNow = this.step - (this.nextStep - now) / this.stepLen;
     const bar = Math.max(0, Math.floor(stepNow / 16));
+    // round 46: the chord comes from the soundtrack that is playing
+    if (this.track === 'breakbeat' && this.bb) return [...bbChord(this.scene as BeatScene, bar, this.overTier, this.overtime, this.bb.dropBar).arp].sort((a, b) => a - b);
     let ch: Chord | undefined;
     if (this.scene === 'run') ch = RUN_FORM[bar % RUN_FORM.length];
     else if (this.scene === 'final') ch = FINAL_PROG[bar % 4];
     else if (this.scene === 'title') ch = TITLE_PROG[Math.floor(bar / 2) % TITLE_PROG.length];
     else if (this.scene === 'over') { const p = this.overTier > 0 ? OVER_PROG_MEDAL : OVER_PROG_NONE; ch = p[Math.floor(bar / 2) % p.length]; }
     return ch ? [...ch.arp].sort((a, b) => a - b) : fallback;
+  }
+
+  /** Round 46: pitch classes of the whole chord that plays now (bass, voicing and arp tones), for tests. */
+  private chordPcs(): number[] {
+    if (!this.ctx) return [];
+    const bar = Math.max(0, Math.floor((this.step - (this.nextStep - this.ctx.currentTime) / this.stepLen) / 16));
+    let notes: number[];
+    if (this.track === 'breakbeat' && this.bb) {
+      const c = bbChord(this.scene as BeatScene, bar, this.overTier, this.overtime, this.bb.dropBar);
+      notes = [c.bass, ...c.keys, ...c.arp];
+    } else {
+      const c = this.scene === 'run' ? RUN_FORM[bar % RUN_FORM.length] : this.scene === 'final' ? FINAL_PROG[bar % 4] : this.scene === 'title' ? TITLE_PROG[Math.floor(bar / 2) % 4] : (this.overTier > 0 ? OVER_PROG_MEDAL : OVER_PROG_NONE)[Math.floor(bar / 2) % 4];
+      notes = [c.bass, ...c.pad, ...c.arp];
+    }
+    return [...new Set(notes.map((n) => n % 12))].sort((a, b) => a - b);
+  }
+
+  /** Round 46: the chord's distinct tones inside one octave (Classic's arps repeat the root an octave up). */
+  private chordTones(): number[] {
+    const arp = this.chordNow();
+    return arp.filter((n, i) => n - arp[0] < 12 && arp.indexOf(n) === i);
+  }
+
+  /** Ladder over distinct chord tones: index k = u[k % n] up an octave every n steps. */
+  private ladderU(u: number[], k: number): number {
+    const n = u.length;
+    return u[((k % n) + n) % n] + 12 * Math.floor(k / n);
   }
 
   /** Chord-tone ladder: index k = arp[k % 4] up an octave every 4 steps. */
@@ -1053,7 +1205,7 @@ export class AudioSystem {
 
   /** Meter quarter reached: a short rising blip on the chord (higher each step). */
   slipTick(step: number): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     const arp = this.chordNow();
     const f = midi(this.ladder(arp, 3 + step));
@@ -1065,7 +1217,7 @@ export class AudioSystem {
    * x5 six, each chain step starting one chord tone higher. A ping-pong delay carries them across.
    */
   slipPayout(chain: number): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     // a shallow, quick duck: at chain x3+ the chimes come every 1 to 2 s and a deep duck pumped the music
     this.priority(0.62, t, 0.22, 0.35, 'slip');
@@ -1084,21 +1236,23 @@ export class AudioSystem {
   }
 
   pickup(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
-    this.priority(0.6, t, 0.35, 0.4, 'pickup');
+    // round 46 (critic: the pickup reward shrank to +8 dB over the music, it was +14.8): a slightly deeper duck and the
+    // chord bells come in earlier and about 5 dB louder, so the pickup has a clear tonal top again
+    this.priority(0.5, t, 0.4, 0.4, 'pickup');
     // the claw latches (click + tin clunk), a short servo whir, then the chime on the chord
     if (!this.samp('latch', t, { gain: 0.6, rate: 0.95 + Math.random() * 0.1, att: 0.006, lp: 5000 })) this.noise(t, 0.04, 0.05, 'highpass', 4000, 6000);
     this.samp('clunk', t + 0.012, { gain: 0.3, rate: 1 + Math.random() * 0.08, verb: 0.15, att: 0.005, lp: 3000 });
     this.servo(t + 0.03, 260, 520, 0.13, 0.035);
     const arp = this.chordNow();
-    const at = t + 0.15;
-    [4, 5, 6].forEach((k, i) => this.bell(midi(this.ladder(arp, k)), at + i * 0.07, 0.55, i === 2 ? 0.2 : 0.16, { pan: (i - 1) * 0.2, verb: 0.35, ping: i === 2 ? 0.35 : 0 }));
-    this.noise(at, 0.25, 0.03, 'highpass', 5000, 10000);
+    const at = t + 0.09;
+    [4, 5, 6].forEach((k, i) => this.bell(midi(this.ladder(arp, k)), at + i * 0.065, i === 2 ? 0.7 : 0.55, i === 2 ? 0.36 : 0.29, { pan: (i - 1) * 0.2, verb: 0.35, ping: i === 2 ? 0.4 : 0, bright: 1.9 }));
+    this.noise(at, 0.25, 0.045, 'highpass', 5000, 10000);
   }
 
   deliver(combo: number): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     this.priority(0.45, t, 0.7, 0.6, 'delivery');
     // unlatch, servo, the parcel lands (soft thud + cardboard), then the chord chime, lifted a tone per combo step
@@ -1118,7 +1272,7 @@ export class AudioSystem {
 
   /** A hard knock on a wall (not a crash). pan -1..1: the wall side. */
   bump(strength: number, pan = 0): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     const s = Math.min(1, strength / 14);
     const k = 'knock' + Math.floor(Math.random() * 3);
@@ -1142,26 +1296,28 @@ export class AudioSystem {
    * The music's top end dips through the slow-motion beat.
    */
   impact(strength: number, pan = 0): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const ctx = this.ctx!;
     const t = ctx.currentTime;
     const s = Math.min(1, strength);
     this.priority(0.35, t, 0.55, 0.6, 'crash');
     const r = () => 0.9 + Math.random() * 0.2;
-    const a = this.samp('crunch', t, { gain: 0.6 + s * 0.3, rate: r(), pan: pan * 0.4, verb: 0.3, slap: 0.4, lp: 3800 });
-    this.samp('plate', t + 0.006, { gain: 0.5 + s * 0.3, rate: r(), pan: pan * 0.4, verb: 0.2 });
-    this.samp('knock' + Math.floor(Math.random() * 3), t + 0.01, { gain: 0.3, rate: 0.75 + Math.random() * 0.1, pan: pan * 0.5 });
-    this.subDrop(t, 72, 26, 0.55, 0.4 + s * 0.25);
+    // round 46 (critic: the crash was 3 to 4 dB too hot next to every other cue): every layer x0.63 (-4 dB)
+    const k = CRASH_TRIM;
+    const a = this.samp('crunch', t, { gain: (0.6 + s * 0.3) * k, rate: r(), pan: pan * 0.4, verb: 0.3, slap: 0.4, lp: 3800 });
+    this.samp('plate', t + 0.006, { gain: (0.5 + s * 0.3) * k, rate: r(), pan: pan * 0.4, verb: 0.2 });
+    this.samp('knock' + Math.floor(Math.random() * 3), t + 0.01, { gain: 0.3 * k, rate: 0.75 + Math.random() * 0.1, pan: pan * 0.5 });
+    this.subDrop(t, 72, 26, 0.55, (0.4 + s * 0.25) * k);
     if (!a) {
-      this.noise(t, 0.32 + s * 0.2, 0.3 + s * 0.2, 'lowpass', 2400, 160, 0.9);
-      this.noise(t + 0.02, 0.12, 0.07 + s * 0.05, 'bandpass', 3800, 1800, 3);
+      this.noise(t, 0.32 + s * 0.2, (0.3 + s * 0.2) * k, 'lowpass', 2400, 160, 0.9);
+      this.noise(t + 0.02, 0.12, (0.07 + s * 0.05) * k, 'bandpass', 3800, 1800, 3);
     }
     // the music's top closes for the slow-motion beat, then opens
     const mt = this.musicTone.frequency;
     mt.cancelScheduledValues(t);
     mt.setValueAtTime(mt.value, t);
     mt.exponentialRampToValueAtTime(900, t + 0.05);
-    mt.setTargetAtTime(6500, t + 0.35, 0.18);
+    mt.setTargetAtTime(TONE_OPEN[this.track], t + 0.35, 0.18);
     if (!this.rotorOn) return;
     const g = this.rotorSputter.gain;
     g.cancelScheduledValues(t);
@@ -1189,7 +1345,7 @@ export class AudioSystem {
 
   /** A glancing wall hit: metal scrape grains and a grind, on the wall side. Rate-limited for long slides. */
   scrape(strength: number, pan = 0): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     if (t - this.lastScrape < 0.09) return;
     this.lastScrape = t;
@@ -1206,7 +1362,7 @@ export class AudioSystem {
 
   /** The charge after a crash: the falling two-note "lost it" cue (lower still, with an error blip, when a combo breaks). */
   crashCue(comboBroken: boolean): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime - 0.12;
     const base = comboBroken ? 392 : 466.16;
     this.tone(base, t + 0.12, 0.22, 'triangle', 0.1, 0.3);
@@ -1216,7 +1372,7 @@ export class AudioSystem {
 
   /** Boost starts: an ignition burst and a sub-drop, then the burner loop holds until boostEnd(). */
   boost(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const ctx = this.ctx!;
     const t = ctx.currentTime;
     this.subDrop(t, 95, 38, 0.35, 0.3);
@@ -1241,6 +1397,7 @@ export class AudioSystem {
     g.gain.linearRampToValueAtTime(0.42, t + 0.15);
     src.connect(hp).connect(g).connect(this.droneBus);
     src.start(t + 0.015, off + Math.random() * s.d * 0.5);
+    this.reap(src, [src, hp, g]);
     this.boostSrc = src;
     this.boostGain = g;
   }
@@ -1280,6 +1437,8 @@ export class AudioSystem {
     const v = ctx.createGain();
     v.gain.value = 0.35;
     g.connect(v).connect(this.reverbSend);
+    const nodes: AudioNode[] = [lp, g, v];
+    let first: OscillatorNode | null = null;
     for (const c of [-9, 0, 8]) {
       const o = ctx.createOscillator();
       if (this.softSaw) o.setPeriodicWave(this.softSaw);
@@ -1289,35 +1448,53 @@ export class AudioSystem {
       o.connect(lp);
       o.start(t);
       o.stop(t + dur + 0.05);
+      nodes.push(o);
+      first ??= o;
     }
+    if (first) this.reap(first, nodes);
   }
 
   /** Round 15: rush hour starts. A two-note courier horn (detuned brass chord), played twice, over a duck. */
   rushHour(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     this.priority(0.4, t, 0.9, 0.6, 'rush');
+    // Classic: D/A then A/E (in C major). Round 46, Breakbeat: the same shape on the chord that is playing.
+    const bb = this.track === 'breakbeat';
+    const arp = bb ? this.chordNow() : [];
+    const [a1, a0, b1, b0, sub] = bb ? [arp[2], arp[0], arp[0] + 12, arp[2], arp[0] - 24].map(midi) : [587.33, 440, 880, 659.25, 146.83];
     [0, 0.34].forEach((o) => {
-      this.horn(587.33, t + o, 0.16, 0.09);
-      this.horn(440, t + o, 0.16, 0.06);
-      this.horn(880, t + o + 0.15, 0.2, 0.09);
-      this.horn(659.25, t + o + 0.15, 0.2, 0.06);
+      this.horn(a1, t + o, 0.16, 0.09);
+      this.horn(a0, t + o, 0.16, 0.06);
+      this.horn(b1, t + o + 0.15, 0.2, 0.09);
+      this.horn(b0, t + o + 0.15, 0.2, 0.06);
     });
-    this.tone(146.83, t, 0.7, 'sine', 0.16, 0.2);
+    this.tone(sub, t, 0.7, 'sine', 0.16, 0.2);
     this.noise(t + 0.1, 0.5, 0.04, 'highpass', 5000, 9000);
   }
 
   /** Round 17: overtime starts. A rising three-note brass horn over a duck, then a snare roll into the top layer. */
   overtimeHorn(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     this.priority(0.4, t, 0.8, 0.5, 'rush');
-    [587.33, 739.99, 987.77].forEach((f, i) => {
-      this.horn(f, t + i * 0.13, 0.14, 0.09);
-      this.horn(f * 0.75, t + i * 0.13, 0.14, 0.05);
-    });
-    this.horn(987.77 * 1.5, t + 0.42, 0.4, 0.07);
-    this.horn(987.77, t + 0.42, 0.4, 0.06);
+    if (this.track === 'breakbeat') {
+      // round 46: a rising call on the chord that is playing (the suspended dominant before the drop, usually)
+      const arp = this.chordNow();
+      [4, 5, 6].forEach((k, i) => {
+        this.horn(midi(this.ladder(arp, k)), t + i * 0.13, 0.14, 0.09);
+        this.horn(midi(this.ladder(arp, k - 2)), t + i * 0.13, 0.14, 0.05);
+      });
+      this.horn(midi(this.ladder(arp, 8)), t + 0.42, 0.4, 0.07);
+      this.horn(midi(this.ladder(arp, 6)), t + 0.42, 0.4, 0.06);
+    } else {
+      [587.33, 739.99, 987.77].forEach((f, i) => {
+        this.horn(f, t + i * 0.13, 0.14, 0.09);
+        this.horn(f * 0.75, t + i * 0.13, 0.14, 0.05);
+      });
+      this.horn(987.77 * 1.5, t + 0.42, 0.4, 0.07);
+      this.horn(987.77, t + 0.42, 0.4, 0.06);
+    }
     for (let i = 0; i < 8; i++) this.noise(t + 0.4 + i * 0.05, 0.04, 0.03 + i * 0.006, 'highpass', 2500, 7000);
   }
 
@@ -1331,7 +1508,7 @@ export class AudioSystem {
 
   /** Round 15: a rush order is aboard: a quick rising double beep. */
   rushOrder(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     this.tone(987.77, t + 0.05, 0.08, 'square', 0.04, 0.2);
     this.tone(1318.5, t + 0.15, 0.12, 'square', 0.045, 0.3);
@@ -1342,7 +1519,7 @@ export class AudioSystem {
    * rises a semitone each second, a pitched pip under it, and a heartbeat in the last 3 s.
    */
   tick(urgent: boolean, secs = 0): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     const up = secs > 0 ? Math.max(0, 10 - secs) : 0;
     const rate = Math.pow(2, up / 12);
@@ -1359,21 +1536,21 @@ export class AudioSystem {
 
   /** UI: a crisp select click (title buttons, play, resume). */
   click(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     if (!this.samp('select', t, { gain: 0.55 })) this.tone(880, t, 0.06, 'triangle', 0.08, 0.1);
   }
 
   /** UI: back / pause. */
   uiBack(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     if (!this.samp('back', t, { gain: 0.6 })) this.tone(660, t, 0.06, 'triangle', 0.07, 0.1);
   }
 
   /** UI: a toggle (music on/off, minimap). */
   uiToggle(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     if (!this.samp('toggle', t, { gain: 0.5 })) this.tone(990, t, 0.05, 'triangle', 0.06, 0.1);
   }
@@ -1383,28 +1560,37 @@ export class AudioSystem {
    * a bell shimmer. Each higher medal starts a whole tone higher and adds one bell. `delay` lines it up with the banner.
    */
   medal(tier: number, delay = 0): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime + delay;
     // the music drops ~11 dB under the fanfare and its bells, then comes back (the drone and the ambience dip too)
     this.priority(0.28, t - 0.03, 1.25, 0.7, 'medal');
     this.fanWin = { from: t, to: t + 1.2, sfxPeak: 0, sfxSum: 0, musSum: 0, n: 0, preDb: this.meter.musicOpenDb };
-    const lift = Math.pow(2, ((Math.min(tier, 4) - 1) * 2) / 12);
-    const motif = [392, 523.25, 659.25];
+    // Round 46: the motif climbs the chord the music is on (both soundtracks), starting on the first chord tone at or
+    // above G4 and one chord tone higher per tier (it used to rise a whole tone per tier and leave the key).
+    const u = this.chordTones();
+    let k0 = -12;
+    while (this.ladderU(u, k0) < 67) k0++;
+    k0 += Math.min(tier, 4) - 1;
+    const motif = [0, 1, 2].map((i) => midi(this.ladderU(u, k0 + i)));
+    const top = midi(this.ladderU(u, k0 + 3));
+    const sub = midi(this.ladderU(u, k0) - 12);
+    const bells = [0, 1, 2, 3].map((i) => midi(this.ladderU(u, k0 + 3 + i)) * 2);
+    // Breakbeat's brass is a triangle: a square's 3rd and 5th harmonics land off its ninth chords (Classic keeps its square)
+    const bbBrass = this.track === 'breakbeat';
     motif.forEach((n, i) => {
       const dur = i === 2 ? 1.1 : 0.16;
-      this.tone(n * lift, t + i * 0.12, dur, 'square', 0.035, 0.4);
-      this.tone(n * lift, t + i * 0.12, dur, 'sine', 0.16, 0.5);
+      this.tone(n, t + i * 0.12, dur, bbBrass ? 'triangle' : 'square', bbBrass ? 0.06 : 0.035, 0.4);
+      this.tone(n, t + i * 0.12, dur, 'sine', 0.16, 0.5);
     });
-    this.tone(783.99 * lift, t + 0.24, 1.1, 'sine', 0.1, 0.6);
-    this.tone(196 * lift, t + 0.24, 0.9, 'sine', 0.18, 0.2);
-    const bells = [2093, 2637, 3136, 4186];
-    for (let i = 0; i < Math.min(tier, 4); i++) this.bell(bells[i] * lift * 0.5, t + 0.32 + i * 0.07, 0.7, 0.05, { pan: (i % 2 ? 0.3 : -0.3), verb: 0.5, ping: 0.3 });
+    this.tone(top, t + 0.24, 1.1, 'sine', 0.1, 0.6);
+    this.tone(sub, t + 0.24, 0.9, 'sine', 0.18, 0.2);
+    for (let i = 0; i < Math.min(tier, 4); i++) this.bell(bells[i] * 0.5, t + 0.32 + i * 0.07, 0.7, 0.05, { pan: (i % 2 ? 0.3 : -0.3), verb: 0.5, ping: 0.3 });
     this.noise(t + 0.24, 0.7, 0.04, 'highpass', 6000, 11000);
   }
 
   /** Time's up: a falling sting with no medal; with a medal a rising C major cadence with one bell per tier. */
   gameOver(tier = 0): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     this.duck(0.35, t, 1.0, 0.8, 'gameover');
     this.boostEnd();
@@ -1412,24 +1598,30 @@ export class AudioSystem {
       [523.25, 415.3, 349.23, 261.63].forEach((n, i) => this.tone(n, t + i * 0.16, 0.7, 'triangle', 0.18));
       return;
     }
-    [392, 523.25, 659.25].forEach((n, i) => this.tone(n, t + i * 0.12, 0.3, 'triangle', 0.17));
-    [523.25, 659.25, 783.99].forEach((n) => this.tone(n, t + 0.36, 1.3, 'sine', 0.12, 0.5));
-    this.tone(130.81, t + 0.36, 1.1, 'sine', 0.2, 0.2);
-    const bells = [2093, 2637, 3136, 4186];
+    // Classic: a rising C major cadence. Round 46, Breakbeat: the same shape in A flat major, the chord its medal
+    // game-over loop opens on (Abmaj9); without a medal both fall C Ab F C, which is F minor, home for both tracks.
+    const bb = this.track === 'breakbeat';
+    (bb ? [311.13, 415.3, 523.25] : [392, 523.25, 659.25]).forEach((n, i) => this.tone(n, t + i * 0.12, 0.3, 'triangle', 0.17));
+    (bb ? [415.3, 523.25, 622.25] : [523.25, 659.25, 783.99]).forEach((n) => this.tone(n, t + 0.36, 1.3, 'sine', 0.12, 0.5));
+    if (bb) this.tone(783.99, t + 0.44, 1.1, 'sine', 0.05, 0.6);
+    this.tone(bb ? 103.83 : 130.81, t + 0.36, 1.1, 'sine', 0.2, 0.2);
+    const bells = bb ? [1661.22, 2093, 2489.02, 3135.96] : [2093, 2637, 3136, 4186];
     for (let i = 0; i < Math.min(tier, 4); i++) this.bell(bells[i] * 0.5, t + 0.44 + i * 0.09, 0.8, 0.045, { pan: (i % 2 ? 0.3 : -0.3), verb: 0.5, ping: 0.3 });
   }
 
   start(): void {
-    if (!this.ready) return;
+    if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
-    [392, 523.25, 659.25, 783.99].forEach((n, i) => this.tone(n, t + i * 0.06, 0.4, 'triangle', 0.1));
+    // round 46: the take-off arpeggio is on the run's first chord (Classic C major, Breakbeat F minor ninth)
+    (this.track === 'breakbeat' ? [349.23, 415.3, 523.25, 622.25] : [392, 523.25, 659.25, 783.99]).forEach((n, i) => this.tone(n, t + i * 0.06, 0.4, 'triangle', 0.1));
     this.ensureDroneSlap();
   }
 
   /** Test hook: the mix's tap points (master output and the buses), for the recording scripts. */
   taps(): Record<string, AudioNode> | null {
     if (!this.ctx) return null;
-    return { out: this.outTrim, music: this.musicBus, sfx: this.sfx, bed: this.droneOut, amb: this.ambOut, rev: this.fxReturn };
+    // round 46: amb is after the effects switch's gate (the same signal as ambOut while effects are on)
+    return { out: this.outTrim, music: this.musicBus, sfx: this.sfx, bed: this.droneOut, amb: this.ambGate, rev: this.fxReturn };
   }
 
   /** Test / debug: sample sprite and mix state. */
@@ -1437,6 +1629,7 @@ export class AudioSystem {
     const a = this.amb;
     const r = (v: number) => Math.round(v * 100) / 100;
     return {
+      liveOneShots: this.live, reapedOneShots: this.reaped, lastPassNear: this.lastPassNear,
       sprite: this.spriteState, spriteMs: this.spriteMs, spriteDelayMs: Math.round(this.spriteDelay * 1000), sampled: this.sampled, passes: this.passes,
       amb: { city: r(a.city), harbour: r(a.harbour), alt: r(a.alt), narrow: r(a.narrow) }, boosting: !!this.boostSrc, carrying: this.carrying,
     };
@@ -1465,7 +1658,7 @@ export class AudioSystem {
     this.musicFade.connect(this.sceneLift);
     const tone = ctx.createBiquadFilter();
     tone.type = 'lowpass';
-    tone.frequency.value = 6500;
+    tone.frequency.value = TONE_OPEN[this.track];
     tone.Q.value = 0.5;
     tone.connect(this.musicFade);
     this.musicTone = tone;
@@ -1521,8 +1714,55 @@ export class AudioSystem {
     this.sfxAn.fftSize = 1024;
     this.sfx.connect(this.sfxAn);
 
+    // round 46: the Breakbeat soundtrack (its shared filters, tremolo and buses are built once, here)
+    this.bb = new Breakbeat({
+      ctx,
+      input: lowCut,
+      noise: this.noiseBuffer,
+      softSaw: this.softSaw,
+      reap: (src, nodes) => this.reap(src, nodes),
+      note: () => this.notes++,
+    });
+    this.bb.out.gain.value = BB_LEVEL;
+
     this.timer = window.setInterval(this.musicTick, TICK_MS);
     if (this.scene !== 'off') this.startScene('off');
+  }
+
+  /**
+   * Round 46: switch the soundtrack (title or pause control, `?music=`). The music fades out over 0.25 s and the scene
+   * that is playing starts again on the new soundtrack's grid. Chimes, horns and fanfares follow the new chords.
+   */
+  setSoundtrack(track: Soundtrack, save = true): void {
+    if (track !== 'classic' && track !== 'breakbeat') return;
+    if (save) writePref(TRACK_KEY, track);
+    if (track === this.track) return;
+    this.track = track;
+    this.stepLen = track === 'breakbeat' ? BB_STEP : STEP;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.pingL.delayTime.setValueAtTime(this.stepLen * 3, now);
+    this.pingR.delayTime.setValueAtTime(this.stepLen * 3, now);
+    this.musicTone.frequency.setTargetAtTime(TONE_OPEN[track], now, 0.1);
+    if (this.scene !== 'off') this.startScene(this.scene, true);
+    else this.applyLayers();
+  }
+
+  /** Round 46 (critic): effects on/off, separate from the music: rotor, air, ambience, cues and UI clicks. */
+  setSfxEnabled(on: boolean): void {
+    this.sfxEnabled = on;
+    writePref(SFX_KEY, on ? '1' : '0');
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.sfx.gain.setTargetAtTime(on ? SFX_VOL : 0, now, 0.05);
+    this.droneBus.gain.setTargetAtTime(on ? DRONE_VOL : 0, now, 0.05);
+    this.ambGate.gain.setTargetAtTime(on ? 1 : 0, now, 0.05);
+    if (!on) this.boostEnd();
+  }
+
+  /** Round 46: rush hour is on (Breakbeat adds brass stabs and fills; latched on the bar). */
+  setRush(on: boolean): void {
+    this.rush = on;
   }
 
   /** Which piece plays: title loop, run track, last-10-s section, game-over loop (by medal tier). */
@@ -1539,26 +1779,33 @@ export class AudioSystem {
     this.startScene(prev);
   }
 
-  private startScene(prev: MusicScene): void {
+  private startScene(prev: MusicScene, switching = false): void {
     const ctx = this.ctx!;
     const now = ctx.currentTime;
-    if (this.scene === 'final' && prev === 'run') {
-      // same groove, new harmony: the change lands on the next beat
-      this.step = -((4 - (this.step % 4)) % 4);
+    if (this.scene === 'final' && prev === 'run' && !switching) {
+      // same groove, new harmony: Classic changes on the next beat, Breakbeat on the next bar (its sections are bars)
+      const unit = this.track === 'breakbeat' ? 16 : 4;
+      this.step = -((unit - (this.step % unit)) % unit);
+      this.bb?.reset();
     } else {
       const fade = this.musicFade.gain;
       fade.cancelScheduledValues(now);
       fade.setValueAtTime(fade.value, now);
       // a straight ramp to exactly 0 (no exponential tail that a later setValueAtTime would cut off with a step)
       // round 45 click fix: the run music fades over 150 ms into game over (it was cut in 40 ms under the sting)
-      const out = this.scene === 'over' ? 0.15 : 0.04;
-      const gap = prev === 'off' ? 0.06 : this.scene === 'run' ? 0.24 : this.scene === 'over' ? 0.2 : 0.14;
+      // round 46: a soundtrack switch fades over 0.25 s and the new one starts after it
+      const out = switching ? 0.25 : this.scene === 'over' ? 0.15 : 0.04;
+      const gap = switching ? 0.32 : prev === 'off' ? 0.06 : this.scene === 'run' ? 0.24 : this.scene === 'over' ? 0.2 : 0.14;
       fade.linearRampToValueAtTime(0, now + out);
       // round 45: the game-over loop is lifted (with its sub-bass cut) to sit near the run's loudness
+      // round 46: per-soundtrack scene levels (the menus no longer sit 1.4 LU over the run)
       const over = this.scene === 'over';
+      const lvl = SCENE_GAIN[this.track];
+      const lift = over ? (this.track === 'classic' ? OVER_LIFT : 1) * lvl.over : this.scene === 'title' ? lvl.title : lvl.run;
       this.sceneLift.gain.setValueAtTime(this.sceneLift.gain.value, now + out);
-      this.sceneLift.gain.linearRampToValueAtTime(over ? OVER_LIFT : 1, now + out + 0.01);
-      this.musicLowCut.frequency.setValueAtTime(over ? 120 : 55, now + out + 0.01);
+      this.sceneLift.gain.linearRampToValueAtTime(lift, now + out + 0.01);
+      this.musicLowCut.frequency.setValueAtTime(over && this.track === 'classic' ? 120 : 55, now + out + 0.01);
+      this.bb?.reset();
       if (this.scene !== 'off') {
         // a short gap lets the old notes die; game over swells in slowly under the sting
         this.nextStep = now + gap;
@@ -1572,7 +1819,8 @@ export class AudioSystem {
   }
 
   /** In-run state, every frame: chain level, clock (last-10-s section) and whether the next medal is close. */
-  setRunState(chain: number, timeLeft: number, chase: boolean): void {
+  setRunState(chain: number, timeLeft: number, chase: boolean, rush = this.rush): void {
+    this.rush = rush;
     if (this.forced) {
       chain = this.forced.chain;
       timeLeft = this.forced.final ? 5 : 60;
@@ -1607,6 +1855,8 @@ export class AudioSystem {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     for (const l of LAYERS) this.bus[l].gain.setTargetAtTime(o[l] ? 1 : 0, now, o[l] ? 0.12 : 0.3);
+    // round 46: Breakbeat gates its own layers on the bar (see breakbeat.ts); its output is on while it is the track
+    this.bb?.out.gain.setTargetAtTime(this.track === 'breakbeat' ? BB_LEVEL : 0, now, 0.05);
   }
 
   /** Called every frame: keeps the scheduler fed (backs up the interval timer), smooths intensity, reads meters. */
@@ -1629,8 +1879,8 @@ export class AudioSystem {
     this.musicOut.gain.setTargetAtTime(on ? MUSIC_VOL : 0, now, 0.08);
     // nothing was scheduled while off: move the grid forward to now without counting it as a stall
     if (on && this.nextStep < now + 0.05) {
-      const skip = Math.ceil((now + 0.05 - this.nextStep) / STEP);
-      this.nextStep += skip * STEP;
+      const skip = Math.ceil((now + 0.05 - this.nextStep) / this.stepLen);
+      this.nextStep += skip * this.stepLen;
       this.step += skip;
     }
   }
@@ -1641,8 +1891,8 @@ export class AudioSystem {
     const now = ctx.currentTime;
     if (this.nextStep < now - 0.25) {
       // the timer was starved (hidden tab, long stall): skip ahead on the grid instead of firing a burst of notes
-      const skip = Math.ceil((now + 0.03 - this.nextStep) / STEP);
-      this.nextStep += skip * STEP;
+      const skip = Math.ceil((now + 0.03 - this.nextStep) / this.stepLen);
+      this.nextStep += skip * this.stepLen;
       this.step += skip;
       this.resyncs++;
     }
@@ -1650,7 +1900,7 @@ export class AudioSystem {
     while (this.nextStep < horizon) {
       if (this.nextStep < now) this.late++;
       if (this.step >= 0) this.playStep(this.step, Math.max(this.nextStep, now));
-      this.nextStep += STEP;
+      this.nextStep += this.stepLen;
       this.step++;
     }
   };
@@ -1658,6 +1908,10 @@ export class AudioSystem {
   private playStep(step: number, t: number): void {
     const s = step % 16;
     const bar = Math.floor(step / 16);
+    if (this.track === 'breakbeat' && this.bb) {
+      if (this.scene !== 'off') this.bb.step(this.scene, bar, s, t, { chain: this.chainLv, chase: this.chase, rush: this.rush, overtime: this.overtime, tier: this.overTier });
+      return;
+    }
     switch (this.scene) {
       case 'title':
         this.stepSlow(TITLE_PROG, bar, s, t, false);
@@ -1787,6 +2041,7 @@ export class AudioSystem {
     o.connect(g).connect(dest);
     o.start(t);
     o.stop(t + dur + 0.02);
+    this.reap(o, [o, g]);
     this.notes++;
   }
 
@@ -1803,6 +2058,7 @@ export class AudioSystem {
     o.connect(g).connect(this.bus.drums);
     o.start(t);
     o.stop(t + 0.32);
+    this.reap(o, [o, g]);
     this.notes++;
   }
 
@@ -1817,6 +2073,7 @@ export class AudioSystem {
     src.connect(g).connect(dest);
     src.start(t, (this.notes % 37) * 0.04);
     src.stop(t + dur + 0.02);
+    this.reap(src, [src, g]);
     this.notes++;
   }
 
@@ -1920,17 +2177,21 @@ export class AudioSystem {
     const fade = this.musicFade ? this.musicFade.gain.value : 0;
     const sc = this.scene;
     const playing = running && this.musicEnabled && sc !== 'off' && now >= this.sceneStartAt;
-    const lv = this.chainLv;
+    // round 46: Breakbeat reports the layers it actually plays (latched on the bar)
+    const bbL = this.track === 'breakbeat' && this.bb ? this.bb.latched : null;
+    const lv = bbL && (sc === 'run' || sc === 'final') ? bbL.lv : this.chainLv;
     const layer = sc === 'title' || sc === 'over' ? 1 : sc === 'run' ? 1 + lv : sc === 'final' ? 5 : 0;
     const section =
       sc === 'title' ? 'loop'
-      : sc === 'run' ? ['base', 'drums', 'arp', 'lead'][lv]
-      : sc === 'final' ? 'final'
+      : sc === 'run' ? (bbL ? ['base', 'hats', 'ghosts-arp', 'lead-ride'][lv] + (bbL.rush ? '+stabs' : '') : ['base', 'drums', 'arp', 'lead'][lv])
+      : sc === 'final' ? (bbL?.overtime && this.bb!.dropBar >= 0 ? 'drop' : 'final')
       : sc === 'over' ? ['calm', 'bronze', 'silver', 'gold', 'ace'][Math.min(4, this.overTier)]
       : 'off';
     const r = (v: number) => Math.round(v * 1000) / 1000;
     return {
       enabled: this.musicEnabled,
+      soundtrack: this.track,
+      sfxEnabled: this.sfxEnabled,
       unlocked: running,
       playing,
       track: sc,
@@ -1942,7 +2203,7 @@ export class AudioSystem {
       target: r(this.target),
       chain: lv,
       chase: this.chase,
-      bpm: BPM,
+      bpm: this.track === 'breakbeat' ? BB_BPM : BPM,
       gain: r((this.musicEnabled ? MUSIC_VOL : 0) * Math.min(1, fade) * duck),
       duck: r(duck),
       ducks: this.ducks,
@@ -1954,6 +2215,8 @@ export class AudioSystem {
       compDb: this.comp ? r(this.comp.reduction) : 0,
       limiterDb: this.limiter ? r(this.limiter.reduction) : 0,
       lastFanfare: this.lastFanfare,
+      // round 46: the chord tones that play now (pitch classes), for the chimes-in-key check
+      chordPcs: sc === 'off' ? [] : this.chordPcs(),
     };
   }
 
@@ -1967,6 +2230,7 @@ export class AudioSystem {
 
   dispose(): void {
     window.clearInterval(this.timer);
+    this.bb?.dispose();
     void this.ctx?.close().catch(() => undefined);
     this.ctx = null;
   }

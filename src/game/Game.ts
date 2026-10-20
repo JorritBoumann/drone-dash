@@ -357,6 +357,10 @@ export class Game {
     // any press anywhere (title card included) starts the sound; the title loop plays from the first one
     for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(type, this.onAnyGesture, true);
     this.onUi(this.hud.musicButton, 'click', this.onMusicButton);
+    // round 46: soundtrack choice and the effects switch (title card and pause card)
+    for (const b of this.hud.trackButtons) this.onUi(b, 'click', this.onTrackButton);
+    for (const b of this.hud.sfxButtons) this.onUi(b, 'click', this.onSfxButton);
+    this.hud.setSound(this.audio.track, this.audio.sfxEnabled);
     this.audio.setMusicScene('title');
     this.input.onPauseKey = () => {
       if (this.state === 'playing') this.pause();
@@ -742,6 +746,26 @@ export class Game {
     this.hud.setMusic(true, this.audio.musicEnabled);
     if (this.state === 'playing') this.canvas.focus({ preventScroll: true });
   };
+  /** Round 46: Music: Classic / Breakbeat. Turns the music on if it was off, so the choice is heard at once. */
+  private readonly onTrackButton = (e: Event) => {
+    e.stopPropagation();
+    const t = (e.currentTarget as HTMLElement).dataset.track;
+    if (t !== 'classic' && t !== 'breakbeat') return;
+    this.audio.unlock();
+    this.audio.setSoundtrack(t);
+    if (!this.audio.musicEnabled) this.audio.setMusicEnabled(true);
+    this.audio.uiToggle();
+    this.hud.setSound(this.audio.track, this.audio.sfxEnabled);
+    this.hud.setMusic(true, this.audio.musicEnabled);
+  };
+  /** Round 46: effects on / off (rotor, air, ambience, cues and clicks), remembered; the music is separate. */
+  private readonly onSfxButton = (e: Event) => {
+    e.stopPropagation();
+    this.audio.unlock();
+    this.audio.setSfxEnabled(!this.audio.sfxEnabled);
+    this.audio.uiToggle();
+    this.hud.setSound(this.audio.track, this.audio.sfxEnabled);
+  };
   private readonly onMenuKey = (e: KeyboardEvent) => {
     // round 40: in a run M toggles the minimap. Round 41: N toggles the music anywhere, M is the map only (the help
     // line and the music chip say so)
@@ -999,7 +1023,7 @@ export class Game {
     // music follows the chain, the clock and a close medal (within the last 15% of the way to it)
     const goal = nextGoal(this.delivery.score);
     // round 17: overtime stays in the last-10-s section (an overtime clock can start above it)
-    this.audio.setRunState(this.slip.chain, this.delivery.overtime ? Math.min(tl, 5) : tl, !!goal && goal.progress >= 0.85);
+    this.audio.setRunState(this.slip.chain, this.delivery.overtime ? Math.min(tl, 5) : tl, !!goal && goal.progress >= 0.85, this.rushOn);
 
     this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80), d.headwind, this.intent.turn, d.carrying);
     // round 45: ambience by position (harbour, altitude, closed-in streets for the slapback) and Doppler pass-bys
@@ -2481,6 +2505,15 @@ export class Game {
       // audio test hook: hold the music at a chain level (null releases it), optionally in the last-10-s section
       musicForce: (chain: number | null, final = false) => this.audio.forceRunState(chain, final),
       music: (on: boolean) => this.audio.setMusicEnabled(on),
+      // round 46: soundtrack and effects switches for scripts
+      soundtrack: (t: 'classic' | 'breakbeat') => {
+        this.audio.setSoundtrack(t);
+        this.hud.setSound(this.audio.track, this.audio.sfxEnabled);
+      },
+      sfx: (on: boolean) => {
+        this.audio.setSfxEnabled(on);
+        this.hud.setSound(this.audio.track, this.audio.sfxEnabled);
+      },
       sites: () => this.layout.sites.map((s) => ({ name: s.name, kind: s.kind, x: s.pos.x, y: s.pos.y, z: s.pos.z })),
       // round 15 test hook: build cities for these seeds (no rendering) and audit every pad (see world/padAudit.ts)
       padAudit: (seeds: number[]) =>

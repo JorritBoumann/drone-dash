@@ -180,6 +180,17 @@ export class Hud {
     return this.musicState === 'locked';
   }
 
+  /** Round 46: soundtrack buttons (Classic / Breakbeat) and effects switches, on the title card and in pause. */
+  readonly trackButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.track-button'));
+  readonly sfxButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.sfx-button'));
+  setSound(track: string, sfxOn: boolean): void {
+    for (const b of this.trackButtons) b.setAttribute('aria-pressed', String(b.dataset.track === track));
+    for (const b of this.sfxButtons) {
+      b.setAttribute('aria-pressed', String(sfxOn));
+      b.textContent = sfxOn ? 'Effects on' : 'Effects off';
+    }
+  }
+
   /** Music chip: "Tap for sound" until the audio starts, then Music on / off. */
   setMusic(ready: boolean, enabled: boolean): void {
     const st = !ready ? 'locked' : enabled ? 'on' : 'off';

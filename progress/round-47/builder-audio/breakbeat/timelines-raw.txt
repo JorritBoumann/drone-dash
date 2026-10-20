@@ -1,0 +1,357 @@
+
+== 01-title-music  (20.0 s, from the main session; segments: clip 0.0 s = main session audio clock 3.06 s for 20.0 s)
+
+== 02-takeoff-calm-flight-chain0  (20.0 s, from the main session; segments: clip 0.0 s = main session audio clock 26.16 s for 20.0 s)
+   0.50 s  mark           enter
+   0.72 s  music          music run/base layer 1
+   0.72 s  state          state title -> playing
+   4.95 s  passby         Doppler pass-by (closeness 0.47)
+   5.18 s  payout         slipstream payout, chain x1 (no cue sound)   [cue -210.1 dB vs music, cue -208.0 dB vs rotor+wind]
+   6.31 s  music          music run/hats layer 2
+   7.60 s  boost-on       boost on   [cue +4.1 dB vs music, cue +8.1 dB vs rotor+wind]
+   9.26 s  boost-off      boost off
+  10.19 s  payout         slipstream payout, chain x2 (no cue sound)   [cue -212.7 dB vs music, cue -209.2 dB vs rotor+wind]
+  10.57 s  music          music run/ghosts-arp layer 3
+  12.65 s  duck:pickup    music ducked to 0.5   [cue +9.9 dB vs music, duck -7.4 dB, cue +9.7 dB vs rotor+wind]
+  12.66 s  pickup         parcel picked up   [cue +7.0 dB vs music, cue +8.7 dB vs rotor+wind]
+  16.29 s  boost-on       boost on   [cue +2.9 dB vs music, cue +6.5 dB vs rotor+wind]
+  16.64 s  passby         Doppler pass-by (closeness 0.56)
+  17.20 s  passby-close   Doppler pass-by (closeness 1)
+  17.28 s  payout         slipstream payout, chain x3 (no cue sound)   [cue -213.7 dB vs music, cue -210.8 dB vs rotor+wind]
+  17.70 s  music          music run/lead-ride layer 4
+  17.95 s  duck:slip      music ducked to 0.62   [cue +2.7 dB vs music, duck -2.5 dB, cue +1.9 dB vs rotor+wind]
+  18.44 s  duck:slip      music ducked to 0.62   [cue +2.1 dB vs music, duck +0.2 dB, cue +3.8 dB vs rotor+wind]
+  18.48 s  payout         slipstream payout, chain x4   [cue +3.1 dB vs music, cue +4.4 dB vs rotor+wind]
+  18.68 s  boost-off      boost off
+  19.18 s  passby-close   Doppler pass-by (closeness 1)
+
+== 03-slipstream-chain-x3-payouts  (25.0 s, from the main session; segments: clip 0.0 s = main session audio clock 101.55 s for 25.0 s)
+   0.34 s  duck:slip      music ducked to 0.62   [cue +1.2 dB vs music, duck -0.8 dB, cue -0.7 dB vs rotor+wind]
+   0.37 s  payout         slipstream payout, chain x1   [cue +5.1 dB vs music, cue +1.2 dB vs rotor+wind]
+   0.91 s  music          music run/hats+stabs layer 2
+   1.14 s  passby-close   Doppler pass-by (closeness 0.84)
+   1.27 s  duck:slip      music ducked to 0.62   [cue +5.0 dB vs music, duck -4.0 dB, cue +1.3 dB vs rotor+wind]
+   1.29 s  payout         slipstream payout, chain x2   [cue +6.1 dB vs music, cue +3.1 dB vs rotor+wind]
+   2.14 s  passby-close   Doppler pass-by (closeness 0.6)
+   2.33 s  music          music run/ghosts-arp+stabs layer 3
+   2.52 s  passby-close   Doppler pass-by (closeness 1)
+   2.76 s  duck:slip      music ducked to 0.62   [cue +5.9 dB vs music, duck -5.5 dB, cue +1.7 dB vs rotor+wind]
+   2.79 s  payout         slipstream payout, chain x3   [cue +5.7 dB vs music, cue +2.9 dB vs rotor+wind]
+   3.76 s  music          music run/lead-ride+stabs layer 4
+   4.00 s  payout         slipstream payout, chain x4   [cue +1.2 dB vs music, cue +3.4 dB vs rotor+wind]
+   4.00 s  duck:slip      music ducked to 0.62   [cue +6.4 dB vs music, duck -3.2 dB, cue +3.4 dB vs rotor+wind]
+   4.07 s  passby-close   Doppler pass-by (closeness 1)
+   4.18 s  boost-off      boost off
+   6.68 s  duck:slip      music ducked to 0.62   [cue +4.8 dB vs music, duck -2.3 dB, cue +7.0 dB vs rotor+wind]
+   6.68 s  payout         slipstream payout, chain x5   [cue +3.9 dB vs music, cue +6.6 dB vs rotor+wind]
+   8.14 s  passby-close   Doppler pass-by (closeness 0.7)
+  11.15 s  passby-close   Doppler pass-by (closeness 0.75)
+  12.88 s  duck:delivery  music ducked to 0.45   [cue +11.2 dB vs music, duck -7.0 dB, cue +10.1 dB vs rotor+wind]
+  12.91 s  delivery       delivery 3 (score 5039)   [cue +8.8 dB vs music, cue +11.3 dB vs rotor+wind]
+  13.53 s  chain-reset    chain x5 -> x0
+  13.76 s  music          music run/base+stabs layer 1
+  17.35 s  passby-close   Doppler pass-by (closeness 0.87)
+  17.35 s  boost-on       boost on   [cue +5.3 dB vs music, cue +7.3 dB vs rotor+wind]
+  17.82 s  passby-close   Doppler pass-by (closeness 0.7)
+  18.12 s  passby         Doppler pass-by (closeness 0.57)
+  18.36 s  passby-close   Doppler pass-by (closeness 1)
+  18.40 s  payout         slipstream payout, chain x1 (no cue sound)   [cue -71.4 dB vs music, cue -70.7 dB vs rotor+wind]
+  18.94 s  boost-off      boost off
+  19.26 s  duck:slip      music ducked to 0.62   [cue +1.3 dB vs music, duck -0.5 dB, cue +1.7 dB vs rotor+wind]
+  19.48 s  music          music run/hats+stabs layer 2
+  19.66 s  duck:slip      music ducked to 0.62   [cue +2.0 dB vs music, duck -1.4 dB, cue +2.1 dB vs rotor+wind]
+  19.67 s  payout         slipstream payout, chain x2   [cue +2.4 dB vs music, cue +3.7 dB vs rotor+wind]
+  19.67 s  passby-close   Doppler pass-by (closeness 1)
+  20.10 s  passby-close   Doppler pass-by (closeness 1)
+  20.91 s  music          music run/ghosts-arp+stabs layer 3
+  24.00 s  duck:slip      music ducked to 0.62   [cue +5.5 dB vs music, duck -5.2 dB, cue +5.2 dB vs rotor+wind]
+  24.03 s  payout         slipstream payout, chain x3   [cue +0.1 dB vs music, cue +6.4 dB vs rotor+wind]
+  24.18 s  passby-close   Doppler pass-by (closeness 1)
+
+== 04-boost-and-tail-off  (10.0 s, from the main session; segments: clip 0.0 s = main session audio clock 99.39 s for 10.0 s)
+   0.51 s  chain-reset    chain x2 -> x0
+   1.64 s  music          music run/base+stabs layer 1
+   2.00 s  boost-on       boost on   [cue +2.8 dB vs music, cue +7.0 dB vs rotor+wind]
+   2.50 s  duck:slip      music ducked to 0.62   [cue +1.2 dB vs music, duck -2.8 dB, cue +0.8 dB vs rotor+wind]
+   2.53 s  payout         slipstream payout, chain x1   [cue +5.1 dB vs music, cue +2.6 dB vs rotor+wind]
+   3.07 s  music          music run/hats+stabs layer 2
+   3.30 s  passby-close   Doppler pass-by (closeness 0.84)
+   3.43 s  duck:slip      music ducked to 0.62   [cue +5.0 dB vs music, duck -4.0 dB, cue +1.3 dB vs rotor+wind]
+   3.46 s  payout         slipstream payout, chain x2   [cue +6.1 dB vs music, cue +3.1 dB vs rotor+wind]
+   4.30 s  passby-close   Doppler pass-by (closeness 0.6)
+   4.49 s  music          music run/ghosts-arp+stabs layer 3
+   4.69 s  passby-close   Doppler pass-by (closeness 1)
+   4.92 s  duck:slip      music ducked to 0.62   [cue +5.9 dB vs music, duck -5.5 dB, cue +1.7 dB vs rotor+wind]
+   4.95 s  payout         slipstream payout, chain x3   [cue +5.7 dB vs music, cue +2.9 dB vs rotor+wind]
+   5.93 s  music          music run/lead-ride+stabs layer 4
+   6.16 s  payout         slipstream payout, chain x4   [cue +1.2 dB vs music, cue +3.4 dB vs rotor+wind]
+   6.16 s  duck:slip      music ducked to 0.62   [cue +6.4 dB vs music, duck -3.2 dB, cue +3.4 dB vs rotor+wind]
+   6.23 s  passby-close   Doppler pass-by (closeness 1)
+   6.35 s  boost-off      boost off
+   8.84 s  duck:slip      music ducked to 0.62   [cue +4.8 dB vs music, duck -2.3 dB, cue +7.0 dB vs rotor+wind]
+   8.85 s  payout         slipstream payout, chain x5   [cue +3.9 dB vs music, cue +6.6 dB vs rotor+wind]
+
+== 05-wall-scrape-and-head-on-crash  (10.0 s, from the fx session; segments: clip 0.0 s = fx session audio clock 8.22 s for 10.0 s)
+   0.01 s  music          music run/hats layer 2
+   0.80 s  mark           scrape-setup
+   1.06 s  scrape         wall scrape   [cue +0.8 dB vs music, cue +7.1 dB vs rotor+wind]
+   1.60 s  light-hit      hard knock, not a crash   [cue +0.2 dB vs music, cue +6.8 dB vs rotor+wind]
+   2.18 s  scrape         wall scrape   [cue +3.7 dB vs music, cue +5.5 dB vs rotor+wind]
+   2.41 s  payout         slipstream payout, chain x2   [cue -28.1 dB vs music, cue -21.5 dB vs rotor+wind]
+   2.49 s  passby-close   Doppler pass-by (closeness 1)
+   2.88 s  music          music run/ghosts-arp layer 3
+   4.67 s  mark           crash-setup
+   4.71 s  boost-on       boost on   [cue +4.5 dB vs music, cue +8.9 dB vs rotor+wind]
+   5.33 s  duck:crash     music ducked to 0.35   [cue +15.6 dB vs music, duck -5.8 dB, cue +13.1 dB vs rotor+wind]
+   5.35 s  impact         head-on impact (hit-stop + slow motion)   [cue +16.2 dB vs music, cue +14.2 dB vs rotor+wind]
+   5.54 s  chain-reset    chain x2 -> x0
+   5.54 s  crash          crash charged (time penalty)
+   5.73 s  music          music run/base layer 1
+   5.89 s  light-hit      hard knock, not a crash   [cue +8.2 dB vs music, cue +8.4 dB vs rotor+wind]
+   6.24 s  boost-off      boost off
+   9.74 s  mark           harbour-start
+
+== 06-pickup-delivery-medal  (14.7 s, from the main session; segments: clip 0.0 s = main session audio clock 37.31 s for 5.0 s, clip 4.7 s = main session audio clock 47.44 s for 10.0 s)
+   1.50 s  duck:pickup    music ducked to 0.5   [cue +9.9 dB vs music, duck -7.4 dB, cue +9.7 dB vs rotor+wind]
+   1.51 s  pickup         parcel picked up   [cue +7.0 dB vs music, cue +8.7 dB vs rotor+wind]
+   7.21 s  duck:slip      music ducked to 0.62   [cue +7.2 dB vs music, duck -6.2 dB, cue +6.4 dB vs rotor+wind]
+   7.23 s  payout         slipstream payout, chain x5   [cue +6.5 dB vs music, cue +6.4 dB vs rotor+wind]
+   9.84 s  delivery       delivery 1 (score 1408)   [cue +5.4 dB vs music, cue +12.1 dB vs rotor+wind]
+   9.84 s  medal          medal tier 1
+  10.70 s  duck:medal     music ducked to 0.28   [cue +13.8 dB vs music, duck -8.5 dB, cue +12.0 dB vs rotor+wind]
+  13.70 s  passby-close   Doppler pass-by (closeness 0.9)
+
+== 07-rush-hour-then-last-10s-into-overtime  (37.12 s, from the mix session; segments: clip 0.0 s = main session audio clock 83.67 s for 8.0 s, clip 7.7 s = ot session audio clock 30.19 s for 29.4 s)
+   0.71 s  chain-reset    chain x5 -> x0
+   1.63 s  music          music run/base layer 1
+   2.40 s  duck:slip      music ducked to 0.62   [cue +1.1 dB vs music, duck -3.5 dB, cue +1.7 dB vs rotor+wind]
+   2.41 s  payout         slipstream payout, chain x1   [cue +6.6 dB vs music, cue +3.6 dB vs rotor+wind]
+   3.00 s  duck:rush      music ducked to 0.4   [cue +12.3 dB vs music, duck -2.6 dB, cue +12.3 dB vs rotor+wind]
+   3.03 s  rush           rush hour starts
+   3.08 s  music          music run/hats+stabs layer 2
+   7.18 s  duck:slip      music ducked to 0.62   [cue +0.2 dB vs music, duck +0.0 dB, cue +3.7 dB vs rotor+wind]
+   7.22 s  payout         slipstream payout, chain x2   [cue +3.3 dB vs music, cue +5.7 dB vs rotor+wind]
+   7.36 s  music          music run/ghosts-arp+stabs layer 3
+   8.89 s  payout         slipstream payout, chain x1 (no cue sound)   [cue -209.7 dB vs music, cue -207.6 dB vs rotor+wind]
+   9.20 s  tick           clock tick 10 s   [cue -4.5 dB vs music, cue -3.2 dB vs rotor+wind]
+   9.20 s  music          music final/final layer 5
+  10.19 s  tick           clock tick 9 s   [cue -10.4 dB vs music, cue -2.5 dB vs rotor+wind]
+  11.19 s  tick           clock tick 8 s   [cue -11.2 dB vs music, cue -2.7 dB vs rotor+wind]
+  11.45 s  boost-on       boost on   [cue -0.1 dB vs music, cue +8.5 dB vs rotor+wind]
+  12.19 s  tick           clock tick 7 s   [cue -9.3 dB vs music, cue -5.0 dB vs rotor+wind]
+  12.88 s  passby         Doppler pass-by (closeness 0.53)
+  13.57 s  passby-close   Doppler pass-by (closeness 1)
+  13.60 s  payout         slipstream payout, chain x2   [cue -26.5 dB vs music, cue -24.3 dB vs rotor+wind]
+  13.75 s  boost-off      boost off
+  14.69 s  tick           clock tick 6 s   [cue -11.3 dB vs music, cue -5.3 dB vs rotor+wind]
+  15.14 s  duck:pickup    music ducked to 0.5   [cue +6.6 dB vs music, duck -3.3 dB, cue +10.2 dB vs rotor+wind]
+  15.15 s  pickup         parcel picked up   [cue +3.2 dB vs music, cue +9.3 dB vs rotor+wind]
+  15.69 s  tick           clock tick 5 s   [cue -5.4 dB vs music, cue +1.3 dB vs rotor+wind]
+  16.11 s  passby-close   Doppler pass-by (closeness 0.95)
+  16.68 s  tick           clock tick 4 s   [cue -7.4 dB vs music, cue -1.9 dB vs rotor+wind]
+  17.69 s  tick           clock tick 3 s   [cue +1.9 dB vs music, cue +8.6 dB vs rotor+wind]
+  18.67 s  tick           clock tick 2 s   [cue +4.8 dB vs music, cue +8.5 dB vs rotor+wind]
+  19.67 s  tick           clock tick 1 s   [cue +5.7 dB vs music, cue +7.8 dB vs rotor+wind]
+  20.43 s  scrape         wall scrape   [cue +1.1 dB vs music, cue +4.4 dB vs rotor+wind]
+  20.66 s  duck:rush      music ducked to 0.45   [cue +11.2 dB vs music, duck -6.0 dB, cue +8.5 dB vs rotor+wind]
+  20.67 s  overtime       overtime starts
+  21.36 s  music          music final/drop layer 5
+  22.62 s  chain-reset    chain x2 -> x0
+  25.69 s  tick           clock tick 10 s   [cue -9.9 dB vs music, cue -4.6 dB vs rotor+wind]
+  26.70 s  tick           clock tick 9 s   [cue -10.2 dB vs music, cue -3.8 dB vs rotor+wind]
+  27.70 s  tick           clock tick 8 s   [cue -7.4 dB vs music, cue -4.6 dB vs rotor+wind]
+  28.27 s  payout         slipstream payout, chain x1 (no cue sound)   [cue -215.3 dB vs music, cue -209.0 dB vs rotor+wind]
+  28.70 s  tick           clock tick 7 s   [cue -10.4 dB vs music, cue -4.7 dB vs rotor+wind]
+  29.73 s  tick           clock tick 6 s   [cue -8.8 dB vs music, cue -5.6 dB vs rotor+wind]
+  30.69 s  tick           clock tick 5 s   [cue -3.8 dB vs music, cue -2.7 dB vs rotor+wind]
+  31.68 s  tick           clock tick 4 s   [cue -7.0 dB vs music, cue -1.8 dB vs rotor+wind]
+  31.98 s  duck:delivery  music ducked to 0.45   [cue +11.9 dB vs music, duck -7.9 dB, cue +10.4 dB vs rotor+wind]
+  32.02 s  delivery       delivery 1 (score 322)   [cue +11.3 dB vs music, cue +11.6 dB vs rotor+wind]
+  32.81 s  music          music final/final layer 5
+  33.58 s  duck:gameover  music ducked to 0.35   [cue +16.7 dB vs music, duck -13.6 dB, cue +9.0 dB vs rotor+wind]
+  33.61 s  music          music over/calm layer 1
+  33.61 s  state          state playing -> over
+  33.62 s  mark           run-end over
+
+== 08-harbour-boats-bus-then-street-people-traffic  (21.7 s, from the fx session; segments: clip 0.0 s = fx session audio clock 18.97 s for 12.0 s, clip 11.7 s = fx session audio clock 34.29 s for 10.0 s)
+  12.16 s  passby-close   Doppler pass-by (closeness 1)
+  15.73 s  passby-close   Doppler pass-by (closeness 0.71)
+  16.16 s  duck:slip      music ducked to 0.62   [cue +3.6 dB vs music, duck -5.8 dB, cue +3.7 dB vs rotor+wind]
+  16.16 s  payout         slipstream payout, chain x1   [cue +4.6 dB vs music, cue +5.7 dB vs rotor+wind]
+  17.08 s  music          music run/hats layer 2
+
+== 09-game-over-sting-and-loop  (21.0 s, from the main session; segments: clip 0.0 s = main session audio clock 158.27 s for 21.0 s)
+   0.97 s  duck:gameover  music ducked to 0.35   [cue +18.8 dB vs music, duck -13.1 dB, cue +10.8 dB vs rotor+wind]
+   0.99 s  music          music over/gold layer 1
+   0.99 s  state          state playing -> over
+   1.00 s  mark           run-end over
+
+== 10-full-run-60s-unedited  (60.0 s, from the main session; segments: clip 0.0 s = main session audio clock 26.16 s for 60.0 s)
+   0.50 s  mark           enter
+   0.72 s  music          music run/base layer 1
+   0.72 s  state          state title -> playing
+   4.95 s  passby         Doppler pass-by (closeness 0.47)
+   5.18 s  payout         slipstream payout, chain x1 (no cue sound)   [cue -210.1 dB vs music, cue -208.0 dB vs rotor+wind]
+   6.31 s  music          music run/hats layer 2
+   7.60 s  boost-on       boost on   [cue +4.1 dB vs music, cue +8.1 dB vs rotor+wind]
+   9.26 s  boost-off      boost off
+  10.19 s  payout         slipstream payout, chain x2 (no cue sound)   [cue -212.7 dB vs music, cue -209.2 dB vs rotor+wind]
+  10.57 s  music          music run/ghosts-arp layer 3
+  12.65 s  duck:pickup    music ducked to 0.5   [cue +9.9 dB vs music, duck -7.4 dB, cue +9.7 dB vs rotor+wind]
+  12.66 s  pickup         parcel picked up   [cue +7.0 dB vs music, cue +8.7 dB vs rotor+wind]
+  16.29 s  boost-on       boost on   [cue +2.9 dB vs music, cue +6.5 dB vs rotor+wind]
+  16.64 s  passby         Doppler pass-by (closeness 0.56)
+  17.20 s  passby-close   Doppler pass-by (closeness 1)
+  17.28 s  payout         slipstream payout, chain x3 (no cue sound)   [cue -213.7 dB vs music, cue -210.8 dB vs rotor+wind]
+  17.70 s  music          music run/lead-ride layer 4
+  17.95 s  duck:slip      music ducked to 0.62   [cue +2.7 dB vs music, duck -2.5 dB, cue +1.9 dB vs rotor+wind]
+  18.44 s  duck:slip      music ducked to 0.62   [cue +2.1 dB vs music, duck +0.2 dB, cue +3.8 dB vs rotor+wind]
+  18.48 s  payout         slipstream payout, chain x4   [cue +3.1 dB vs music, cue +4.4 dB vs rotor+wind]
+  18.68 s  boost-off      boost off
+  19.18 s  passby-close   Doppler pass-by (closeness 1)
+  23.79 s  duck:slip      music ducked to 0.62   [cue +7.2 dB vs music, duck -6.2 dB, cue +6.4 dB vs rotor+wind]
+  23.82 s  payout         slipstream payout, chain x5   [cue +6.5 dB vs music, cue +6.4 dB vs rotor+wind]
+  26.42 s  delivery       delivery 1 (score 1408)   [cue +5.4 dB vs music, cue +12.1 dB vs rotor+wind]
+  26.42 s  medal          medal tier 1
+  27.28 s  duck:medal     music ducked to 0.28   [cue +13.8 dB vs music, duck -8.5 dB, cue +12.0 dB vs rotor+wind]
+  30.29 s  passby-close   Doppler pass-by (closeness 0.9)
+  32.64 s  passby-close   Doppler pass-by (closeness 1)
+  32.80 s  chain-reset    chain x5 -> x0
+  33.43 s  music          music run/base layer 1
+  34.55 s  duck:slip      music ducked to 0.62   [cue +0.8 dB vs music, duck -1.4 dB, cue +3.3 dB vs rotor+wind]
+  34.57 s  payout         slipstream payout, chain x1   [cue -0.1 dB vs music, cue +5.2 dB vs rotor+wind]
+  34.88 s  music          music run/hats layer 2
+  35.74 s  passby-close   Doppler pass-by (closeness 1)
+  37.75 s  passby-close   Doppler pass-by (closeness 0.94)
+  37.90 s  duck:pickup    music ducked to 0.5   [cue +6.4 dB vs music, duck -0.5 dB, cue +10.0 dB vs rotor+wind]
+  37.91 s  pickup         parcel picked up   [cue +3.4 dB vs music, cue +8.9 dB vs rotor+wind]
+  41.59 s  payout         slipstream payout, chain x2 (no cue sound)   [cue -213.4 dB vs music, cue -207.8 dB vs rotor+wind]
+  41.87 s  passby-close   Doppler pass-by (closeness 0.87)
+  42.02 s  music          music run/ghosts-arp layer 3
+  44.70 s  boost-on       boost on   [cue +3.6 dB vs music, cue +7.3 dB vs rotor+wind]
+  44.85 s  passby-close   Doppler pass-by (closeness 1)
+  44.89 s  boost-off      boost off
+  45.27 s  boost-on       boost on   [cue +4.0 dB vs music, cue +5.0 dB vs rotor+wind]
+  45.95 s  duck:slip      music ducked to 0.62   [cue +1.6 dB vs music, duck -0.4 dB, cue +2.0 dB vs rotor+wind]
+  45.97 s  payout         slipstream payout, chain x3   [cue +1.0 dB vs music, cue +2.8 dB vs rotor+wind]
+  46.27 s  music          music run/lead-ride layer 4
+  46.96 s  boost-off      boost off
+  47.44 s  boost-on       boost on   [cue -0.7 dB vs music, cue +2.7 dB vs rotor+wind]
+  47.64 s  boost-off      boost off
+  47.85 s  duck:slip      music ducked to 0.62   [cue +5.8 dB vs music, duck -2.7 dB, cue +5.5 dB vs rotor+wind]
+  47.87 s  payout         slipstream payout, chain x4   [cue +3.2 dB vs music, cue +4.0 dB vs rotor+wind]
+  48.26 s  boost-on       boost on   [cue +3.0 dB vs music, cue +5.9 dB vs rotor+wind]
+  48.49 s  boost-off      boost off
+  48.91 s  passby-close   Doppler pass-by (closeness 1)
+  50.69 s  duck:slip      music ducked to 0.62   [cue +5.6 dB vs music, duck -3.1 dB, cue +5.9 dB vs rotor+wind]
+  50.70 s  payout         slipstream payout, chain x5   [cue +3.9 dB vs music, cue +5.4 dB vs rotor+wind]
+  54.16 s  delivery       delivery 2 (score 2993)   [cue +4.8 dB vs music, cue +10.8 dB vs rotor+wind]
+  54.16 s  medal          medal tier 2
+  55.02 s  duck:medal     music ducked to 0.28   [cue +13.0 dB vs music, duck -8.8 dB, cue +11.9 dB vs rotor+wind]
+  58.22 s  chain-reset    chain x5 -> x0
+  59.14 s  music          music run/base layer 1
+  59.91 s  duck:slip      music ducked to 0.62   [cue +10.0 dB vs music, duck -7.5 dB, cue +6.6 dB vs rotor+wind]
+  59.92 s  payout         slipstream payout, chain x1   [cue +5.3 dB vs music, cue +3.4 dB vs rotor+wind]
+
+== 11-breakbeat-90s-continuous  (90.0 s, from the main session; segments: clip 0.0 s = main session audio clock 26.16 s for 90.0 s)
+   0.50 s  mark           enter
+   0.72 s  music          music run/base layer 1
+   0.72 s  state          state title -> playing
+   4.95 s  passby         Doppler pass-by (closeness 0.47)
+   5.18 s  payout         slipstream payout, chain x1 (no cue sound)   [cue -210.1 dB vs music, cue -208.0 dB vs rotor+wind]
+   6.31 s  music          music run/hats layer 2
+   7.60 s  boost-on       boost on   [cue +4.1 dB vs music, cue +8.1 dB vs rotor+wind]
+   9.26 s  boost-off      boost off
+  10.19 s  payout         slipstream payout, chain x2 (no cue sound)   [cue -212.7 dB vs music, cue -209.2 dB vs rotor+wind]
+  10.57 s  music          music run/ghosts-arp layer 3
+  12.65 s  duck:pickup    music ducked to 0.5   [cue +9.9 dB vs music, duck -7.4 dB, cue +9.7 dB vs rotor+wind]
+  12.66 s  pickup         parcel picked up   [cue +7.0 dB vs music, cue +8.7 dB vs rotor+wind]
+  16.29 s  boost-on       boost on   [cue +2.9 dB vs music, cue +6.5 dB vs rotor+wind]
+  16.64 s  passby         Doppler pass-by (closeness 0.56)
+  17.20 s  passby-close   Doppler pass-by (closeness 1)
+  17.28 s  payout         slipstream payout, chain x3 (no cue sound)   [cue -213.7 dB vs music, cue -210.8 dB vs rotor+wind]
+  17.70 s  music          music run/lead-ride layer 4
+  17.95 s  duck:slip      music ducked to 0.62   [cue +2.7 dB vs music, duck -2.5 dB, cue +1.9 dB vs rotor+wind]
+  18.44 s  duck:slip      music ducked to 0.62   [cue +2.1 dB vs music, duck +0.2 dB, cue +3.8 dB vs rotor+wind]
+  18.48 s  payout         slipstream payout, chain x4   [cue +3.1 dB vs music, cue +4.4 dB vs rotor+wind]
+  18.68 s  boost-off      boost off
+  19.18 s  passby-close   Doppler pass-by (closeness 1)
+  23.79 s  duck:slip      music ducked to 0.62   [cue +7.2 dB vs music, duck -6.2 dB, cue +6.4 dB vs rotor+wind]
+  23.82 s  payout         slipstream payout, chain x5   [cue +6.5 dB vs music, cue +6.4 dB vs rotor+wind]
+  26.42 s  delivery       delivery 1 (score 1408)   [cue +5.4 dB vs music, cue +12.1 dB vs rotor+wind]
+  26.42 s  medal          medal tier 1
+  27.28 s  duck:medal     music ducked to 0.28   [cue +13.8 dB vs music, duck -8.5 dB, cue +12.0 dB vs rotor+wind]
+  30.29 s  passby-close   Doppler pass-by (closeness 0.9)
+  32.64 s  passby-close   Doppler pass-by (closeness 1)
+  32.80 s  chain-reset    chain x5 -> x0
+  33.43 s  music          music run/base layer 1
+  34.55 s  duck:slip      music ducked to 0.62   [cue +0.8 dB vs music, duck -1.4 dB, cue +3.3 dB vs rotor+wind]
+  34.57 s  payout         slipstream payout, chain x1   [cue -0.1 dB vs music, cue +5.2 dB vs rotor+wind]
+  34.88 s  music          music run/hats layer 2
+  35.74 s  passby-close   Doppler pass-by (closeness 1)
+  37.75 s  passby-close   Doppler pass-by (closeness 0.94)
+  37.90 s  duck:pickup    music ducked to 0.5   [cue +6.4 dB vs music, duck -0.5 dB, cue +10.0 dB vs rotor+wind]
+  37.91 s  pickup         parcel picked up   [cue +3.4 dB vs music, cue +8.9 dB vs rotor+wind]
+  41.59 s  payout         slipstream payout, chain x2 (no cue sound)   [cue -213.4 dB vs music, cue -207.8 dB vs rotor+wind]
+  41.87 s  passby-close   Doppler pass-by (closeness 0.87)
+  42.02 s  music          music run/ghosts-arp layer 3
+  44.70 s  boost-on       boost on   [cue +3.6 dB vs music, cue +7.3 dB vs rotor+wind]
+  44.85 s  passby-close   Doppler pass-by (closeness 1)
+  44.89 s  boost-off      boost off
+  45.27 s  boost-on       boost on   [cue +4.0 dB vs music, cue +5.0 dB vs rotor+wind]
+  45.95 s  duck:slip      music ducked to 0.62   [cue +1.6 dB vs music, duck -0.4 dB, cue +2.0 dB vs rotor+wind]
+  45.97 s  payout         slipstream payout, chain x3   [cue +1.0 dB vs music, cue +2.8 dB vs rotor+wind]
+  46.27 s  music          music run/lead-ride layer 4
+  46.96 s  boost-off      boost off
+  47.44 s  boost-on       boost on   [cue -0.7 dB vs music, cue +2.7 dB vs rotor+wind]
+  47.64 s  boost-off      boost off
+  47.85 s  duck:slip      music ducked to 0.62   [cue +5.8 dB vs music, duck -2.7 dB, cue +5.5 dB vs rotor+wind]
+  47.87 s  payout         slipstream payout, chain x4   [cue +3.2 dB vs music, cue +4.0 dB vs rotor+wind]
+  48.26 s  boost-on       boost on   [cue +3.0 dB vs music, cue +5.9 dB vs rotor+wind]
+  48.49 s  boost-off      boost off
+  48.91 s  passby-close   Doppler pass-by (closeness 1)
+  50.69 s  duck:slip      music ducked to 0.62   [cue +5.6 dB vs music, duck -3.1 dB, cue +5.9 dB vs rotor+wind]
+  50.70 s  payout         slipstream payout, chain x5   [cue +3.9 dB vs music, cue +5.4 dB vs rotor+wind]
+  54.16 s  delivery       delivery 2 (score 2993)   [cue +4.8 dB vs music, cue +10.8 dB vs rotor+wind]
+  54.16 s  medal          medal tier 2
+  55.02 s  duck:medal     music ducked to 0.28   [cue +13.0 dB vs music, duck -8.8 dB, cue +11.9 dB vs rotor+wind]
+  58.22 s  chain-reset    chain x5 -> x0
+  59.14 s  music          music run/base layer 1
+  59.91 s  duck:slip      music ducked to 0.62   [cue +1.1 dB vs music, duck -3.5 dB, cue +1.7 dB vs rotor+wind]
+  59.92 s  payout         slipstream payout, chain x1   [cue +6.6 dB vs music, cue +3.6 dB vs rotor+wind]
+  60.51 s  duck:rush      music ducked to 0.4   [cue +12.3 dB vs music, duck -2.6 dB, cue +12.3 dB vs rotor+wind]
+  60.55 s  rush           rush hour starts
+  60.59 s  music          music run/hats+stabs layer 2
+  64.69 s  duck:slip      music ducked to 0.62   [cue +0.2 dB vs music, duck +0.0 dB, cue +3.7 dB vs rotor+wind]
+  64.73 s  payout         slipstream payout, chain x2   [cue +3.3 dB vs music, cue +5.7 dB vs rotor+wind]
+  64.88 s  music          music run/ghosts-arp+stabs layer 3
+  66.39 s  duck:pickup    music ducked to 0.5   [cue +9.0 dB vs music, duck -4.8 dB, cue +9.9 dB vs rotor+wind]
+  66.43 s  pickup         parcel picked up   [cue +7.7 dB vs music, cue +9.8 dB vs rotor+wind]
+  66.43 s  rush-order     rush order   [cue +7.7 dB vs music, cue +9.8 dB vs rotor+wind]
+  73.74 s  chain-reset    chain x2 -> x0
+  74.87 s  music          music run/base+stabs layer 1
+  75.23 s  boost-on       boost on   [cue +2.8 dB vs music, cue +7.0 dB vs rotor+wind]
+  75.73 s  duck:slip      music ducked to 0.62   [cue +1.2 dB vs music, duck -2.8 dB, cue +0.8 dB vs rotor+wind]
+  75.76 s  payout         slipstream payout, chain x1   [cue +5.1 dB vs music, cue +2.6 dB vs rotor+wind]
+  76.30 s  music          music run/hats+stabs layer 2
+  76.53 s  passby-close   Doppler pass-by (closeness 0.84)
+  76.66 s  duck:slip      music ducked to 0.62   [cue +5.0 dB vs music, duck -4.0 dB, cue +1.3 dB vs rotor+wind]
+  76.69 s  payout         slipstream payout, chain x2   [cue +6.1 dB vs music, cue +3.1 dB vs rotor+wind]
+  77.53 s  passby-close   Doppler pass-by (closeness 0.6)
+  77.72 s  music          music run/ghosts-arp+stabs layer 3
+  77.92 s  passby-close   Doppler pass-by (closeness 1)
+  78.15 s  duck:slip      music ducked to 0.62   [cue +5.9 dB vs music, duck -5.5 dB, cue +1.7 dB vs rotor+wind]
+  78.19 s  payout         slipstream payout, chain x3   [cue +5.7 dB vs music, cue +2.9 dB vs rotor+wind]
+  79.16 s  music          music run/lead-ride+stabs layer 4
+  79.39 s  payout         slipstream payout, chain x4   [cue +1.2 dB vs music, cue +3.4 dB vs rotor+wind]
+  79.39 s  duck:slip      music ducked to 0.62   [cue +6.4 dB vs music, duck -3.2 dB, cue +3.4 dB vs rotor+wind]
+  79.47 s  passby-close   Doppler pass-by (closeness 1)
+  79.58 s  boost-off      boost off
+  82.07 s  duck:slip      music ducked to 0.62   [cue +4.8 dB vs music, duck -2.3 dB, cue +7.0 dB vs rotor+wind]
+  82.08 s  payout         slipstream payout, chain x5   [cue +3.9 dB vs music, cue +6.6 dB vs rotor+wind]
+  83.53 s  passby-close   Doppler pass-by (closeness 0.7)
+  86.55 s  passby-close   Doppler pass-by (closeness 0.75)
+  88.27 s  duck:delivery  music ducked to 0.45   [cue +11.2 dB vs music, duck -7.0 dB, cue +10.1 dB vs rotor+wind]
+  88.31 s  delivery       delivery 3 (score 5039)   [cue +8.8 dB vs music, cue +11.3 dB vs rotor+wind]
+  88.92 s  chain-reset    chain x5 -> x0
+  89.16 s  music          music run/base+stabs layer 1

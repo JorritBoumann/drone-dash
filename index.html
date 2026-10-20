@@ -149,11 +149,11 @@
             <button id="city-new" class="city-button" type="button">New city</button>
             <button id="city-daily" class="city-button" type="button" aria-pressed="false">Daily city</button>
           </div>
-          <!-- Round 46: soundtrack choice (Classic / Breakbeat) and the effects switch; N still toggles the music -->
+          <!-- Round 46: soundtrack choice (Classic / Breakbeat) and the effects switch; N still toggles the music. Round 47: Breakbeat is the default -->
           <div class="sound-pick" role="group" aria-label="Sound settings (title)">
             <span class="sound-label">Music</span>
-            <button class="sound-button track-button" type="button" data-track="classic" aria-pressed="true">Classic</button>
-            <button class="sound-button track-button" type="button" data-track="breakbeat" aria-pressed="false">Breakbeat</button>
+            <button class="sound-button track-button" type="button" data-track="classic" aria-pressed="false">Classic</button>
+            <button class="sound-button track-button" type="button" data-track="breakbeat" aria-pressed="true">Breakbeat</button>
             <button class="sound-button sfx-button" type="button" aria-pressed="true">Effects on</button>
           </div>
           <p id="daily-line" class="best-line daily-line" hidden>Daily best <strong id="daily-best">0</strong> <span id="daily-best-tier" class="best-tier"></span></p>
@@ -170,8 +170,8 @@
           <button id="restart-button" class="ghost-button" type="button">Restart run</button>
           <div class="sound-pick" role="group" aria-label="Sound settings (pause)">
               <span class="sound-label">Music</span>
-              <button class="sound-button track-button" type="button" data-track="classic" aria-pressed="true">Classic</button>
-              <button class="sound-button track-button" type="button" data-track="breakbeat" aria-pressed="false">Breakbeat</button>
+              <button class="sound-button track-button" type="button" data-track="classic" aria-pressed="false">Classic</button>
+              <button class="sound-button track-button" type="button" data-track="breakbeat" aria-pressed="true">Breakbeat</button>
               <button class="sound-button sfx-button" type="button" aria-pressed="true">Effects on</button>
           </div>
         </div>

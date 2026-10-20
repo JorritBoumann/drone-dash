@@ -61,15 +61,18 @@ function writeMusicPref(on: boolean): void {
     /* storage unavailable */
   }
 }
-/** Soundtrack: `?music=breakbeat` or `?music=classic` wins for this page (not saved), then the saved choice, then Classic. */
+/**
+ * Soundtrack: `?music=breakbeat` or `?music=classic` wins for this page (not saved), then the saved choice.
+ * Round 47 (the owner's choice): Breakbeat is the default. Only an explicit 'classic' (URL or saved) gives Classic; no
+ * choice or an unknown value gives Breakbeat.
+ */
 function readTrackPref(): Soundtrack {
   try {
     const q = new URLSearchParams(window.location.search).get('music');
     if (q === 'classic' || q === 'breakbeat') return q;
-    const v = storeGet(TRACK_KEY);
-    return v === 'breakbeat' ? 'breakbeat' : 'classic';
+    return storeGet(TRACK_KEY) === 'classic' ? 'classic' : 'breakbeat';
   } catch {
-    return 'classic';
+    return 'breakbeat';
   }
 }
 function readSfxPref(): boolean {
@@ -91,7 +94,7 @@ function writePref(key: string, v: string): void {
 interface DuckSeg { from: number; start: number; at: number; depth: number; end: number; release: number }
 
 /** Options for one sample voice. */
-interface SampOpts { gain?: number; rate?: number; pan?: number; dest?: AudioNode; verb?: number; slap?: number; lp?: number; hp?: number; att?: number }
+interface SampOpts { gain?: number; rate?: number; pan?: number; dest?: AudioNode; verb?: number; slap?: number; lp?: number; hp?: number; att?: number; iverb?: number }
 /** Options for one FM bell. */
 interface BellOpts { pan?: number; verb?: number; ping?: number; bright?: number }
 
@@ -154,6 +157,25 @@ export class AudioSystem {
   private subOsc!: OscillatorNode;
   private subGain!: GainNode;
   private chopFilter!: BiquadFilterNode;
+  /** round 47: blade-chop depth (amplitude modulation of the rotor and its air), scaled by speed */
+  private chopDepth: GainNode[] = [];
+  /** round 47: the slipstream's two offset bands (left, right) */
+  private draftL!: BiquadFilterNode;
+  private draftR!: BiquadFilterNode;
+  /** round 47: Classic's pad dips near 1.2 kHz while drafting; its melodic layers close to 2.4 kHz in the last 10 s */
+  private padDip!: BiquadFilterNode;
+  private melLpC!: BiquadFilterNode;
+  /** round 47: impact samples into the shared room through a 250 Hz high-pass */
+  private impactVerb!: GainNode;
+  /** round 47: the brass horns' soft clip */
+  private hornSat!: WaveShaperNode;
+  /** round 47: audio-clock time the run clock reaches 0 (for the gap before Breakbeat's overtime drop) */
+  private clockZeroAt = Infinity;
+  private clockRate = 1;
+  private clockT = 0;
+  private clockTL = 0;
+  private tickN = 0;
+  private rotorHz = 0;
   // air
   private windGain!: GainNode;
   private windFilter!: BiquadFilterNode;
@@ -204,7 +226,7 @@ export class AudioSystem {
 
   // ----- music -----
   musicEnabled = readMusicPref();
-  /** Round 46: the active soundtrack (Classic by default). */
+  /** Round 46: the active soundtrack. Round 47: Breakbeat by default (the owner's choice); Classic on request. */
   track: Soundtrack = readTrackPref();
   /** step length of the active soundtrack (Classic 0.12 s at 125 BPM, Breakbeat 0.089 s at 168 BPM) */
   private stepLen = this.track === 'breakbeat' ? BB_STEP : STEP;
@@ -361,7 +383,12 @@ export class AudioSystem {
     this.droneBus = ctx.createGain();
     this.droneBus.gain.value = this.sfxEnabled ? DRONE_VOL : 0;
     this.droneOut = ctx.createGain(); // the priority duck of the drone
-    this.droneBus.connect(this.droneOut).connect(this.master);
+    // round 47: a notch near 2.2 kHz on the whole drone bus (the rotor's shrill zone, where Gemini heard a drill)
+    const droneNotch = ctx.createBiquadFilter();
+    droneNotch.type = 'notch';
+    droneNotch.frequency.value = 2200;
+    droneNotch.Q.value = 1.2;
+    this.droneBus.connect(droneNotch).connect(this.droneOut).connect(this.master);
     this.ambBus = ctx.createGain();
     this.ambBus.gain.value = 0;
     this.ambOut = ctx.createGain(); // the priority duck of the ambience
@@ -400,6 +427,28 @@ export class AudioSystem {
     const verbOut = ctx.createGain();
     verbOut.gain.value = 1.6; // the normalised convolver is quiet: the return is lifted to ~-14 dB under the dry cues
     this.reverbSend.connect(verbHp).connect(conv).connect(verbOut).connect(this.fxReturn);
+    // round 47: impact samples (crashes, knocks) reach the same room as the music, high-passed at 250 Hz
+    this.impactVerb = ctx.createGain();
+    const ivHp = ctx.createBiquadFilter();
+    ivHp.type = 'highpass';
+    ivHp.frequency.value = 250;
+    ivHp.Q.value = 0.7;
+    this.impactVerb.connect(ivHp).connect(this.reverbSend);
+    // round 47: the horns' soft clip (built once)
+    this.hornSat = ctx.createWaveShaper();
+    const hc = new Float32Array(1024);
+    for (let i = 0; i < hc.length; i++) {
+      const x = (i / (hc.length - 1)) * 2 - 1;
+      hc[i] = Math.tanh(2.2 * x) / Math.tanh(2.2);
+    }
+    this.hornSat.curve = hc;
+    this.hornSat.oversample = '2x';
+    const hornEq = ctx.createBiquadFilter();
+    hornEq.type = 'peaking';
+    hornEq.frequency.value = 3000;
+    hornEq.Q.value = 0.9;
+    hornEq.gain.value = -3;
+    this.hornSat.connect(hornEq).connect(this.sfx);
     // per-bus sends into the shared room (effects send per cue; music from buildMusic)
     const dVerb = ctx.createGain();
     dVerb.gain.value = 0.06;
@@ -542,6 +591,13 @@ export class AudioSystem {
       out.connect(v).connect(this.slapSend);
       nodes.push(v);
     }
+    if (o.iverb) {
+      // round 47: impacts into the shared room through its 250 Hz high-pass
+      const v = ctx.createGain();
+      v.gain.value = o.iverb;
+      out.connect(v).connect(this.impactVerb);
+      nodes.push(v);
+    }
     // round 46 (codex low): the decoder correction moves the window into the buffer. The length now follows the clamped
     // start (a negative correction clamped at 0 keeps the sample's real end) and is bounded by the end of the buffer.
     const want = s.o + this.spriteDelay;
@@ -637,14 +693,15 @@ export class AudioSystem {
     lb.gain.value = 0.1;
     this.lfoA.connect(la).connect(this.rotorAm.gain);
     this.lfoB.connect(lb).connect(this.rotorAm.gain);
+    this.chopDepth = [la, lb];
     // blade-chop air: stereo noise through a band, gated at the blade rate
     const chopSrc = ctx.createBufferSource();
     chopSrc.buffer = this.noiseStereo;
     chopSrc.loop = true;
     this.chopFilter = ctx.createBiquadFilter();
     this.chopFilter.type = 'bandpass';
-    this.chopFilter.frequency.value = 1800;
-    this.chopFilter.Q.value = 0.8;
+    this.chopFilter.frequency.value = 900;
+    this.chopFilter.Q.value = 0.7;
     const chopAm = ctx.createGain();
     chopAm.gain.value = 0.5;
     const ca = ctx.createGain(), cb = ctx.createGain();
@@ -652,6 +709,7 @@ export class AudioSystem {
     cb.gain.value = 0.22;
     this.lfoA.connect(ca).connect(chopAm.gain);
     this.lfoB.connect(cb).connect(chopAm.gain);
+    this.chopDepth.push(ca, cb);
     this.chopGain = ctx.createGain();
     this.chopGain.gain.value = 0;
     chopSrc.connect(this.chopFilter).connect(chopAm).connect(this.chopGain).connect(this.rotorSputter);
@@ -676,10 +734,34 @@ export class AudioSystem {
     this.airGain.gain.value = 0;
     wind.connect(airHp).connect(airLp).connect(this.airGain).connect(this.droneBus);
     // slipstream: a whistling band on the wall side, its pitch rising as the meter fills, a light 6 Hz flutter
+    // round 47 (Gemini: it sounded like a synth riser): two wider bands a fifth-ish apart, one per side, from the
+    // decorrelated stereo noise, then a cut near 1.5 kHz on the slipstream's own bus (room for the chimes and keys)
+    const dSplit = ctx.createChannelSplitter(2);
+    const dMerge = ctx.createChannelMerger(2);
+    this.draftL = ctx.createBiquadFilter();
+    this.draftL.type = 'bandpass';
+    this.draftL.frequency.value = 600;
+    this.draftL.Q.value = 1.6;
+    this.draftR = ctx.createBiquadFilter();
+    this.draftR.type = 'bandpass';
+    this.draftR.frequency.value = 900;
+    this.draftR.Q.value = 2.0;
+    dSplit.connect(this.draftL, 0);
+    dSplit.connect(this.draftR, 1);
+    // each band mostly on its own side, a little on the other (pan about -0.6 / +0.6)
+    const xl = ctx.createGain(), xr = ctx.createGain();
+    xl.gain.value = 0.25;
+    xr.gain.value = 0.25;
+    this.draftL.connect(dMerge, 0, 0);
+    this.draftL.connect(xl).connect(dMerge, 0, 1);
+    this.draftR.connect(dMerge, 0, 1);
+    this.draftR.connect(xr).connect(dMerge, 0, 0);
     this.draftFilter = ctx.createBiquadFilter();
-    this.draftFilter.type = 'bandpass';
-    this.draftFilter.frequency.value = 700;
-    this.draftFilter.Q.value = 5;
+    this.draftFilter.type = 'peaking';
+    this.draftFilter.frequency.value = 1500;
+    this.draftFilter.Q.value = 1.0;
+    this.draftFilter.gain.value = -7;
+    dMerge.connect(this.draftFilter);
     this.draftGain = ctx.createGain();
     this.draftGain.gain.value = 0;
     const trem = ctx.createGain();
@@ -690,7 +772,8 @@ export class AudioSystem {
     tg.gain.value = 0.2;
     tl.connect(tg).connect(trem.gain);
     this.draftPan = ctx.createStereoPanner();
-    wind.connect(this.draftFilter).connect(trem).connect(this.draftGain).connect(this.draftPan).connect(this.droneBus);
+    wind.connect(dSplit);
+    this.draftFilter.connect(trem).connect(this.draftGain).connect(this.draftPan).connect(this.droneBus);
     this.lfoA.start();
     this.lfoB.start();
     tl.start();
@@ -729,7 +812,10 @@ export class AudioSystem {
     const t = this.ctx.currentTime;
     this.carrying = carrying;
     const load = carrying ? 0.955 : 1;
-    const base = (92 + speed01 * 58 + effort * 24 + (boosting ? 36 : 0) + altitude01 * 6) * load;
+    // round 47 (Gemini: a dentist's drill at speed): the pitch rises at most about a third from hover to top speed with
+    // the boost (96 -> 128 Hz); speed shows in the blade chop and the air instead
+    const base = (96 + speed01 * 18 + effort * 8 + (boosting ? 4 : 0) + altitude01 * 2) * load;
+    this.rotorHz = base;
     const bank = Math.max(-1, Math.min(1, turn));
     for (let i = 0; i < 4; i++) {
       // outer rotors spin up on the outside of the turn (left pair i 0,1; right pair i 2,3)
@@ -739,13 +825,22 @@ export class AudioSystem {
     const blade = base * 0.5;
     this.subOsc.frequency.setTargetAtTime(blade, t, 0.1);
     this.subGain.gain.setTargetAtTime((0.05 + effort * 0.03 + (boosting ? 0.025 : 0)) * (carrying ? 1.25 : 1), t, 0.2);
-    this.lfoA.frequency.setTargetAtTime(blade, t, 0.1);
-    this.lfoB.frequency.setTargetAtTime(blade * 1.021 + 0.7, t, 0.1);
-    this.rotorLp.frequency.setTargetAtTime((1300 + speed01 * 1500 + effort * 500 + (boosting ? 700 : 0)) * (carrying ? 0.88 : 1), t, 0.12);
+    // round 47: blade chop as amplitude modulation at 35 to 55 Hz, deeper with speed; the tonal rotor stays under 1.4 kHz
+    const chop = 35 + speed01 * 17 + (boosting ? 3 : 0);
+    this.lfoA.frequency.setTargetAtTime(chop, t, 0.1);
+    this.lfoB.frequency.setTargetAtTime(chop * 1.021 + 0.7, t, 0.1);
+    const depth = 0.35 + 0.65 * speed01 + (boosting ? 0.15 : 0);
+    const [da, db, dca, dcb] = this.chopDepth;
+    da.gain.setTargetAtTime(0.1 + 0.12 * depth, t, 0.15);
+    db.gain.setTargetAtTime(0.07 + 0.09 * depth, t, 0.15);
+    dca.gain.setTargetAtTime(0.32 * depth, t, 0.15);
+    dcb.gain.setTargetAtTime(0.22 * depth, t, 0.15);
+    this.rotorLp.frequency.setTargetAtTime((1050 + speed01 * 250 + effort * 100) * (carrying ? 0.9 : 1), t, 0.12);
     this.rotorBody.frequency.setTargetAtTime(carrying ? 540 : 620, t, 0.3);
-    this.rotorGain.gain.setTargetAtTime((0.62 + effort * 0.22 + (boosting ? 0.18 : 0)) * (carrying ? 1.1 : 1), t, 0.15);
-    this.chopFilter.frequency.setTargetAtTime(2300 + speed01 * 1800 + effort * 700, t, 0.15);
-    this.chopGain.gain.setTargetAtTime(0.16 + effort * 0.16 + speed01 * 0.1 + (boosting ? 0.08 : 0), t, 0.15);
+    this.rotorGain.gain.setTargetAtTime((0.66 + effort * 0.14 + (boosting ? 0.08 : 0)) * (carrying ? 1.1 : 1), t, 0.15);
+    // the chop's air: a low band (700 to 1.1 kHz) that grows with speed
+    this.chopFilter.frequency.setTargetAtTime(700 + speed01 * 350 + effort * 100, t, 0.15);
+    this.chopGain.gain.setTargetAtTime(0.14 + effort * 0.1 + speed01 * 0.22 + (boosting ? 0.1 : 0), t, 0.15);
     this.rotorPan.pan.setTargetAtTime(bank * 0.12, t, 0.2);
     // gusts: a smoothed random walk (cheap, no extra nodes)
     this.gustV += (Math.random() - 0.5) * 0.08 - this.gustV * 0.04;
@@ -754,16 +849,23 @@ export class AudioSystem {
     const sp = Math.pow(speed01, 1.5);
     this.windGain.gain.setTargetAtTime(sp * 0.13 * (0.75 + 0.5 * g01) + headwind * (0.04 + 0.05 * g01), t, 0.2);
     this.windFilter.frequency.setTargetAtTime(380 + speed01 * 900 - headwind * 120 + g01 * 120, t, 0.25);
-    this.airGain.gain.setTargetAtTime(sp * 0.3 * (0.7 + 0.6 * g01) + (boosting ? 0.08 : 0), t, 0.2);
+    this.airGain.gain.setTargetAtTime(sp * 0.24 * (0.7 + 0.6 * g01) + (boosting ? 0.06 : 0), t, 0.2);
   }
 
   /** Slipstream layer: intensity 0..1 sets loudness, meter level 0..1 the rising pitch, pan -1..1 the wall side. */
   setDraft(intensity: number, level: number, pan = 0): void {
     if (!this.ctx || !this.rotorOn) return;
     const t = this.ctx.currentTime;
-    this.draftGain.gain.setTargetAtTime(intensity * 0.26, t, 0.12);
-    this.draftFilter.frequency.setTargetAtTime(750 + level * 1500 + intensity * 300 + this.chainLv * 120, t, 0.1);
-    this.draftPan.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, pan * 0.7)), t, 0.15);
+    // round 47: two offset bands that rise only a little with the meter (wind, not a riser), louder for the loss of Q
+    this.draftGain.gain.setTargetAtTime(intensity * 0.34, t, 0.12);
+    const f0 = 520 + level * 380 + intensity * 120 + this.chainLv * 40 + this.gust * 40;
+    this.draftL.frequency.setTargetAtTime(f0, t, 0.12);
+    this.draftR.frequency.setTargetAtTime(f0 * 1.47, t, 0.14);
+    this.draftPan.pan.setTargetAtTime(Math.max(-0.6, Math.min(0.6, pan * 0.5)), t, 0.15);
+    // the keys (Breakbeat) or the pad (Classic) dip near 1.2 kHz while drafting, up to 4.5 dB
+    const dip = Math.max(0, Math.min(1, intensity * 1.4));
+    this.padDip.gain.setTargetAtTime(-4.5 * dip, t, 0.15);
+    this.bb?.setDraftDip(dip, t);
   }
 
   // =====================================================================================================
@@ -1276,7 +1378,8 @@ export class AudioSystem {
     const t = this.ctx!.currentTime;
     const s = Math.min(1, strength / 14);
     const k = 'knock' + Math.floor(Math.random() * 3);
-    if (this.samp(k, t, { gain: 0.35 + s * 0.45, rate: 0.88 + Math.random() * 0.2, pan: pan * 0.6, verb: 0.25, slap: 0.4, att: 0.003 })) {
+    // round 47: a 4.5 kHz low-pass takes the knock samples' sharpest edge (the click detector caught it at light hits)
+    if (this.samp(k, t, { gain: 0.35 + s * 0.45, rate: 0.88 + Math.random() * 0.2, pan: pan * 0.6, iverb: 0.5, slap: 0.4, att: 0.004, lp: 4500 })) {
       this.tone(120, t, 0.22, 'sine', 0.15 + s * 0.25, 0, 45);
       return;
     }
@@ -1304,9 +1407,11 @@ export class AudioSystem {
     const r = () => 0.9 + Math.random() * 0.2;
     // round 46 (critic: the crash was 3 to 4 dB too hot next to every other cue): every layer x0.63 (-4 dB)
     const k = CRASH_TRIM;
-    const a = this.samp('crunch', t, { gain: (0.6 + s * 0.3) * k, rate: r(), pan: pan * 0.4, verb: 0.3, slap: 0.4, lp: 3800 });
-    this.samp('plate', t + 0.006, { gain: (0.5 + s * 0.3) * k, rate: r(), pan: pan * 0.4, verb: 0.2 });
-    this.samp('knock' + Math.floor(Math.random() * 3), t + 0.01, { gain: 0.3 * k, rate: 0.75 + Math.random() * 0.1, pan: pan * 0.5 });
+    // round 47 (Gemini: the impacts sounded dry next to the music): each layer sends into the shared room through a 250 Hz
+    // high-pass, so the crash sits in the same space as the music
+    const a = this.samp('crunch', t, { gain: (0.6 + s * 0.3) * k, rate: r(), pan: pan * 0.4, iverb: 0.7, slap: 0.4, lp: 3800 });
+    this.samp('plate', t + 0.006, { gain: (0.5 + s * 0.3) * k, rate: r(), pan: pan * 0.4, iverb: 0.6 });
+    this.samp('knock' + Math.floor(Math.random() * 3), t + 0.01, { gain: 0.3 * k, rate: 0.75 + Math.random() * 0.1, pan: pan * 0.5, iverb: 0.5, lp: 4500, att: 0.003 });
     this.subDrop(t, 72, 26, 0.55, (0.4 + s * 0.25) * k);
     if (!a) {
       this.noise(t, 0.32 + s * 0.2, (0.3 + s * 0.2) * k, 'lowpass', 2400, 160, 0.9);
@@ -1353,7 +1458,7 @@ export class AudioSystem {
     const p = Math.max(-0.85, Math.min(0.85, pan * 0.8));
     if (t - this.lastGrain > 0.16 || s > 0.6) {
       this.lastGrain = t;
-      this.samp('scrape' + Math.floor(Math.random() * 3), t, { gain: 0.4 + s * 0.5, rate: 0.85 + Math.random() * 0.3, pan: p, verb: 0.15, slap: 0.4 });
+      this.samp('scrape' + Math.floor(Math.random() * 3), t, { gain: 0.4 + s * 0.5, rate: 0.85 + Math.random() * 0.3, pan: p, iverb: 0.3, slap: 0.4 });
       if (s > 0.3) this.samp('grit' + (Math.random() < 0.6 ? 0 : 1), t + 0.01, { gain: 0.5 + s * 0.4, rate: 0.9 + Math.random() * 0.2, pan: p });
     }
     this.noise(t, 0.12 + s * 0.1, 0.06 + s * 0.12, 'bandpass', 5200, 2600, 3, p);
@@ -1421,29 +1526,36 @@ export class AudioSystem {
    * A brass horn from detuned soft saws: three voices per note through a lowpass that swells open (no square waves).
    */
   private horn(f: number, t: number, dur: number, gain: number): void {
+    // round 47 (Gemini: cheap 1990s sound-card brass): three detuned saws with a fast pitch blip (60 cents flat, a hair
+    // over, then on pitch in 40 ms), a two-stage filter (open in 10 ms, settle by 70 ms, then close over the note) and a
+    // shared soft clip with a dip at 3 kHz
     const ctx = this.ctx!;
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.Q.value = 1.2;
-    lp.frequency.setValueAtTime(500, t);
-    lp.frequency.exponentialRampToValueAtTime(2600, t + 0.05);
-    lp.frequency.exponentialRampToValueAtTime(1300, t + dur);
+    lp.Q.value = 1.5;
+    const top = Math.min(3200, f * 5);
+    lp.frequency.setValueAtTime(400, t);
+    lp.frequency.exponentialRampToValueAtTime(top, t + 0.01);
+    lp.frequency.exponentialRampToValueAtTime(top * 0.55, t + 0.07);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(500, top * 0.35), t + dur);
     const g = this.envGain();
+    const v = gain * 0.6;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.03);
-    g.gain.setValueAtTime(gain * 0.85, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(v, t + 0.012);
+    g.gain.setValueAtTime(v * 0.85, t + dur * 0.7);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    lp.connect(g).connect(this.sfx);
-    const v = ctx.createGain();
-    v.gain.value = 0.35;
-    g.connect(v).connect(this.reverbSend);
-    const nodes: AudioNode[] = [lp, g, v];
+    lp.connect(g).connect(this.hornSat);
+    const r = ctx.createGain();
+    r.gain.value = 0.35;
+    g.connect(r).connect(this.reverbSend);
+    const nodes: AudioNode[] = [lp, g, r];
     let first: OscillatorNode | null = null;
-    for (const c of [-9, 0, 8]) {
+    for (const c of [-11, 0, 9]) {
       const o = ctx.createOscillator();
-      if (this.softSaw) o.setPeriodicWave(this.softSaw);
-      else o.type = 'sawtooth';
-      o.frequency.value = f;
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f * 0.966, t);
+      o.frequency.exponentialRampToValueAtTime(f * 1.004, t + 0.018);
+      o.frequency.exponentialRampToValueAtTime(f, t + 0.04);
       o.detune.value = c;
       o.connect(lp);
       o.start(t);
@@ -1477,7 +1589,9 @@ export class AudioSystem {
   overtimeHorn(): void {
     if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
-    this.priority(0.4, t, 0.8, 0.5, 'rush');
+    // round 47: Breakbeat's drop follows within about a beat, so its duck lets go sooner
+    if (this.track === 'breakbeat') this.priority(0.45, t, 0.35, 0.3, 'rush');
+    else this.priority(0.4, t, 0.8, 0.5, 'rush');
     if (this.track === 'breakbeat') {
       // round 46: a rising call on the chord that is playing (the suspended dominant before the drop, usually)
       const arp = this.chordNow();
@@ -1520,11 +1634,18 @@ export class AudioSystem {
    */
   tick(urgent: boolean, secs = 0): void {
     if (!this.fxOk) return;
-    const t = this.ctx!.currentTime;
+    const t = this.ctx!.currentTime + 0.012;
+    // round 47 (Gemini: the last ticks were shrill): a soft FM woodblock / marimba tick on the chord's tones, climbing one
+    // chord tone a second (around 500 to 1,100 Hz), panned left and right on alternate ticks, with a short knock under it
     const up = secs > 0 ? Math.max(0, 10 - secs) : 0;
-    const rate = Math.pow(2, up / 12);
-    const ok = this.samp(urgent ? 'tick1' : 'tick0', t, { gain: urgent ? 1.5 : 1.3, rate, verb: 0.1, att: 0.003, lp: 7500 });
-    this.tone((urgent ? 1480 : 1175) * (secs > 0 ? Math.pow(2, (up - (urgent ? 5 : 0)) / 12) : 1), t, 0.06, 'sine', ok ? 0.04 : 0.06, 0.1);
+    const u = this.chordTones();
+    let k = 0;
+    while (this.ladderU(u, k) < 72) k++;
+    while (this.ladderU(u, k) >= 84) k--;
+    const f = midi(this.ladderU(u, k + Math.min(up, 7)));
+    const pan = (this.tickN++ % 2 ? 0.28 : -0.28);
+    this.fmTick(f, t, urgent ? 0.2 : 0.16, pan);
+    this.samp(urgent ? 'tick1' : 'tick0', t, { gain: urgent ? 0.35 : 0.28, rate: 0.7, verb: 0.08, att: 0.004, lp: 2400, pan });
     if (secs > 0 && secs <= 3) {
       // lub-dub
       for (const [d, a] of [[0.0, 0.45], [0.16, 0.32]]) {
@@ -1532,6 +1653,38 @@ export class AudioSystem {
         this.samp('thud', t + d, { gain: a * 0.6, rate: 0.8, lp: 400 });
       }
     }
+  }
+
+  /** Round 47: one FM mallet tick: a sine carrier, a ratio-3.5 modulator whose index dies in 25 ms, a 0.12 s decay. */
+  private fmTick(f: number, t: number, gain: number, pan: number): void {
+    const ctx = this.ctx!;
+    const car = ctx.createOscillator();
+    car.frequency.value = f;
+    const mod = ctx.createOscillator();
+    mod.frequency.value = f * 3.5;
+    const mg = ctx.createGain();
+    mg.gain.setValueAtTime(f * 1.2, t);
+    mg.gain.exponentialRampToValueAtTime(f * 0.02, t + 0.025);
+    mod.connect(mg).connect(car.frequency);
+    const g = this.envGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(gain * 0.3, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0003, t + 0.14);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2600;
+    const p = ctx.createStereoPanner();
+    p.pan.value = pan;
+    car.connect(g).connect(lp).connect(p).connect(this.sfx);
+    const v = ctx.createGain();
+    v.gain.value = 0.12;
+    p.connect(v).connect(this.reverbSend);
+    for (const o of [car, mod]) {
+      o.start(t);
+      o.stop(t + 0.16);
+    }
+    this.reap(car, [car, mod, mg, g, lp, p, v]);
   }
 
   /** UI: a crisp select click (title buttons, play, resume). */
@@ -1629,7 +1782,7 @@ export class AudioSystem {
     const a = this.amb;
     const r = (v: number) => Math.round(v * 100) / 100;
     return {
-      liveOneShots: this.live, reapedOneShots: this.reaped, lastPassNear: this.lastPassNear,
+      liveOneShots: this.live, reapedOneShots: this.reaped, lastPassNear: this.lastPassNear, rotorHz: Math.round(this.rotorHz * 10) / 10,
       sprite: this.spriteState, spriteMs: this.spriteMs, spriteDelayMs: Math.round(this.spriteDelay * 1000), sampled: this.sampled, passes: this.passes,
       amb: { city: r(a.city), harbour: r(a.harbour), alt: r(a.alt), narrow: r(a.narrow) }, boosting: !!this.boostSrc, carrying: this.carrying,
     };
@@ -1694,7 +1847,25 @@ export class AudioSystem {
     this.padFilter.type = 'lowpass';
     this.padFilter.frequency.value = 700;
     this.padFilter.Q.value = 0.7;
-    this.padFilter.connect(this.bus.pad);
+    // round 47: the pad dips near 1.2 kHz while drafting (set in setDraft)
+    this.padDip = ctx.createBiquadFilter();
+    this.padDip.type = 'peaking';
+    this.padDip.frequency.value = 1200;
+    this.padDip.Q.value = 1.1;
+    this.padDip.gain.value = 0;
+    this.padFilter.connect(this.padDip).connect(this.bus.pad);
+    // round 47: Classic's melodic layers (pad, arp, lead, the ticking urgency) close to 2.4 kHz in the last 10 s
+    this.melLpC = ctx.createBiquadFilter();
+    this.melLpC.type = 'lowpass';
+    this.melLpC.frequency.value = 16000;
+    this.melLpC.Q.value = 0.5;
+    this.melLpC.connect(lowCut);
+    for (const l of ['pad', 'arp', 'lead', 'urg'] as Layer[]) {
+      this.bus[l].disconnect();
+      this.bus[l].connect(this.melLpC);
+    }
+    this.bus.arp.connect(this.echoSend);
+    this.bus.lead.connect(this.echoSend);
     this.hatFilter = ctx.createBiquadFilter();
     this.hatFilter.type = 'bandpass';
     this.hatFilter.frequency.value = 7200;
@@ -1821,6 +1992,21 @@ export class AudioSystem {
   /** In-run state, every frame: chain level, clock (last-10-s section) and whether the next medal is close. */
   setRunState(chain: number, timeLeft: number, chase: boolean, rush = this.rush): void {
     this.rush = rush;
+    // round 47: when the clock will reach 0 (audio clock), for the gap before Breakbeat's overtime drop
+    // The game clock can run slower than the audio clock (slow motion, a low frame rate), so its rate is measured.
+    if (this.ctx && !this.overtime) {
+      const now = this.ctx.currentTime;
+      if (this.clockT > 0 && now - this.clockT >= 0.1) {
+        const r = (this.clockTL - timeLeft) / (now - this.clockT);
+        if (r > 0.2 && r < 2) this.clockRate += (r - this.clockRate) * 0.3;
+        this.clockT = now;
+        this.clockTL = timeLeft;
+      } else if (this.clockT <= 0 || timeLeft > this.clockTL) {
+        this.clockT = now;
+        this.clockTL = timeLeft;
+      }
+      this.clockZeroAt = timeLeft > 0 ? now + timeLeft / this.clockRate : Infinity;
+    }
     if (this.forced) {
       chain = this.forced.chain;
       timeLeft = this.forced.final ? 5 : 60;
@@ -1855,6 +2041,7 @@ export class AudioSystem {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     for (const l of LAYERS) this.bus[l].gain.setTargetAtTime(o[l] ? 1 : 0, now, o[l] ? 0.12 : 0.3);
+    this.melLpC.frequency.setTargetAtTime(sc === 'final' ? 2400 : 16000, now, 0.25);
     // round 46: Breakbeat gates its own layers on the bar (see breakbeat.ts); its output is on while it is the track
     this.bb?.out.gain.setTargetAtTime(this.track === 'breakbeat' ? BB_LEVEL : 0, now, 0.05);
   }
@@ -1909,7 +2096,11 @@ export class AudioSystem {
     const s = step % 16;
     const bar = Math.floor(step / 16);
     if (this.track === 'breakbeat' && this.bb) {
-      if (this.scene !== 'off') this.bb.step(this.scene, bar, s, t, { chain: this.chainLv, chase: this.chase, rush: this.rush, overtime: this.overtime, tier: this.overTier });
+      // round 47: overtime is about to start when the clock reaches 0 inside this bar's last beat, with a parcel aboard,
+      // early enough for the scheduler (0.3 s) to see it before the next downbeat
+      const down = t + (16 - s) * BB_STEP;
+      const otSoon = this.scene === 'final' && !this.overtime && this.carrying && this.clockZeroAt > t - 0.05 && this.clockZeroAt <= down - 0.3;
+      if (this.scene !== 'off') this.bb.step(this.scene, bar, s, t, { chain: this.chainLv, chase: this.chase, rush: this.rush, overtime: this.overtime, tier: this.overTier, otSoon });
       return;
     }
     switch (this.scene) {
@@ -2192,6 +2383,8 @@ export class AudioSystem {
       enabled: this.musicEnabled,
       soundtrack: this.track,
       sfxEnabled: this.sfxEnabled,
+      // round 47: Breakbeat's pre-drop gap and drop (audio-clock times and counts)
+      gap: this.bb ? { ...this.bb.gapInfo } : null,
       unlocked: running,
       playing,
       track: sc,

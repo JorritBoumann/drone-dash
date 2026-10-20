@@ -360,11 +360,23 @@ export class Hud {
     if (r.width > 0) half = Math.min(half, r.left - w / 2 - 12);
     // the pill pops to 1.08 when the objective changes (obj-flash): leave room for that too
     // round 43: no 120 px floor: on a narrow screen that floor made the pill wider than its slot
-    const mx = `${Math.max(0, Math.floor((half * 2) / 1.08))}px`;
+    const lim = Math.max(0, Math.floor((half * 2) / 1.08));
+    const mx = `${lim}px`;
     if (mx !== this.objMax) {
       this.objMax = mx;
       this.objective.style.setProperty('--obj-max', mx);
     }
+    // round 44: the fixed parts (dot, verb, bonus and rush chips) can be wider than the slot on a very narrow screen.
+    // Step down until the pill fits with at least a short name: 1 no verb, 2 no bonus chip and a bare rush number,
+    // 3 no rush chip, 4 the dot alone, 5 hidden (the marker and the minimap still show the objective).
+    const el = this.objective, nm = this.objectiveName;
+    let lv = 0;
+    for (; lv < 5; lv++) {
+      if (el.dataset.fit !== String(lv)) el.dataset.fit = String(lv);
+      const nameOk = lv >= 4 || nm.clientWidth >= Math.min(nm.scrollWidth, 28);
+      if (el.offsetWidth <= lim && el.scrollWidth <= el.clientWidth + 1 && nameOk) break;
+    }
+    if (lv === 5) el.dataset.fit = '5';
   }
 
   // round 34: desktop pop slot. Like the round 24 touch slot, the centre pops leave the drone: they sit just left of
@@ -530,6 +542,7 @@ export class Hud {
     const text = on ? String(Math.ceil(left)) : '';
     if (text !== this.rushShown) {
       this.rushShown = text;
+      if (this.objectiveRush.hidden === on) this.objFitAt = -1e9; // round 44: refit the pill on the next frame
       this.objectiveRush.hidden = !on;
       this.objective.dataset.rush = on ? '1' : '0';
       this.nav.dataset.rush = on ? '1' : '0';
@@ -884,6 +897,7 @@ export class Hud {
   private writeBank(v: number): void {
     if (v === this.bankShown) return;
     this.bankShown = v;
+    if (this.objectiveBank.hidden !== v <= 0) this.objFitAt = -1e9; // round 44: refit the pill on the next frame
     this.objectiveBank.hidden = v <= 0;
     this.objectiveBankValue.textContent = `+${fmt(v)}`;
     this.scorePending.hidden = v <= 0;
@@ -896,6 +910,7 @@ export class Hud {
     this.gateTag.dataset.phase = kind;
     this.objectiveVerb.textContent = kind === 'pickup' ? 'Pick up' : 'Deliver';
     this.objectiveName.textContent = name;
+    this.objFitAt = -1e9; // round 44: refit the pill on the next frame
     this.objective.classList.remove('flash');
     void this.objective.offsetWidth;
     this.objective.classList.add('flash');

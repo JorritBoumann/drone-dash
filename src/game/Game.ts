@@ -1656,11 +1656,14 @@ export class Game {
       // round 43: the corner box is part of the placement search itself (it was a push after it, which could undo the
       // screen and control checks)
       const r = this.gateTagPlace(w, h, x, y, off, angle, behind, v.x, v.y, size);
-      x = r.x;
-      y = r.y;
-      off = r.off;
-      angle = r.angle;
-      ok = Number.isFinite(x) && Number.isFinite(y);
+      // round 44: no spot clear of every hard block: the tag hides this frame instead of sitting on a control
+      if (r) {
+        x = r.x;
+        y = r.y;
+        off = r.off;
+        angle = r.angle;
+        ok = Number.isFinite(x) && Number.isFinite(y);
+      } else ok = false;
     }
     this.hud.setGate(x, y, off, angle, m.stage === 'entrance' ? m.name : 'Way out', m.kind, ok, Math.round(dist));
     if (m.tagAt < 0 && ok) m.tagAt = this.rt();
@@ -2004,7 +2007,7 @@ export class Game {
     return { l: l - 6, t: t - 6, r: r + 6, b: b + 6 };
   }
 
-  private gateTagPlace(w: number, h: number, x: number, y: number, off: boolean, angle: number, behind: boolean, nx: number, ny: number, size: { w: number; h: number }): { x: number; y: number; off: boolean; angle: number } {
+  private gateTagPlace(w: number, h: number, x: number, y: number, off: boolean, angle: number, behind: boolean, nx: number, ny: number, size: { w: number; h: number }): { x: number; y: number; off: boolean; angle: number } | null {
     const gut = 10;
     const hw = size.w / 2 + gut, hh = size.h / 2 + 4;
     // where the arch really is (screen px; mirrored and pushed far out when behind), for the arrow
@@ -2035,11 +2038,12 @@ export class Game {
    * otherwise the edge rectangle (mx, y0 .. w - mx, y1) is walked both ways and the first good spot wins. If none is
    * good (a pop and the top panels can fill every edge spot on a phone), the start spot or the first edge spot that is
    * on screen and clear of the hard blocks (the corner and the touch controls, blocks[0 .. placeHard)) wins.
+   * Round 44: if no spot passes even the hard blocks, it returns null and the caller hides the marker or tag for that
+   * frame (it never falls back to a spot on a touch control).
    */
   private readonly placeBlocks: Box[] = [];
   private placeHard = 1;
-  private placeSearch(w: number, h: number, x: number, y: number, off: boolean, a0: number, foot: (x: number, y: number, a: number, arrow: boolean) => Box, ang: (x: number, y: number) => number, blocks: Box[], mx: number, y0: number, y1: number, vpad: number): { x: number; y: number; off: boolean; angle: number } {
-    const corner = blocks[0];
+  private placeSearch(w: number, h: number, x: number, y: number, off: boolean, a0: number, foot: (x: number, y: number, a: number, arrow: boolean) => Box, ang: (x: number, y: number) => number, blocks: Box[], mx: number, y0: number, y1: number, vpad: number): { x: number; y: number; off: boolean; angle: number } | null {
     const hit1 = (f: Box, q: Box) => f.l < q.r && q.l < f.r && f.t < q.b && q.t < f.b;
     // on screen: the footprint less its spacing margin (vpad) is inside the viewport
     const inView = (f: Box) => f.l + vpad >= 0 && f.t + vpad >= 0 && f.r - vpad <= w && f.b - vpad <= h;
@@ -2049,7 +2053,6 @@ export class Game {
     const f0 = foot(x, y, a0, off);
     if (good(f0)) return { x, y, off, angle: a0 };
     let fallback: { x: number; y: number; off: boolean; angle: number } | null = hard(f0) ? { x, y, off, angle: a0 } : null;
-    let last: { x: number; y: number; off: boolean; angle: number } | null = inView(f0) && !hit1(f0, corner) ? { x, y, off, angle: a0 } : null;
     const W = Math.max(1, w - 2 * mx), H = Math.max(1, y1 - y0), P = 2 * (W + H);
     const at = (s: number): [number, number] => {
       s = ((s % P) + P) % P;
@@ -2070,13 +2073,12 @@ export class Game {
         const f = foot(px, py, a, true);
         if (good(f)) return { x: px, y: py, off: true, angle: a };
         if (!fallback && hard(f)) fallback = { x: px, y: py, off: true, angle: a };
-        if (!last && inView(f) && !hit1(f, corner)) last = { x: px, y: py, off: true, angle: a };
       }
     }
-    return fallback ?? last ?? { x, y, off, angle: a0 };
+    return fallback;
   }
 
-  private navPlace(geo: TouchLayout | null, w: number, h: number, x: number, y: number, tx: number, ty: number, off: boolean, dist: number): { x: number; y: number; off: boolean; angle: number } {
+  private navPlace(geo: TouchLayout | null, w: number, h: number, x: number, y: number, tx: number, ty: number, off: boolean, dist: number): { x: number; y: number; off: boolean; angle: number } | null {
     // round 42: the platform's 64 px top-left corner is blocked too; round 43: it is part of this search (no push after)
     const blocks = this.placeBlocks;
     blocks.length = 0;
@@ -2149,15 +2151,19 @@ export class Game {
     }
     // round 43: one search for every constraint: on screen, out of the corner box, off the touch controls and top
     // panels (touch) or the minimap (desktop). It runs after the desktop minimap nudge above, so nothing moves it after.
-    if (Number.isFinite(x) && Number.isFinite(y)) {
+    let navOk = Number.isFinite(x) && Number.isFinite(y);
+    if (navOk) {
       const r = this.navPlace(geo, w, h, x, y, tx, ty, off, dist);
-      x = r.x;
-      y = r.y;
-      off = r.off;
-      angle = r.angle;
+      // round 44: no spot clear of the corner, the screen edge and the touch controls: hide the marker this frame
+      if (r) {
+        x = r.x;
+        y = r.y;
+        off = r.off;
+        angle = r.angle;
+      } else navOk = false;
     }
     this.hud.fitObjective(w);
-    this.hud.setNav(x, y, off, angle, dist, Number.isFinite(x) && Number.isFinite(y));
+    this.hud.setNav(x, y, off, angle, dist, navOk);
   }
 
   // round 40: the minimap box in CSS px, measured every 500 ms (never per frame)

@@ -437,29 +437,45 @@ export class CanvasHud {
     const name = E.objName.textContent ?? '';
     const fs = touch ? 14 : 16;
     c0.font = font(900, 11);
-    const vw = c0.measureText(verb).width;
+    let vw = c0.measureText(verb).width;
     c0.font = font(800, fs);
     const maxName = touch ? 170 : 240;
     // round 43: cut by grapheme (an emoji or an accented letter is never split)
     let nm = fitText(c0, name, maxName);
     c0.font = font(800, fs - 1);
     let dw = dist ? c0.measureText(dist).width + 14 : 0;
-    const rush = this.flags.rush ? `RUSH ${E.rushValue.textContent}` : '';
+    let rush = this.flags.rush ? `RUSH ${E.rushValue.textContent}` : '';
     c0.font = font(900, 11);
-    const rw = rush ? c0.measureText(rush).width + 16 : 0;
+    let rw = rush ? c0.measureText(rush).width + 16 : 0;
     const h = touch ? 30 : 34;
     // round 42: a long name is cut so the pill keeps to its slot (it never reaches the score panel)
     let rest = 30 + vw + 8 + dw + (rw ? rw + 8 : 0) + 14;
     c0.font = font(800, fs);
     // round 43: a slot too narrow for the fixed parts drops the distance first (the minimap and marker still show it)
-    if (dw && rest + c0.measureText('M…').width > maxW) { rest -= dw; dw = 0; dist = ''; }
+    const minName = c0.measureText('M…').width;
+    if (dw && rest + minName > maxW) { rest -= dw; dw = 0; dist = ''; }
+    // round 44: still too narrow: drop the verb (the dot's colour still says pick up or drop), then shorten the rush
+    // chip to its number, then drop it. Whatever is left is capped at the slot; a slot too small for the dot alone
+    // draws nothing.
+    let showVerb = true;
+    if (rest + minName > maxW) { rest -= vw + 8; vw = 0; showVerb = false; }
+    if (rw && rest + minName > maxW) {
+      rest -= rw;
+      rush = E.rushValue.textContent ?? '';
+      c0.font = font(900, 11);
+      rw = c0.measureText(rush).width + 16;
+      rest += rw;
+      c0.font = font(800, fs);
+    }
+    if (rw && rest + minName > maxW) { rest -= rw + 8; rw = 0; rush = ''; }
     if (rest + c0.measureText(nm).width > maxW) nm = fitText(c0, name, Math.max(0, maxW - rest));
     const nw = c0.measureText(nm).width;
-    const w = Math.ceil(rest + nw);
+    const w = rest > maxW ? 0 : Math.min(Math.ceil(rest + nw), Math.floor(maxW));
     const aw = Math.max(w, 480);
     const c = p.begin(aw, h, pr);
     this.objW = w;
-    this.objH = h;
+    this.objH = w > 0 ? h : 0;
+    if (w <= 0) return;
     const x0 = Math.round((p.allocW - w) / 2);
     const col = TONE[kind === 'drop' ? 'drop' : kind === 'rush' ? 'rush' : 'pickup'];
     c.fillStyle = 'rgba(29, 34, 48, 0.62)';
@@ -469,9 +485,11 @@ export class CanvasHud {
     c.beginPath(); c.arc(x0 + 16, h / 2, 5, 0, Math.PI * 2); c.fill();
     c.textBaseline = 'middle';
     let x = x0 + 28;
-    c.font = font(900, 11);
-    c.fillText(verb, x, h / 2 + 1);
-    x += vw + 8;
+    if (showVerb) {
+      c.font = font(900, 11);
+      c.fillText(verb, x, h / 2 + 1);
+      x += vw + 8;
+    }
     c.fillStyle = '#fff7ea';
     c.font = font(800, fs);
     c.fillText(nm, x, h / 2 + 1);

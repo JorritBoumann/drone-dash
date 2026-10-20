@@ -328,6 +328,16 @@ body { background: #f0b98a; }
 .objective-bank.bump { animation: bank-bump 0.45s ease; }
 @keyframes bank-bump { 30% { transform: scale(1.18); background: rgba(255, 231, 176, 0.4); } }
 @keyframes obj-flash { 30% { transform: scale(1.08); } }
+/* round 44: a slot narrower than the fixed parts drops them in steps (Hud.fitObjective sets data-fit); nothing inside
+   ever paints past the pill */
+.objective { overflow: hidden; }
+.objective:is([data-fit='1'], [data-fit='2'], [data-fit='3'], [data-fit='4']) .objective-verb { display: none; }
+.objective:is([data-fit='2'], [data-fit='3'], [data-fit='4']) .objective-bank,
+.objective:is([data-fit='2'], [data-fit='3'], [data-fit='4']) .objective-rush small { display: none; }
+.objective:is([data-fit='3'], [data-fit='4']) .objective-rush,
+.objective[data-fit='4'] .objective-name { display: none; }
+.objective[data-fit='4'] { padding: 6px 8px; gap: 0; }
+.objective[data-fit='5'] { visibility: hidden; }
 
 .hud-right {
   position: absolute;
@@ -1183,6 +1193,11 @@ kbd {
 #app[data-state='playing'] .music-toggle { display: none; }
 /* paused: sit under the HUD's pause button */
 #app[data-state='paused'] .music-toggle { top: calc(max(16px, env(safe-area-inset-top)) + 54px); }
+/* round 44: game over: an icon-only chip (34 x 34). The card keeps 76 px plus the inset on both sides (wide screens) or
+   above and below (tall ones), so the chip (16 px plus the inset from the edge, 34 px wide) never reaches the card.
+   The label stays for screen readers. */
+#app[data-state='over'] .music-toggle { padding: 8px; gap: 0; }
+#app[data-state='over'] #music-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .music-toggle[data-state='locked'] { animation: none; } }
 
 /* ---------- Round 15: city choice, rush hour, pending street bonus ---------- */

@@ -8,3 +8,7 @@ progress/**/*.ogg filter=lfs diff=lfs merge=lfs -text
 progress/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
 progress/**/*-rows.json filter=lfs diff=lfs merge=lfs -text
 progress/**/*.jsonl filter=lfs diff=lfs merge=lfs -text
+
+# Progress media is not part of the game. Keep it out of source archives
+# so builds that run git archive never need LFS credentials.
+progress/** export-ignore

@@ -39,7 +39,7 @@ const MARK_COMMIT = 2;
 const MARK_AWAY = 20;
 const GATE_SAVE_SHARE = 0.08;
 import { nextGoal, readBestTier, tierFor, tierName, writeBestTier } from './goals';
-import { completeSession, onPlatform, type SessionDetail } from '../core/platform';
+import { onPlatform, type SessionDetail } from '../core/platform';
 import { CanvasHud } from '../ui/CanvasHud';
 
 /** Round 43: the nav marker's edge inset. The edge arrow reaches 46 px out from the diamond, so 48 keeps it on screen (was 40). */
@@ -709,13 +709,13 @@ export class Game {
       dailyNew: dailyNew && score > 0,
     });
     this.hud.showScreen('over');
-    // round 41: tell the Stateloop platform the session ended naturally (once per run; guarded, never throws)
+    // round 48: the run summary is kept for the test hook only. Reporting it to the Stateloop portal as a
+    // session end made the portal close the game before the player saw this screen.
     this.sessionDetail = {
       game: 'drone-dash', score, medal: this.tier > 0 ? tierName(this.tier) : 'none', medalTier: this.tier,
       deliveries: this.delivery.deliveries, seed: this.seed, cityMode: this.city.mode,
       runSeconds: Math.round(this.runTime * 10) / 10, run: this.runCount,
     };
-    if (completeSession(this.sessionDetail)) this.sessionCompletes++;
     this.marker.hide();
     this.clearMark();
     this.drone.hasGuide = false;
@@ -726,7 +726,6 @@ export class Game {
   private readonly chud: CanvasHud | null = null;
   private chudOff = false; // test hook: skip the canvas HUD pass (pixel A/B in probes)
   private sessionDetail: SessionDetail | null = null;
-  private sessionCompletes = 0;
   private readonly onBlur = () => this.pause();
   private readonly onVisibility = () => {
     if (document.hidden) {
@@ -2488,7 +2487,7 @@ export class Game {
         return r;
       },
       canvasHudOff: (off: boolean) => { this.chudOff = off; },
-      session: () => ({ completes: this.sessionCompletes, last: this.sessionDetail, seed: this.seed, mode: this.city.mode }),
+      session: () => ({ completes: 0, last: this.sessionDetail, seed: this.seed, mode: this.city.mode }),
       stick: () => this.input.stickState(),
       minimapStats: (reset = false) => {
         const r = { draws: this.minimap.draws, msMean: this.minimap.msMean, msMax: this.minimap.msMax };

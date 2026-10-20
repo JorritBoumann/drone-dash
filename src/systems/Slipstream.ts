@@ -33,7 +33,8 @@ export class Slipstream {
   drafting = false;
   private since = 99;
   private lastStep = 0;
-  private readonly dir = { x: 0, z: 0 };
+  /** Round 45 (audio): unit direction (xz) from the drone to the nearest facade, valid while `wall` > 0. */
+  readonly dir = { x: 0, z: 0 };
 
   reset(): void {
     this.level = 0;

@@ -20,7 +20,7 @@ import { createCityMaterial, setCityDetailTextures, type CityMaterial } from '..
 import { propAudit, propPlacementAudit } from '../world/StreetProps';
 import { BuildingDetail } from '../world/BuildingDetail';
 import { generateCity, type CityLayout } from '../world/CityGenerator';
-import { SHORE, surfaceHeight, waveHeight as waveHeightAt } from '../world/Water';
+import { SHORE, shoreDistance, surfaceHeight, waveHeight as waveHeightAt } from '../world/Water';
 import { Minimap, buildMinimapLayer, type MinimapFrame } from '../ui/Minimap';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE, SUN_DIR } from '../world/Environment';
 import { shadowSlab } from '../world/shadowSubset';
@@ -579,6 +579,7 @@ export class Game {
     this.input.clear();
     this.hud.setSpeedLines(0);
     this.hud.showScreen('paused');
+    this.audio.uiBack();
     this.audio.setRotor(false);
     window.setTimeout(() => {
       if (this.state === 'paused') this.audio.suspend();
@@ -737,6 +738,7 @@ export class Game {
     const wasLocked = this.hud.musicLocked;
     this.audio.unlock();
     this.audio.setMusicEnabled(wasLocked ? true : !this.audio.musicEnabled);
+    this.audio.uiToggle();
     this.hud.setMusic(true, this.audio.musicEnabled);
     if (this.state === 'playing') this.canvas.focus({ preventScroll: true });
   };
@@ -746,12 +748,14 @@ export class Game {
     if (e.code === 'KeyM' && !e.repeat) {
       if (this.state !== 'playing') return;
       this.minimap.toggle();
+      this.audio.uiToggle();
       this.hud.relayout(); // re-measure the HUD layout (the map box joined or left it)
       return;
     }
     if (e.code === 'KeyN' && !e.repeat) {
       this.audio.unlock();
       this.audio.setMusicEnabled(!this.audio.musicEnabled);
+      this.audio.uiToggle();
       return;
     }
     if ((this.state === 'title' || this.state === 'over') && (e.code === 'Enter' || (e.code === 'Space' && document.activeElement === document.body))) {
@@ -871,7 +875,7 @@ export class Game {
     if (this.events.bump > 2 && this.bumpCooldown <= 0) {
       const s = Math.min(1, this.events.bump / 16);
       this.bumpCooldown = 0.18;
-      this.audio.bump(this.events.bump);
+      this.audio.bump(this.events.bump, this.wallPan(this.events.hitNx, this.events.hitNz));
       // round 41: the bump of a free head-on knock (the light effect played) stays small: with the full bump shake,
       // flash and burst on top, a knock at 10 to 11 m/s added up to a crash-size jolt
       const light = this.hitPending && this.hitFx === 1;
@@ -884,6 +888,10 @@ export class Game {
     // boost start
     if (d.boosting && !this.wasBoosting) {
       this.audio.boost();
+    } else if (!d.boosting && this.wasBoosting) {
+      this.audio.boostEnd();
+    }
+    if (d.boosting && !this.wasBoosting) {
       this.cameraRig.addShake(0.15);
     }
     this.wasBoosting = d.boosting;
@@ -986,14 +994,18 @@ export class Game {
     const whole = Math.ceil(tl);
     if (tl <= 10 && whole !== this.lastTick && tl > 0) {
       this.lastTick = whole;
-      this.audio.tick(tl <= 5);
+      this.audio.tick(tl <= 5, whole);
     }
     // music follows the chain, the clock and a close medal (within the last 15% of the way to it)
     const goal = nextGoal(this.delivery.score);
     // round 17: overtime stays in the last-10-s section (an overtime clock can start above it)
     this.audio.setRunState(this.slip.chain, this.delivery.overtime ? Math.min(tl, 5) : tl, !!goal && goal.progress >= 0.85);
 
-    this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80), d.headwind);
+    this.audio.updateRotor(Math.min(1, d.speed / FLIGHT.boostSpeed), Math.min(1, Math.abs(this.intent.thrust) * 0.6 + Math.abs(this.intent.lift) * 0.4), d.boosting, Math.min(1, d.group.position.y / 80), d.headwind, this.intent.turn, d.carrying);
+    // round 45: ambience by position (harbour, altitude, closed-in streets for the slapback) and Doppler pass-bys
+    const narrowAmt = this.narrow ? 1 : altAboveGround < 14 ? Math.max(0, Math.min(1, (this.slip.wall - 0.55) / 0.4)) : 0;
+    this.audio.setWorld(shoreDistance(dp.x, dp.z), altAboveGround, narrowAmt, realDt);
+    this.updatePassBys();
 
     this.hud.setScore(this.delivery.score);
     this.checkMedal();
@@ -1156,7 +1168,7 @@ export class Game {
     const d = this.drone;
     this.impacts++;
     this.lastImpact = { angle: this.hitAngle, loss: this.hitLoss, at: this.rt() };
-    this.audio.impact(s);
+    this.audio.impact(s, this.wallPan(this.hitNx, this.hitNz));
     this.cameraRig.addShake(0.85 + s * 0.3);
     this.cameraRig.kick(this.hitNx, this.hitNz, 0.3 + 0.3 * s);
     this.hitStop = 0.03;
@@ -1219,7 +1231,7 @@ export class Game {
     if (fresh) {
       this.cameraRig.addShake(0.12 + s * 0.22);
     }
-    this.audio.scrape(ev.scrape + (fresh ? 2 : 0));
+    this.audio.scrape(ev.scrape + (fresh ? 2 : 0), this.wallPan(ev.snx, ev.snz));
   }
 
   /**
@@ -1775,6 +1787,55 @@ export class Game {
    * progress flown for a payout) follows what the drone really flew. `realDt` is the clock: the slow-clock reward and
    * the slipstream's timers are elapsed-time economy and run at real time, like the run clock.
    */
+  /** Round 45 (audio): stereo pan (-1 left .. 1 right, from the camera) of a world direction (x, z). */
+  private dirPan(x: number, z: number): number {
+    const e = this.camera.matrixWorld.elements;
+    const rl = Math.hypot(e[0], e[2]) || 1, l = Math.hypot(x, z) || 1;
+    return (x * e[0] + z * e[2]) / (rl * l);
+  }
+  /** Round 45 (audio): the pan of a wall from its outward normal (the wall is on the other side of the normal). */
+  private wallPan(nx: number, nz: number): number {
+    return nx || nz ? -this.dirPan(nx, nz) : 0;
+  }
+  private readonly passNear: Array<{ id: number; x: number; z: number; vx: number; vz: number }> = [];
+  private readonly passSeen = new Map<number, number>();
+  private passFrame = 0;
+  /**
+   * Round 45 (audio): cars and boats that will pass close within half a second get a Doppler whoosh. Every third frame,
+   * only near street level (cars) or near the water (boats); each vehicle at most once every 3 s.
+   */
+  private updatePassBys(): void {
+    if (++this.passFrame % 3) return;
+    const d = this.drone, p = d.group.position, dvx = d.velocity.x, dvz = d.velocity.z;
+    const now = this.runTime;
+    const check = (id: number, kind: 'car' | 'boat', x: number, z: number, vx: number, vz: number) => {
+      const rx = x - p.x, rz = z - p.z, ux = vx - dvx, uz = vz - dvz;
+      const v2 = ux * ux + uz * uz;
+      if (v2 < 16) return;
+      const tca = -(rx * ux + rz * uz) / v2;
+      if (tca <= 0 || tca > 0.5) return;
+      const mx = rx + ux * tca, mz = rz + uz * tca, miss = Math.hypot(mx, mz);
+      if (miss > 9) return;
+      const last = this.passSeen.get(id);
+      if (last !== undefined && now - last < 3) return;
+      this.passSeen.set(id, now);
+      const ax = rx + ux * (tca + 0.5), az = rz + uz * (tca + 0.5);
+      this.audio.passBy(kind, this.dirPan(rx, rz), this.dirPan(ax, az), Math.sqrt(v2), miss, tca);
+    };
+    if (p.y < 12) {
+      const n = this.env.traffic.near(p.x, p.z, 26, this.passNear);
+      for (let i = 0; i < n; i++) { const c = this.passNear[i]; check(c.id, 'car', c.x, c.z, c.vx, c.vz); }
+    }
+    const boats = this.env.boats?.boats;
+    if (boats && p.y < 16) {
+      for (let i = 0; i < boats.length; i++) {
+        const b = boats[i];
+        if (!b.moving || Math.abs(b.x - p.x) > 30 || Math.abs(b.z - p.z) > 30) continue;
+        check(10000 + i, 'boat', b.x, b.z, Math.sin(b.yaw) * b.speed, Math.cos(b.yaw) * b.speed);
+      }
+    }
+  }
+
   private updateSlipstream(dt: number, realDt: number): void {
     const d = this.drone;
     this.payFlown += Math.hypot(d.velocity.x, d.velocity.z) * dt;
@@ -1782,7 +1843,7 @@ export class Game {
     this.narrow = this.narrowAt(d.group.position);
     this.vanDraft = this.env.vanDraft(d.group.position, d.velocity.x, d.velocity.z);
     const ev = this.slip.update(dt, d.group.position, d.speed, this.world, !!this.narrow, this.vanDraft, realDt);
-    this.audio.setDraft(this.slip.intensity, this.slip.level);
+    this.audio.setDraft(this.slip.intensity, this.slip.level, this.slip.wall > 0 ? this.dirPan(this.slip.dir.x, this.slip.dir.z) : 0);
     // slow clock: good drafting earns clock time smoothly, every frame, instead of in lumps per payout
     // (round 13: only on the way to the objective, and at most `clockBudget` seconds per leg, so it pays delivering)
     this.slipClockK = this.narrow?.roof && d.speed > SLIPSTREAM.minSpeed ? 1 : this.slipClockPace();
@@ -2288,7 +2349,7 @@ export class Game {
         impacts: this.impacts, scrapes: this.scrapes, freed: this.freed, lastImpact: this.lastImpact,
         timeScale: this.timeScale, runTime: this.runTime, legClock: this.legClock, lightHits: this.lightHits, carry: this.drone.carry,
       },
-      audio: { state: this.audio.contextState, music: this.audio.musicInfo() },
+      audio: { state: this.audio.contextState, music: this.audio.musicInfo(), sfx: this.audio.sfxInfo() },
       contact: { bump: this.events.bump, ledge: this.events.ledge, wallLoss: this.events.wallLoss, scrape: this.events.scrape, scrapeOld: this.events.scrapeOld, hitAngle: this.events.hitAngle },
       objective: this.state === 'title' ? null : { phase: this.delivery.phase, name: this.delivery.target?.name ?? '', position: this.delivery.target ? { x: this.delivery.target.pos.x, y: this.delivery.target.pos.y, z: this.delivery.target.pos.z } : null },
       fps: Math.round(this.fps * 10) / 10,
@@ -2415,6 +2476,8 @@ export class Game {
       place: (x: number, y: number, z: number, yaw: number, speed = 0) => this.drone.place(new THREE.Vector3(x, y, z), yaw, speed),
       // audio test hooks: per-frame bus meters (fanfare vs music) and the music toggle
       audioMeter: (on: boolean) => this.audio.setMeter(on),
+      // round 45: the mix's tap points (master output, music, effects, drone, ambience, effects return) for recordings
+      audioTaps: () => this.audio.taps(),
       // audio test hook: hold the music at a chain level (null releases it), optionally in the last-10-s section
       musicForce: (chain: number | null, final = false) => this.audio.forceRunState(chain, final),
       music: (on: boolean) => this.audio.setMusicEnabled(on),

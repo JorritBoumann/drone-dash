@@ -1,0 +1,259 @@
+Round 45 critic clips (after the audio round). Times are seconds into each clip, corrected for the capture latency.
+
+== 01-title-music  (20.0 s; clip 0.0 s = main session audio clock 3.09 s for 20.0 s)
+
+== 02-takeoff-calm-flight-chain0  (20.0 s; clip 0.0 s = main session audio clock 26.23 s for 20.0 s)
+   0.50 s  mark           enter
+   0.72 s  music          music run/base layer 1
+   0.72 s  state          state title -> playing
+   4.99 s  passby         Doppler pass-by
+   5.14 s  payout         slipstream payout, chain x1
+   5.14 s  music          music run/drums layer 2
+   7.55 s  boost-on       boost on
+   8.75 s  passby         Doppler pass-by
+   9.18 s  boost-off      boost off
+  10.12 s  payout         slipstream payout, chain x2
+  10.12 s  music          music run/arp layer 3
+  12.64 s  duck:pickup    music ducked to 0.6   [duck:  music -3.1 dB  bed -3.3 dB  amb -2.3 dB]
+  12.69 s  pickup         parcel picked up
+  16.07 s  light-hit      hard knock, not a crash
+  17.49 s  boost-on       boost on
+  17.53 s  boost-off      boost off
+  18.79 s  boost-on       boost on
+  19.07 s  passby         Doppler pass-by
+  19.10 s  chain-reset    chain x2 -> x0
+  19.10 s  music          music run/base layer 1
+  19.43 s  duck:slip      music ducked to 0.62   [duck:  music -6.5 dB  bed -2.7 dB  amb -1.3 dB]
+  19.45 s  payout         slipstream payout, chain x1
+  19.45 s  music          music run/drums layer 2
+  19.66 s  passby         Doppler pass-by
+
+== 03-slipstream-chain-x3-payouts  (25.0 s; clip 0.0 s = main session audio clock 106.91 s for 25.0 s)
+   3.43 s  boost-on       boost on
+   3.67 s  passby         Doppler pass-by
+   4.00 s  duck:slip      music ducked to 0.62   [duck:  music -5.0 dB  bed -0.3 dB  amb +1.1 dB]
+   4.01 s  payout         slipstream payout, chain x2
+   4.01 s  music          music run/arp layer 3
+   5.07 s  duck:slip      music ducked to 0.62   [duck:  music -3.5 dB  bed -0.3 dB  amb -2.2 dB]
+   5.07 s  payout         slipstream payout, chain x3
+   5.07 s  music          music run/lead layer 4
+   6.31 s  passby         Doppler pass-by
+   6.80 s  duck:slip      music ducked to 0.62   [duck:  music -2.8 dB  bed -1.7 dB  amb -2.9 dB]
+   6.81 s  payout         slipstream payout, chain x4
+   8.22 s  boost-off      boost off
+   8.22 s  duck:slip      music ducked to 0.62   [duck:  music -2.3 dB  bed -3.5 dB  amb -1.9 dB]
+   8.25 s  payout         slipstream payout, chain x5
+  11.92 s  duck:delivery  music ducked to 0.45   [duck:  music -5.0 dB  bed -4.0 dB  amb -3.3 dB]
+  11.93 s  delivery       delivery 3 (score 4818)
+  17.26 s  chain-reset    chain x5 -> x0
+  17.26 s  music          music run/base layer 1
+  19.42 s  boost-on       boost on
+  19.61 s  boost-off      boost off
+  20.00 s  boost-on       boost on
+  20.27 s  duck:slip      music ducked to 0.62   [duck:  music -5.2 dB  bed -0.0 dB  amb -2.2 dB]
+  20.28 s  payout         slipstream payout, chain x1
+  20.28 s  music          music run/drums layer 2
+  21.04 s  boost-off      boost off
+  21.28 s  duck:slip      music ducked to 0.62   [duck:  music -6.5 dB  bed -3.0 dB  amb -1.2 dB]
+  21.31 s  payout         slipstream payout, chain x2
+  21.31 s  music          music run/arp layer 3
+  23.24 s  duck:slip      music ducked to 0.62   [duck:  music -6.5 dB  bed -5.1 dB  amb -2.0 dB]
+  23.27 s  payout         slipstream payout, chain x3
+  23.27 s  music          music run/lead layer 4
+  24.67 s  passby         Doppler pass-by
+  24.89 s  duck:pickup    music ducked to 0.6   [duck:  music -4.4 dB  bed -1.9 dB  amb -2.2 dB]
+  24.91 s  pickup         parcel picked up
+
+== 04-boost-and-tail-off  (10.0 s; clip 0.0 s = main session audio clock 108.34 s for 10.0 s)
+   2.00 s  boost-on       boost on
+   2.24 s  passby         Doppler pass-by
+   2.57 s  duck:slip      music ducked to 0.62   [duck:  music -5.0 dB  bed -0.3 dB  amb +1.1 dB]
+   2.59 s  payout         slipstream payout, chain x2
+   2.59 s  music          music run/arp layer 3
+   3.64 s  duck:slip      music ducked to 0.62   [duck:  music -3.5 dB  bed -0.3 dB  amb -2.2 dB]
+   3.65 s  payout         slipstream payout, chain x3
+   3.65 s  music          music run/lead layer 4
+   4.88 s  passby         Doppler pass-by
+   5.37 s  duck:slip      music ducked to 0.62   [duck:  music -2.8 dB  bed -1.7 dB  amb -2.9 dB]
+   5.39 s  payout         slipstream payout, chain x4
+   6.79 s  boost-off      boost off
+   6.79 s  duck:slip      music ducked to 0.62   [duck:  music -2.3 dB  bed -3.5 dB  amb -1.9 dB]
+   6.83 s  payout         slipstream payout, chain x5
+
+== 05-wall-scrape-and-head-on-crash  (10.0 s; clip 0.0 s = fx session audio clock 34.15 s for 5.0 s, clip 4.7 s = fx session audio clock 42.71 s for 5.3 s)
+   0.40 s  duck:slip      music ducked to 0.62   [duck:  music -4.0 dB  bed -1.7 dB  amb -1.9 dB]
+   0.42 s  payout         slipstream payout, chain x5
+   1.50 s  scrape         wall scrape
+   2.55 s  mark           backoff
+   3.72 s  passby         Doppler pass-by
+   5.54 s  chain-reset    chain x5 -> x0
+   5.54 s  music          music run/base layer 1
+   6.13 s  mark           crash-setup
+   6.17 s  boost-on       boost on
+   6.87 s  duck:slip      music ducked to 0.62   [duck:  music -4.6 dB  bed -2.1 dB  amb -1.8 dB]
+   6.89 s  payout         slipstream payout, chain x1
+   6.89 s  music          music run/drums layer 2
+   7.17 s  duck:crash     music ducked to 0.35   [duck:  music -8.2 dB  bed -12.2 dB  amb -3.8 dB]
+   7.20 s  impact         head-on impact
+   7.24 s  boost-off      boost off
+   7.40 s  chain-reset    chain x1 -> x0
+   7.40 s  crash          crash charged (time penalty)
+   7.40 s  music          music run/base layer 1
+
+== 06-pickup-delivery-medal  (14.7 s; clip 0.0 s = main session audio clock 37.37 s for 5.0 s, clip 4.7 s = main session audio clock 51.53 s for 10.0 s)
+   1.50 s  duck:pickup    music ducked to 0.6   [duck:  music -3.1 dB  bed -3.3 dB  amb -2.3 dB]
+   1.55 s  pickup         parcel picked up
+   4.93 s  light-hit      hard knock, not a crash
+   7.12 s  duck:slip      music ducked to 0.62   [duck:  music -5.9 dB  bed -3.9 dB  amb -1.6 dB]
+   7.14 s  payout         slipstream payout, chain x4
+   9.84 s  delivery       delivery 1 (score 1319)
+   9.84 s  medal          medal tier 1
+  10.70 s  duck:medal     music ducked to 0.28   [duck:  music -10.3 dB  bed -5.2 dB  amb -3.2 dB]
+
+== 07-rush-hour-then-last-10s-into-overtime  (32.96 s; clip 0.0 s = main session audio clock 87.51 s for 8.0 s, clip 7.7 s = ot session audio clock 38.39 s for 25.3 s)
+   3.00 s  duck:rush      music ducked to 0.4   [duck:  music -7.0 dB  bed -6.9 dB  amb -3.7 dB]
+   4.06 s  passby         Doppler pass-by
+   4.85 s  chain-reset    chain x4 -> x0
+   4.85 s  music          music run/base layer 1
+   5.20 s  passby         Doppler pass-by
+   5.40 s  duck:slip      music ducked to 0.62   [duck:  music -4.0 dB  bed -1.1 dB  amb -1.9 dB]
+   5.44 s  payout         slipstream payout, chain x1
+   5.44 s  music          music run/drums layer 2
+   7.07 s  passby         Doppler pass-by
+   8.31 s  duck:pickup    music ducked to 0.6   [duck:  music -5.5 dB  bed -0.4 dB  amb -3.0 dB]
+   8.34 s  pickup         parcel picked up
+   9.20 s  tick           clock tick 10 s
+   9.20 s  music          music final/final layer 5
+  10.22 s  tick           clock tick 9 s
+  11.21 s  tick           clock tick 8 s
+  12.22 s  tick           clock tick 7 s
+  13.23 s  boost-on       boost on
+  13.23 s  tick           clock tick 6 s
+  13.27 s  boost-off      boost off
+  14.21 s  tick           clock tick 5 s
+  14.92 s  passby         Doppler pass-by
+  15.35 s  chain-reset    chain x2 -> x0
+  15.59 s  boost-on       boost on
+  15.79 s  boost-off      boost off
+  15.84 s  duck:slip      music ducked to 0.62   [duck:  music -2.5 dB  bed -2.2 dB  amb -2.0 dB]
+  15.87 s  payout         slipstream payout, chain x1
+  15.99 s  tick           clock tick 4 s
+  16.30 s  boost-on       boost on
+  16.58 s  boost-off      boost off
+  17.00 s  boost-on       boost on
+  17.28 s  boost-off      boost off
+  17.66 s  duck:slip      music ducked to 0.62   [duck:  music -2.7 dB  bed -2.9 dB  amb -1.7 dB]
+  17.67 s  payout         slipstream payout, chain x2
+  17.75 s  boost-on       boost on
+  18.03 s  boost-off      boost off
+  18.11 s  passby         Doppler pass-by
+  19.94 s  duck:slip      music ducked to 0.62   [duck:  music -3.4 dB  bed -2.6 dB  amb -2.1 dB]
+  19.97 s  payout         slipstream payout, chain x3
+  20.14 s  tick           clock tick 3 s
+  21.36 s  tick           clock tick 2 s
+  21.69 s  passby         Doppler pass-by
+  22.35 s  tick           clock tick 1 s
+  23.34 s  duck:rush      music ducked to 0.4   [duck:  music -6.7 dB  bed -2.9 dB  amb -3.7 dB]
+  23.35 s  overtime       overtime starts
+  25.37 s  tick           clock tick 10 s
+  26.15 s  duck:slip      music ducked to 0.62   [duck:  music -7.4 dB  bed -2.8 dB  amb -1.9 dB]
+  26.19 s  payout         slipstream payout, chain x4
+  26.35 s  tick           clock tick 9 s
+  27.37 s  tick           clock tick 8 s
+  27.88 s  delivery       delivery 1 (score 1045)
+  27.88 s  medal          medal tier 1
+  28.73 s  duck:medal     music ducked to 0.28   [duck:  music -8.6 dB  bed -5.4 dB  amb -3.6 dB]
+  29.44 s  duck:gameover  music ducked to 0.28   [duck:  music -24.1 dB  bed -8.3 dB  amb -1.4 dB]
+  29.46 s  music          music over/bronze layer 1
+  29.46 s  state          state playing -> over
+  29.46 s  mark           run-end over
+
+== 08-harbour-boats-bus-then-street-people-traffic  (21.7 s; clip 0.0 s = fx session audio clock 74.79 s for 12.0 s, clip 11.7 s = fx session audio clock 111.89 s for 10.0 s)
+  10.92 s  passby         Doppler pass-by
+  20.30 s  passby         Doppler pass-by
+  20.83 s  duck:slip      music ducked to 0.62   [duck:  music -3.7 dB  bed -3.9 dB  amb -2.3 dB]
+  20.85 s  payout         slipstream payout, chain x1
+  20.85 s  music          music run/drums layer 2
+
+== 09-game-over-sting-and-loop  (21.0 s; clip 0.0 s = main session audio clock 169.20 s for 21.0 s)
+   0.99 s  duck:gameover  music ducked to 0.35   [duck:  music -24.6 dB  bed -4.6 dB  amb +0.2 dB]
+   1.00 s  music          music over/gold layer 1
+   1.00 s  state          state playing -> over
+   1.00 s  mark           run-end over
+
+== 10-full-run-60s-unedited  (60.0 s; clip 0.0 s = main session audio clock 26.23 s for 60.0 s)
+   0.50 s  mark           enter
+   0.72 s  music          music run/base layer 1
+   0.72 s  state          state title -> playing
+   4.99 s  passby         Doppler pass-by
+   5.14 s  payout         slipstream payout, chain x1
+   5.14 s  music          music run/drums layer 2
+   7.55 s  boost-on       boost on
+   8.75 s  passby         Doppler pass-by
+   9.18 s  boost-off      boost off
+  10.12 s  payout         slipstream payout, chain x2
+  10.12 s  music          music run/arp layer 3
+  12.64 s  duck:pickup    music ducked to 0.6   [duck:  music -3.1 dB  bed -3.3 dB  amb -2.3 dB]
+  12.69 s  pickup         parcel picked up
+  16.07 s  light-hit      hard knock, not a crash
+  17.49 s  boost-on       boost on
+  17.53 s  boost-off      boost off
+  18.79 s  boost-on       boost on
+  19.07 s  passby         Doppler pass-by
+  19.10 s  chain-reset    chain x2 -> x0
+  19.10 s  music          music run/base layer 1
+  19.43 s  duck:slip      music ducked to 0.62   [duck:  music -6.5 dB  bed -2.7 dB  amb -1.3 dB]
+  19.45 s  payout         slipstream payout, chain x1
+  19.45 s  music          music run/drums layer 2
+  19.66 s  passby         Doppler pass-by
+  20.37 s  boost-off      boost off
+  20.52 s  duck:slip      music ducked to 0.62   [duck:  music -5.9 dB  bed -4.2 dB  amb -2.2 dB]
+  20.53 s  payout         slipstream payout, chain x2
+  20.53 s  music          music run/arp layer 3
+  20.92 s  boost-on       boost on
+  21.09 s  boost-off      boost off
+  21.48 s  passby         Doppler pass-by
+  22.53 s  duck:slip      music ducked to 0.62   [duck:  music -2.9 dB  bed -2.0 dB  amb -2.0 dB]
+  22.54 s  payout         slipstream payout, chain x3
+  22.54 s  music          music run/lead layer 4
+  22.87 s  passby         Doppler pass-by
+  25.18 s  passby         Doppler pass-by
+  27.72 s  duck:slip      music ducked to 0.62   [duck:  music -5.9 dB  bed -3.9 dB  amb -1.6 dB]
+  27.74 s  payout         slipstream payout, chain x4
+  30.44 s  delivery       delivery 1 (score 1319)
+  30.44 s  medal          medal tier 1
+  31.30 s  duck:medal     music ducked to 0.28   [duck:  music -10.3 dB  bed -5.2 dB  amb -3.2 dB]
+  36.73 s  chain-reset    chain x4 -> x0
+  36.73 s  music          music run/base layer 1
+  37.72 s  duck:slip      music ducked to 0.62   [duck:  music -5.2 dB  bed -1.9 dB  amb -1.9 dB]
+  37.75 s  payout         slipstream payout, chain x1
+  37.75 s  music          music run/drums layer 2
+  40.97 s  passby         Doppler pass-by
+  42.46 s  duck:slip      music ducked to 0.62   [duck:  music -4.7 dB  bed -2.9 dB  amb -2.8 dB]
+  42.49 s  payout         slipstream payout, chain x2
+  42.49 s  music          music run/arp layer 3
+  43.99 s  passby         Doppler pass-by
+  44.58 s  duck:pickup    music ducked to 0.6   [duck:  music -4.1 dB  bed -1.4 dB  amb -2.8 dB]
+  44.59 s  pickup         parcel picked up
+  50.32 s  boost-on       boost on
+  50.36 s  boost-off      boost off
+  51.13 s  passby         Doppler pass-by
+  51.49 s  chain-reset    chain x2 -> x0
+  51.49 s  music          music run/base layer 1
+  51.81 s  boost-on       boost on
+  51.84 s  passby         Doppler pass-by
+  52.43 s  duck:slip      music ducked to 0.62   [duck:  music -4.3 dB  bed -2.3 dB  amb -2.7 dB]
+  52.47 s  payout         slipstream payout, chain x1
+  52.47 s  music          music run/drums layer 2
+  52.86 s  passby         Doppler pass-by
+  53.80 s  duck:slip      music ducked to 0.62   [duck:  music -1.2 dB  bed -2.7 dB  amb -3.0 dB]
+  53.83 s  payout         slipstream payout, chain x2
+  53.83 s  music          music run/arp layer 3
+  54.74 s  boost-off      boost off
+  54.76 s  duck:slip      music ducked to 0.62   [duck:  music -0.8 dB  bed -4.0 dB  amb -0.7 dB]
+  54.78 s  payout         slipstream payout, chain x3
+  54.78 s  music          music run/lead layer 4
+  57.12 s  duck:slip      music ducked to 0.62   [duck:  music -2.9 dB  bed -2.7 dB  amb -2.5 dB]
+  57.15 s  payout         slipstream payout, chain x4
+  59.83 s  delivery       delivery 2 (score 2899)
+  59.83 s  medal          medal tier 2

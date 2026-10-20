@@ -1156,6 +1156,13 @@ kbd {
   .medal-pop span { justify-self: start; margin-top: 4px; }
   .medal-pop::before { top: 50%; left: 22px; margin-top: -63px; }
 }
+/* r45: iPhone SE sideways (568x320): the two-column card is wider than the room it has. No minimum column widths and a
+   narrower gap, so the breakdown values stay inside the card (round 44 builder note). */
+@media (max-height: 460px) and (max-width: 640px) {
+  .over-card { gap: 12px; padding: 14px 16px; }
+  .over-head { min-width: 0; flex: 0 1 auto; }
+  .over-body { min-width: 0; flex: 1 1 auto; }
+}
 
 /* ---------- Music chip (title, pause, game over) ---------- */
 .music-toggle {

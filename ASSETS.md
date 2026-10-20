@@ -1,6 +1,6 @@
 # Drone Dash: assets
 
-Everything not listed here is procedural, made in code (city, buildings, people, vans, trucks, hover-vans, lamps, pines, sky, audio).
+Everything not listed here is procedural, made in code (city, buildings, people, vans, trucks, hover-vans, lamps, pines, sky, music and most of the audio; the sampled sounds are listed under Round 45).
 
 All assets below are **CC0 1.0** (public domain, no attribution needed, commercial use fine). No paid or free-tier generation was used.
 Originals stay local in `asset-src/` (git-ignored). Only the optimised files under `public/assets/` are committed.
@@ -106,3 +106,35 @@ Script: `progress/round-38/builder-scripts/blender_rib38.py`.
 - Round 35: boats.glb 211 KB plus 369 KB of boat textures. All lazy assets now about 2.1 MB.
 - Round 36: boats.glb 459 KB, textures unchanged. All lazy assets now about 2.4 MB.
 - Round 38: boats.glb 500 KB (rib tubes smoothed), textures unchanged.
+- Round 45: `audio/sfx.mp3` 161 KB (the Kenney sound sprite), fetched after the first frame. First load of the production build measured at 3.59 MB (23 requests) with every lazy asset.
+
+## Round 45: sound samples (Kenney audio packs)
+
+Source: the five CC0 Kenney audio packs in `asset-src/kenney-audio/` (Impact Sounds, Interface Sounds, Sci-fi Sounds, UI Audio; licence files inside each pack: "Creative Commons Zero, CC0", credit optional). Nothing was downloaded; no paid or free-tier generation. The digital-audio pack is not used.
+Tool: `progress/round-45/builder-scripts/build_sprite.py` (ffmpeg + numpy): decode, trim, peak-normalise (-1.5 dBFS for the crash layers, -3 dBFS for the rest), 2 ms fade-in and up to 20 ms fade-out, loops get a baked equal-power crossfade, then everything goes into one mono sound sprite with 0.12 s gaps and a 2 ms sync click at 0.05 s (the game measures the decoder delay against it).
+
+Game file: `public/assets/audio/sfx.mp3` (MP3 96 kbps mono 48 kHz, 13.4 s, **161 KB**), offsets in `src/systems/sfxSprite.ts`. Fetched and decoded after the first frame; every sampled cue has a procedural fallback until it is ready.
+
+| File | Pack | Licence | Author | Part used | Where used | Sprite name |
+|---|---|---|---|---|---|---|
+| `explosionCrunch_000.ogg` | kenney_sci-fi-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | head-on crash (layer 1, random pitch) | `crunch` |
+| `impactPlate_heavy_000.ogg` | kenney_impact-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | head-on crash (layer 2, metal body) | `plate` |
+| `impactMetal_medium_000.ogg, _001.ogg, _003.ogg` | kenney_impact-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | wall knock (random of three) and a low layer of the crash | `knock0-2` |
+| `impactMetal_light_000.ogg, _001.ogg, _003.ogg` | kenney_impact-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | wall scrape grains (random, panned to the wall side) | `scrape0-2` |
+| `scratch_004.ogg, scratch_001.ogg` | kenney_interface-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | wall scrape grit on harder scrapes | `grit0-1` |
+| `thrusterFire_004.ogg` | kenney_sci-fi-sounds | CC0 1.0 | Kenney (www.kenney.nl) | 1.15 to 1.65 s | boost ignition burst | `ignite` |
+| `thrusterFire_002.ogg` | kenney_sci-fi-sounds | CC0 1.0 | Kenney (www.kenney.nl) | 1.3 to 4.0 s, loop with a baked 0.3 s crossfade | boost burner loop (held while boosting, 0.6 s fade on release) | `thrust` |
+| `switch12.ogg` | kenney_ui-audio | CC0 1.0 | Kenney (www.kenney.nl) | whole | pickup: the claw latches | `latch` |
+| `impactTin_medium_000.ogg` | kenney_impact-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | pickup: metal clunk under the latch | `clunk` |
+| `switch14.ogg` | kenney_ui-audio | CC0 1.0 | Kenney (www.kenney.nl) | whole | delivery: the claw opens | `unlatch` |
+| `impactSoft_medium_001.ogg` | kenney_impact-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | delivery: the parcel lands; heartbeat layer in the last 3 s | `thud` |
+| `impactWood_light_000.ogg` | kenney_impact-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | delivery: cardboard box knock | `box` |
+| `tick_002.ogg` | kenney_interface-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | clock tick, 10 to 6 s left (pitch rises a semitone a second) | `tick0` |
+| `tick_001.ogg` | kenney_interface-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | clock tick, 5 to 1 s left; missed rush order | `tick1` |
+| `select_001.ogg` | kenney_interface-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | UI click (title buttons, play, resume); glass edge on slipstream chimes | `select` |
+| `back_001.ogg` | kenney_interface-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | UI: pause | `back` |
+| `toggle_002.ogg` | kenney_interface-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | UI: music toggle (N and the chip), minimap toggle (M) | `toggle` |
+| `error_004.ogg` | kenney_interface-sounds | CC0 1.0 | Kenney (www.kenney.nl) | whole | crash that breaks a combo | `error` |
+| `spaceEngineLow_001.ogg` | kenney_sci-fi-sounds | CC0 1.0 | Kenney (www.kenney.nl) | 1.6 to 4.9 s, loop with a baked 0.3 s crossfade | city ambience: distant low engine rumble (lowpassed, very quiet) | `cityLow` |
+
+Everything else in the audio stays procedural: the rotor, air and slipstream, the ambience beds (city hum and traffic, harbour water and wind, altitude wind), Doppler pass-bys, FM chimes, horns, the medal fanfare and all music.

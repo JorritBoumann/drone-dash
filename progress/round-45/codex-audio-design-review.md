@@ -1,0 +1,95 @@
+## Current code
+
+The effects are all procedural. There are no audio assets, stereo panners, or spatial links to Three.js positions. The audio system does have a generated noise buffer, a convolution reverb for sound effects, a delay for two music layers, music/SFX gains, a compressor, and a limiter.
+
+### Why the sounds likely feel basic
+
+- **Rotor:** Two detuned sawtooths through one low pass, amplitude modulated at blade-pass rate. The pitches do follow speed, effort, and boost, and the filter opens as speed rises. But the same pair of steady oscillators runs throughout flight; there is no per-motor variation, transient, pitch instability, or changing blade character. The LFO is a simple sine. It is also sent directly to the master, bypassing the SFX bus and its gain.
+- **Wind and slipstream:** Both use the same white-noise buffer through band-pass filters. Wind level tracks speed and headwind, and slipstream loudness and filter pitch track the draft meter. That gives useful state response, but a single static noise source and filter sweep can sound like generic hiss. There are no distinct gust shapes, stereo motion, or distance cues.
+- **Pickup and delivery:** Both are ascending sine/triangle chimes with high-passed noise. The pitches and note timing make the reward clear, but sine tones have little character; there is no pitched transient, filter envelope, or variation in tone beyond delivery’s pitch shift and extra notes.
+- **Bump, crash, and scrape:** Bumps combine a falling sine, low-passed noise, and a brief square tone; impacts use a similar low thud and noise layers, with a rotor stutter and falling cue. Scrapes use band-passed and high-passed noise. These parts provide a useful basic shape, but the hits lack a convincing material signature: no resonant body or debris layer, and the noise-based scrape has little surface variation.
+- **Boost:** A band-passed noise sweep and soft saw glide provide a rising whoosh. It has a recognizable rise, but no strong low-frequency launch transient, evolving formant/filter movement, or layered air release.
+- **Ticks, clicks, order cues, horns, and start cue:** Most are short square, triangle, sine, or paired sine/square tones. Their clean, fixed envelopes and repeated pitches make them read as simple beeps. The rush-hour “horn” is oscillator notes, not a horn-like spectrum or recorded city sound.
+- **Medal and game-over cues:** These layer several notes and use reverb, but their square/sine/triangle timbres remain simple. The game-over and start motifs are fixed, and medal variation mainly shifts pitch and adds bells by tier.
+- **Music:** The arrangement has a useful structure: a 125 BPM grid, chord progressions, a long run form, several bass and arp patterns, and layers that join with chain level and final-time state. The sound palette is still mostly triangle, sine, and noise, with a sine kick and filtered noise hats/claps. Notes have simple gain envelopes; there are no instrument-specific filter envelopes, detuned stacks, or accents beyond note timing and gain. Pad cutoff tracks intensity, and arp/lead use a dotted-eighth delay, but the score does not appear to change groove, harmony, or motif in response to chase state; chase only nudges intensity and drum activity. Layer gains switch on state thresholds.
+- **Space and mix:** Effects have generated reverb and music has feedback delay, so the sound is not completely dry. However, effects have no stereo placement, and there is no shared room/early-reflection design. The master uses a compressor at −14 dB with 4:1 ratio and a fast limiter at −2 dB; there is no separate rotor/SFX/music submix shaping or frequency-aware management. Music ducks under several cues, but the ducking is manually scheduled rather than driven by the mix.
+
+### Missing sounds or cues
+
+No dedicated city ambience, traffic bed, harbour/water, crowd, or UI texture is evident in the audio code. There is no Doppler or distance attenuation, no 3D panning, and no rotor stereo placement. Rotor pitch follows speed, effort, and boost, but it does not model separate rotors or audible engine response lag. There is a short noise sweep on boost and an eight-hit noise roll on overtime, but no distinct rush-hour riser. UI feedback is limited to a simple click tone and gameplay ticks.
+
+## Ten high-impact changes, ranked
+
+1. **Give the rotor an engine-like, layered spectrum.** Use a shared `rotorBus`: two detuned periodic-wave oscillators around the existing base pitch (e.g. −4 and +4 cents), plus a quieter subharmonic at `base * 0.5`; send them through a 24 dB/oct low-pass near 1–2.5 kHz. Add a band-passed noise layer near `base * 12–20`, Q 1–2, with a slow random pitch/gain wobble. Keep blade-pass AM, but use a slightly irregular waveform or two close modulation rates rather than one sine LFO. Smooth state changes over roughly 80–200 ms to avoid a perfectly static motor sound.
+
+2. **Add rotor/vehicle spatial cues.** Give the rotor a `StereoPannerNode` and pan a small amount with turn direction; use `PannerNode` only if world coordinates are available and maintained. Map game distance to gain and low-pass cutoff (for example, 1.5 kHz nearby down to 500 Hz distant), and add a small Doppler shift from relative velocity. Keep ambience wide and centered gameplay effects mostly narrow so the mix stays legible on phones.
+
+3. **Replace single-noise wind with a shaped air system.** Use two looping noise voices: a low band-pass around 250–900 Hz for body and a high-pass around 1.5–6 kHz for air. Modulate their gains with slow, smoothed random gusts around 0.15–0.5 Hz; vary filter cutoff with speed and headwind. For slipstream, sweep a resonant band-pass around 700–2,200 Hz, Q 4–6, with a subtle 5–7 Hz tremolo as the meter fills.
+
+4. **Add a short transient and body to reward sounds.** For pickup, pair the existing chime with a 2–5 ms bright noise/partial transient and a short resonant band-pass around 2–4 kHz, Q 2–4; use a fast 5–10 ms attack and 250–450 ms decay. For delivery, add a low, soft impact around 90–140 Hz and shape the chime filter from roughly 4 kHz down to 1.5 kHz over 300–600 ms. Keep the existing pitch progression so gameplay meaning remains clear.
+
+5. **Make impacts reflect surfaces and strength.** Keep the low thud, but layer a 1–3 ms transient, two or three decaying resonant partials (e.g. 180, 430, and 900 Hz, each with 0.3–0.8 s decay), and a short bright debris burst filtered around 2–8 kHz. Scale layer gains and decay with impact strength. For wall scrapes, use a longer, irregular noise envelope and vary filter center/cutoff slightly per event instead of repeating the same sweep.
+
+6. **Give boost and rush hour a designed build and release.** On boost, combine a 50–90 Hz low thump, a rising filtered-noise sweep from about 300 Hz to 5 kHz over 300–500 ms, and the existing pitched rise. For rush hour, create a 1–2 s filtered-noise riser with increasing cutoff and gain, then layer a brief horn cue. Schedule the riser ahead of the event if the game logic allows it.
+
+7. **Make synthesized tones less uniform.** Add a small bank of periodic waves with harmonics for bells, soft brass, and plucks. Use two oscillators detuned by about ±5–9 cents for select cues, modest filter envelopes (for example, low-pass 5 kHz to 1.5 kHz over a 200–500 ms decay), and slight pitch variation per repeat. Reserve plain sine for bass or deliberately soft tones.
+
+8. **Make the adaptive music change musically with play.** Keep the existing layer thresholds, then vary drum density, bass rhythm, and arp pattern with chain level; use chase state to introduce a short pickup motif or rising ostinato. Add a controlled variation every 4 or 8 bars (fills, rests, octave changes) and make the final section build through filter opening and denser percussion, then resolve or release at overtime end. A small motif pool and seeded selection will add variety without heavy CPU cost.
+
+9. **Add a restrained stereo space design.** Keep the existing convolver for reward effects, but consider a shorter early-reflection impulse for hits and a longer, darker tail for delivery/medal cues; reduce the current broad noise-like reverb send where it blurs attacks. Add a stereo ping-pong delay to the arp/lead (e.g. 0.24 s, feedback 0.2–0.3, low-pass around 2–3 kHz) and modest stereo widening only for pads/ambience. Preserve mono compatibility.
+
+10. **Refine the mix bus and ducking.** Route rotor, ambience, SFX, and music to separate buses before the master. Keep the master limiter, but use the compressor for gentle glue (e.g. threshold −18 dB, ratio 2:1, attack 10–20 ms, release 100–180 ms). Add a fast 2–4 dB music duck on important SFX with a 20–40 ms attack and 250–500 ms release; use sidechain-style envelope tracking or scheduled gain automation, and high-pass the music bus around 40–55 Hz while reserving the low end for thuds and kick.
+
+### Better as short recorded samples
+
+- **Most worth sampling:** the rush-hour horn, distinct delivery/pickup transients, surface-specific crash and scrape textures, and any future traffic, harbour, crowd, or city ambience. A handful of short, well-chosen recordings will sound more convincing than oscillator/noise approximations.
+- **Keep procedural:** rotor pitch and modulation, speed-dependent wind, slipstream response, simple UI ticks, and the adaptive music layers. Their state-driven variation benefits from synthesis and avoids a large asset set.
+Failed to write last message file "progress/round-45/codex-audio-design-review.md": No such file or directory (os error 2)
+tokens used
+30,058
+## Current code
+
+The effects are all procedural. There are no audio assets, stereo panners, or spatial links to Three.js positions. The audio system does have a generated noise buffer, a convolution reverb for sound effects, a delay for two music layers, music/SFX gains, a compressor, and a limiter.
+
+### Why the sounds likely feel basic
+
+- **Rotor:** Two detuned sawtooths through one low pass, amplitude modulated at blade-pass rate. The pitches do follow speed, effort, and boost, and the filter opens as speed rises. But the same pair of steady oscillators runs throughout flight; there is no per-motor variation, transient, pitch instability, or changing blade character. The LFO is a simple sine. It is also sent directly to the master, bypassing the SFX bus and its gain.
+- **Wind and slipstream:** Both use the same white-noise buffer through band-pass filters. Wind level tracks speed and headwind, and slipstream loudness and filter pitch track the draft meter. That gives useful state response, but a single static noise source and filter sweep can sound like generic hiss. There are no distinct gust shapes, stereo motion, or distance cues.
+- **Pickup and delivery:** Both are ascending sine/triangle chimes with high-passed noise. The pitches and note timing make the reward clear, but sine tones have little character; there is no pitched transient, filter envelope, or variation in tone beyond delivery’s pitch shift and extra notes.
+- **Bump, crash, and scrape:** Bumps combine a falling sine, low-passed noise, and a brief square tone; impacts use a similar low thud and noise layers, with a rotor stutter and falling cue. Scrapes use band-passed and high-passed noise. These parts provide a useful basic shape, but the hits lack a convincing material signature: no resonant body or debris layer, and the noise-based scrape has little surface variation.
+- **Boost:** A band-passed noise sweep and soft saw glide provide a rising whoosh. It has a recognizable rise, but no strong low-frequency launch transient, evolving formant/filter movement, or layered air release.
+- **Ticks, clicks, order cues, horns, and start cue:** Most are short square, triangle, sine, or paired sine/square tones. Their clean, fixed envelopes and repeated pitches make them read as simple beeps. The rush-hour “horn” is oscillator notes, not a horn-like spectrum or recorded city sound.
+- **Medal and game-over cues:** These layer several notes and use reverb, but their square/sine/triangle timbres remain simple. The game-over and start motifs are fixed, and medal variation mainly shifts pitch and adds bells by tier.
+- **Music:** The arrangement has a useful structure: a 125 BPM grid, chord progressions, a long run form, several bass and arp patterns, and layers that join with chain level and final-time state. The sound palette is still mostly triangle, sine, and noise, with a sine kick and filtered noise hats/claps. Notes have simple gain envelopes; there are no instrument-specific filter envelopes, detuned stacks, or accents beyond note timing and gain. Pad cutoff tracks intensity, and arp/lead use a dotted-eighth delay, but the score does not appear to change groove, harmony, or motif in response to chase state; chase only nudges intensity and drum activity. Layer gains switch on state thresholds.
+- **Space and mix:** Effects have generated reverb and music has feedback delay, so the sound is not completely dry. However, effects have no stereo placement, and there is no shared room/early-reflection design. The master uses a compressor at −14 dB with 4:1 ratio and a fast limiter at −2 dB; there is no separate rotor/SFX/music submix shaping or frequency-aware management. Music ducks under several cues, but the ducking is manually scheduled rather than driven by the mix.
+
+### Missing sounds or cues
+
+No dedicated city ambience, traffic bed, harbour/water, crowd, or UI texture is evident in the audio code. There is no Doppler or distance attenuation, no 3D panning, and no rotor stereo placement. Rotor pitch follows speed, effort, and boost, but it does not model separate rotors or audible engine response lag. There is a short noise sweep on boost and an eight-hit noise roll on overtime, but no distinct rush-hour riser. UI feedback is limited to a simple click tone and gameplay ticks.
+
+## Ten high-impact changes, ranked
+
+1. **Give the rotor an engine-like, layered spectrum.** Use a shared `rotorBus`: two detuned periodic-wave oscillators around the existing base pitch (e.g. −4 and +4 cents), plus a quieter subharmonic at `base * 0.5`; send them through a 24 dB/oct low-pass near 1–2.5 kHz. Add a band-passed noise layer near `base * 12–20`, Q 1–2, with a slow random pitch/gain wobble. Keep blade-pass AM, but use a slightly irregular waveform or two close modulation rates rather than one sine LFO. Smooth state changes over roughly 80–200 ms to avoid a perfectly static motor sound.
+
+2. **Add rotor/vehicle spatial cues.** Give the rotor a `StereoPannerNode` and pan a small amount with turn direction; use `PannerNode` only if world coordinates are available and maintained. Map game distance to gain and low-pass cutoff (for example, 1.5 kHz nearby down to 500 Hz distant), and add a small Doppler shift from relative velocity. Keep ambience wide and centered gameplay effects mostly narrow so the mix stays legible on phones.
+
+3. **Replace single-noise wind with a shaped air system.** Use two looping noise voices: a low band-pass around 250–900 Hz for body and a high-pass around 1.5–6 kHz for air. Modulate their gains with slow, smoothed random gusts around 0.15–0.5 Hz; vary filter cutoff with speed and headwind. For slipstream, sweep a resonant band-pass around 700–2,200 Hz, Q 4–6, with a subtle 5–7 Hz tremolo as the meter fills.
+
+4. **Add a short transient and body to reward sounds.** For pickup, pair the existing chime with a 2–5 ms bright noise/partial transient and a short resonant band-pass around 2–4 kHz, Q 2–4; use a fast 5–10 ms attack and 250–450 ms decay. For delivery, add a low, soft impact around 90–140 Hz and shape the chime filter from roughly 4 kHz down to 1.5 kHz over 300–600 ms. Keep the existing pitch progression so gameplay meaning remains clear.
+
+5. **Make impacts reflect surfaces and strength.** Keep the low thud, but layer a 1–3 ms transient, two or three decaying resonant partials (e.g. 180, 430, and 900 Hz, each with 0.3–0.8 s decay), and a short bright debris burst filtered around 2–8 kHz. Scale layer gains and decay with impact strength. For wall scrapes, use a longer, irregular noise envelope and vary filter center/cutoff slightly per event instead of repeating the same sweep.
+
+6. **Give boost and rush hour a designed build and release.** On boost, combine a 50–90 Hz low thump, a rising filtered-noise sweep from about 300 Hz to 5 kHz over 300–500 ms, and the existing pitched rise. For rush hour, create a 1–2 s filtered-noise riser with increasing cutoff and gain, then layer a brief horn cue. Schedule the riser ahead of the event if the game logic allows it.
+
+7. **Make synthesized tones less uniform.** Add a small bank of periodic waves with harmonics for bells, soft brass, and plucks. Use two oscillators detuned by about ±5–9 cents for select cues, modest filter envelopes (for example, low-pass 5 kHz to 1.5 kHz over a 200–500 ms decay), and slight pitch variation per repeat. Reserve plain sine for bass or deliberately soft tones.
+
+8. **Make the adaptive music change musically with play.** Keep the existing layer thresholds, then vary drum density, bass rhythm, and arp pattern with chain level; use chase state to introduce a short pickup motif or rising ostinato. Add a controlled variation every 4 or 8 bars (fills, rests, octave changes) and make the final section build through filter opening and denser percussion, then resolve or release at overtime end. A small motif pool and seeded selection will add variety without heavy CPU cost.
+
+9. **Add a restrained stereo space design.** Keep the existing convolver for reward effects, but consider a shorter early-reflection impulse for hits and a longer, darker tail for delivery/medal cues; reduce the current broad noise-like reverb send where it blurs attacks. Add a stereo ping-pong delay to the arp/lead (e.g. 0.24 s, feedback 0.2–0.3, low-pass around 2–3 kHz) and modest stereo widening only for pads/ambience. Preserve mono compatibility.
+
+10. **Refine the mix bus and ducking.** Route rotor, ambience, SFX, and music to separate buses before the master. Keep the master limiter, but use the compressor for gentle glue (e.g. threshold −18 dB, ratio 2:1, attack 10–20 ms, release 100–180 ms). Add a fast 2–4 dB music duck on important SFX with a 20–40 ms attack and 250–500 ms release; use sidechain-style envelope tracking or scheduled gain automation, and high-pass the music bus around 40–55 Hz while reserving the low end for thuds and kick.
+
+### Better as short recorded samples
+
+- **Most worth sampling:** the rush-hour horn, distinct delivery/pickup transients, surface-specific crash and scrape textures, and any future traffic, harbour, crowd, or city ambience. A handful of short, well-chosen recordings will sound more convincing than oscillator/noise approximations.
+- **Keep procedural:** rotor pitch and modulation, speed-dependent wind, slipstream response, simple UI ticks, and the adaptive music layers. Their state-driven variation benefits from synthesis and avoids a large asset set.

@@ -44,7 +44,7 @@ interface ThreeGameDiagnostics {
   contact?: { bump: number; ledge: number; wallLoss: number; scrape?: number; scrapeOld?: number; hitAngle?: number };
   feel?: Record<string, unknown>;
   /** Audio: context state and the adaptive music (track, section, layer, intensity, ducking, scheduler health). */
-  audio?: { state: string; music: Record<string, unknown> };
+  audio?: { state: string; music: Record<string, unknown>; sfx?: Record<string, unknown> };
   lastCrash?: { loss: number; wallTop: number; normalY: number; y: number } | null;
   objective: { phase: string; name: string; position: { x: number; y: number; z: number } | null } | null;
   fps: number;
@@ -124,6 +124,8 @@ interface DroneDashApi {
   /** Debug: every delivery site in the city. */
   /** Test: read music/SFX bus levels every frame (fills audio.music.meter and lastFanfare). */
   audioMeter?(on: boolean): void;
+  /** Round 45: the mix's tap points (master output and the buses) for recordings. */
+  audioTaps?(): Record<string, AudioNode> | null;
   musicForce?(chain: number | null, final?: boolean): void;
   /** Test: music on/off (same as the music chip, remembered). */
   music?(on: boolean): void;

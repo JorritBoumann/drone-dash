@@ -704,6 +704,23 @@ export class Traffic {
   }
 
   /** Test hook: every live vehicle as an oriented box. */
+  /** Round 45 (audio pass-bys): live cars within `r` (box) of (x, z), with their velocity. Fills `out`, returns the count. */
+  near(x: number, z: number, r: number, out: Array<{ id: number; x: number; z: number; vx: number; vz: number }>): number {
+    let n = 0;
+    for (let i = 0; i < this.cars.length; i++) {
+      const c = this.cars[i];
+      if (!c.active || Math.abs(c.x - x) > r || Math.abs(c.z - z) > r) continue;
+      const o = out[n] ?? (out[n] = { id: 0, x: 0, z: 0, vx: 0, vz: 0 });
+      o.id = i;
+      o.x = c.x;
+      o.z = c.z;
+      o.vx = c.fx * c.speed;
+      o.vz = c.fz * c.speed;
+      n++;
+    }
+    return n;
+  }
+
   snapshot(): VehicleInfo[] {
     const out: VehicleInfo[] = [];
     for (const c of this.cars) {

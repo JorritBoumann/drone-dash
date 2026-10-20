@@ -1,0 +1,3392 @@
+{
+ "latency": {
+  "main": {
+   "ms": 170.67,
+   "match": 0.999
+  },
+  "fx": {
+   "ms": 170.67,
+   "match": 1.0
+  },
+  "ot": {
+   "ms": 170.67,
+   "match": 1.002
+  }
+ },
+ "after": {
+  "01-title-music": {
+   "seconds": 20.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 3.09,
+     "len": 20,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -14.8,
+    "LRA": 0.6,
+    "TP": -5.8,
+    "Smin": -15.1,
+    "Smax": -14.3
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 36.18,
+    "<150": 36.42,
+    "150-3k": 63.58,
+    ">3k": 0.0,
+    "3k-6k": 0.0,
+    ">6k": 0.0,
+    ">8k": 0.0
+   },
+   "width_side_vs_mid_db": -27.1,
+   "bus_db": {
+    "music": -23.7,
+    "sfx": -240.0,
+    "bed": -240.0,
+    "amb": -240.0,
+    "rev": -49.9
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": []
+  },
+  "02-takeoff-calm-flight-chain0": {
+   "seconds": 20.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 26.23,
+     "len": 20,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -16.8,
+    "LRA": 1.9,
+    "TP": -5.3,
+    "Smin": -17.7,
+    "Smax": -15.6
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 15.74,
+    "<150": 40.86,
+    "150-3k": 54.54,
+    ">3k": 4.6,
+    "3k-6k": 2.41,
+    ">6k": 2.19,
+    ">8k": 1.09
+   },
+   "width_side_vs_mid_db": -12.4,
+   "bus_db": {
+    "music": -30.0,
+    "sfx": -35.5,
+    "bed": -30.9,
+    "amb": -39.5,
+    "rev": -49.5
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.5,
+     "kind": "mark",
+     "desc": "enter"
+    },
+    {
+     "t": 0.72,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 0.72,
+     "kind": "state",
+     "desc": "state title -> playing"
+    },
+    {
+     "t": 4.99,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 5.14,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 5.14,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 7.55,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 8.75,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 9.18,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 10.12,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 10.12,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 12.64,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -3.1,
+     "duck_bed": -3.3,
+     "duck_amb": -2.3
+    },
+    {
+     "t": 12.69,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 16.07,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash"
+    },
+    {
+     "t": 17.49,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 17.53,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 18.79,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 19.07,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 19.1,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 19.1,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 19.43,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -6.5,
+     "duck_bed": -2.7,
+     "duck_amb": -1.3
+    },
+    {
+     "t": 19.45,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 19.45,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 19.66,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    }
+   ]
+  },
+  "03-slipstream-chain-x3-payouts": {
+   "seconds": 25.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 106.91,
+     "len": 25,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -15.4,
+    "LRA": 3.8,
+    "TP": -5.0,
+    "Smin": -17.5,
+    "Smax": -13.0
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 13.56,
+    "<150": 34.51,
+    "150-3k": 59.49,
+    ">3k": 6.0,
+    "3k-6k": 3.92,
+    ">6k": 2.08,
+    ">8k": 1.0
+   },
+   "width_side_vs_mid_db": -10.5,
+   "bus_db": {
+    "music": -29.0,
+    "sfx": -32.6,
+    "bed": -29.9,
+    "amb": -38.6,
+    "rev": -44.6
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 3.43,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 3.67,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 4.0,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -5.0,
+     "duck_bed": -0.3,
+     "duck_amb": 1.1
+    },
+    {
+     "t": 4.01,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 4.01,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 5.07,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -3.5,
+     "duck_bed": -0.3,
+     "duck_amb": -2.2
+    },
+    {
+     "t": 5.07,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 5.07,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 6.31,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 6.8,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.8,
+     "duck_bed": -1.7,
+     "duck_amb": -2.9
+    },
+    {
+     "t": 6.81,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 8.22,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 8.22,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.3,
+     "duck_bed": -3.5,
+     "duck_amb": -1.9
+    },
+    {
+     "t": 8.25,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5"
+    },
+    {
+     "t": 11.92,
+     "kind": "duck:delivery",
+     "desc": "music ducked to 0.45",
+     "duck_music": -5.0,
+     "duck_bed": -4.0,
+     "duck_amb": -3.3
+    },
+    {
+     "t": 11.93,
+     "kind": "delivery",
+     "desc": "delivery 3 (score 4818)"
+    },
+    {
+     "t": 17.26,
+     "kind": "chain-reset",
+     "desc": "chain x5 -> x0"
+    },
+    {
+     "t": 17.26,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 19.42,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 19.61,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 20.0,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 20.27,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -5.2,
+     "duck_bed": -0.0,
+     "duck_amb": -2.2
+    },
+    {
+     "t": 20.28,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 20.28,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 21.04,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 21.28,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -6.5,
+     "duck_bed": -3.0,
+     "duck_amb": -1.2
+    },
+    {
+     "t": 21.31,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 21.31,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 23.24,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -6.5,
+     "duck_bed": -5.1,
+     "duck_amb": -2.0
+    },
+    {
+     "t": 23.27,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 23.27,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 24.67,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 24.89,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -4.4,
+     "duck_bed": -1.9,
+     "duck_amb": -2.2
+    },
+    {
+     "t": 24.91,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    }
+   ]
+  },
+  "04-boost-and-tail-off": {
+   "seconds": 10.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 108.34,
+     "len": 10,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -14.6,
+    "LRA": 2.8,
+    "TP": -5.0,
+    "Smin": -16.5,
+    "Smax": -13.0
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 12.59,
+    "<150": 21.71,
+    "150-3k": 60.6,
+    ">3k": 17.69,
+    "3k-6k": 10.44,
+    ">6k": 7.25,
+    ">8k": 3.16
+   },
+   "width_side_vs_mid_db": -9.4,
+   "bus_db": {
+    "music": -28.7,
+    "sfx": -31.9,
+    "bed": -28.3,
+    "amb": -38.9,
+    "rev": -43.4
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 2.0,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 2.24,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 2.57,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -5.0,
+     "duck_bed": -0.3,
+     "duck_amb": 1.1
+    },
+    {
+     "t": 2.59,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 2.59,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 3.64,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -3.5,
+     "duck_bed": -0.3,
+     "duck_amb": -2.2
+    },
+    {
+     "t": 3.65,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 3.65,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 4.88,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 5.37,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.8,
+     "duck_bed": -1.7,
+     "duck_amb": -2.9
+    },
+    {
+     "t": 5.39,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 6.79,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 6.79,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.3,
+     "duck_bed": -3.5,
+     "duck_amb": -1.9
+    },
+    {
+     "t": 6.83,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5"
+    }
+   ]
+  },
+  "05-wall-scrape-and-head-on-crash": {
+   "seconds": 10.0,
+   "segments": [
+    {
+     "session": "fx",
+     "start_ct": 34.15,
+     "len": 5,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "fx",
+     "start_ct": 42.71,
+     "len": 5.3,
+     "at_clip_s": 4.7
+    }
+   ],
+   "loudness": {
+    "I": -16.2,
+    "LRA": 1.7,
+    "TP": -4.8,
+    "Smin": -17.6,
+    "Smax": -15.1
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 22.55,
+    "<150": 39.34,
+    "150-3k": 59.34,
+    ">3k": 1.32,
+    "3k-6k": 0.79,
+    ">6k": 0.53,
+    ">8k": 0.32
+   },
+   "width_side_vs_mid_db": -13.2,
+   "bus_db": {
+    "music": -29.1,
+    "sfx": -27.7,
+    "bed": -33.4,
+    "amb": -39.8,
+    "rev": -43.6
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.4,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -4.0,
+     "duck_bed": -1.7,
+     "duck_amb": -1.9
+    },
+    {
+     "t": 0.42,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5"
+    },
+    {
+     "t": 1.5,
+     "kind": "scrape",
+     "desc": "wall scrape"
+    },
+    {
+     "t": 2.55,
+     "kind": "mark",
+     "desc": "backoff"
+    },
+    {
+     "t": 3.72,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 5.54,
+     "kind": "chain-reset",
+     "desc": "chain x5 -> x0"
+    },
+    {
+     "t": 5.54,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 6.13,
+     "kind": "mark",
+     "desc": "crash-setup"
+    },
+    {
+     "t": 6.17,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 6.87,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -4.6,
+     "duck_bed": -2.1,
+     "duck_amb": -1.8
+    },
+    {
+     "t": 6.89,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 6.89,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 7.17,
+     "kind": "duck:crash",
+     "desc": "music ducked to 0.35",
+     "duck_music": -8.2,
+     "duck_bed": -12.2,
+     "duck_amb": -3.8
+    },
+    {
+     "t": 7.2,
+     "kind": "impact",
+     "desc": "head-on impact"
+    },
+    {
+     "t": 7.24,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 7.4,
+     "kind": "chain-reset",
+     "desc": "chain x1 -> x0"
+    },
+    {
+     "t": 7.4,
+     "kind": "crash",
+     "desc": "crash charged (time penalty)"
+    },
+    {
+     "t": 7.4,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    }
+   ]
+  },
+  "06-pickup-delivery-medal": {
+   "seconds": 14.7,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 37.37,
+     "len": 5,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "main",
+     "start_ct": 51.53,
+     "len": 10,
+     "at_clip_s": 4.7
+    }
+   ],
+   "loudness": {
+    "I": -16.3,
+    "LRA": 2.1,
+    "TP": -5.4,
+    "Smin": -17.4,
+    "Smax": -15.1
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 13.17,
+    "<150": 36.04,
+    "150-3k": 59.11,
+    ">3k": 4.85,
+    "3k-6k": 3.83,
+    ">6k": 1.02,
+    ">8k": 0.62
+   },
+   "width_side_vs_mid_db": -13.6,
+   "bus_db": {
+    "music": -28.6,
+    "sfx": -32.3,
+    "bed": -32.2,
+    "amb": -39.6,
+    "rev": -45.7
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 1.5,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -3.1,
+     "duck_bed": -3.3,
+     "duck_amb": -2.3
+    },
+    {
+     "t": 1.55,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 4.93,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash"
+    },
+    {
+     "t": 7.12,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -5.9,
+     "duck_bed": -3.9,
+     "duck_amb": -1.6
+    },
+    {
+     "t": 7.14,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 9.84,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1319)"
+    },
+    {
+     "t": 9.84,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 10.7,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "duck_music": -10.3,
+     "duck_bed": -5.2,
+     "duck_amb": -3.2
+    }
+   ]
+  },
+  "07-rush-hour-then-last-10s-into-overtime": {
+   "seconds": 32.96,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 87.51,
+     "len": 8,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "ot",
+     "start_ct": 38.39,
+     "len": 25.261333333333333,
+     "at_clip_s": 7.7
+    }
+   ],
+   "loudness": {
+    "I": -16.1,
+    "LRA": 1.7,
+    "TP": -4.6,
+    "Smin": -17.4,
+    "Smax": -14.9
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 24.21,
+    "<150": 48.18,
+    "150-3k": 47.87,
+    ">3k": 3.95,
+    "3k-6k": 2.19,
+    ">6k": 1.76,
+    ">8k": 0.87
+   },
+   "width_side_vs_mid_db": -12.9,
+   "bus_db": {
+    "music": -29.2,
+    "sfx": -29.4,
+    "bed": -32.0,
+    "amb": -39.3,
+    "rev": -45.8
+   },
+   "clicks": {
+    "n": 1,
+    "at": [
+     11.707
+    ]
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 3.0,
+     "kind": "duck:rush",
+     "desc": "music ducked to 0.4",
+     "duck_music": -7.0,
+     "duck_bed": -6.9,
+     "duck_amb": -3.7
+    },
+    {
+     "t": 4.06,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 4.85,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 4.85,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 5.2,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 5.4,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -4.0,
+     "duck_bed": -1.1,
+     "duck_amb": -1.9
+    },
+    {
+     "t": 5.44,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 5.44,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 7.07,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 8.31,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -5.5,
+     "duck_bed": -0.4,
+     "duck_amb": -3.0
+    },
+    {
+     "t": 8.34,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 9.2,
+     "kind": "tick",
+     "desc": "clock tick 10 s"
+    },
+    {
+     "t": 9.2,
+     "kind": "music",
+     "desc": "music final/final layer 5"
+    },
+    {
+     "t": 10.22,
+     "kind": "tick",
+     "desc": "clock tick 9 s"
+    },
+    {
+     "t": 11.21,
+     "kind": "tick",
+     "desc": "clock tick 8 s"
+    },
+    {
+     "t": 12.22,
+     "kind": "tick",
+     "desc": "clock tick 7 s"
+    },
+    {
+     "t": 13.23,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 13.23,
+     "kind": "tick",
+     "desc": "clock tick 6 s"
+    },
+    {
+     "t": 13.27,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 14.21,
+     "kind": "tick",
+     "desc": "clock tick 5 s"
+    },
+    {
+     "t": 14.92,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 15.35,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 15.59,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 15.79,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 15.84,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.5,
+     "duck_bed": -2.2,
+     "duck_amb": -2.0
+    },
+    {
+     "t": 15.87,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 15.99,
+     "kind": "tick",
+     "desc": "clock tick 4 s"
+    },
+    {
+     "t": 16.3,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 16.58,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 17.0,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 17.28,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 17.66,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.7,
+     "duck_bed": -2.9,
+     "duck_amb": -1.7
+    },
+    {
+     "t": 17.67,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 17.75,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 18.03,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 18.11,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 19.94,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -3.4,
+     "duck_bed": -2.6,
+     "duck_amb": -2.1
+    },
+    {
+     "t": 19.97,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 20.14,
+     "kind": "tick",
+     "desc": "clock tick 3 s"
+    },
+    {
+     "t": 21.36,
+     "kind": "tick",
+     "desc": "clock tick 2 s"
+    },
+    {
+     "t": 21.69,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 22.35,
+     "kind": "tick",
+     "desc": "clock tick 1 s"
+    },
+    {
+     "t": 23.34,
+     "kind": "duck:rush",
+     "desc": "music ducked to 0.4",
+     "duck_music": -6.7,
+     "duck_bed": -2.9,
+     "duck_amb": -3.7
+    },
+    {
+     "t": 23.35,
+     "kind": "overtime",
+     "desc": "overtime starts"
+    },
+    {
+     "t": 25.37,
+     "kind": "tick",
+     "desc": "clock tick 10 s"
+    },
+    {
+     "t": 26.15,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -7.4,
+     "duck_bed": -2.8,
+     "duck_amb": -1.9
+    },
+    {
+     "t": 26.19,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 26.35,
+     "kind": "tick",
+     "desc": "clock tick 9 s"
+    },
+    {
+     "t": 27.37,
+     "kind": "tick",
+     "desc": "clock tick 8 s"
+    },
+    {
+     "t": 27.88,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1045)"
+    },
+    {
+     "t": 27.88,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 28.73,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "duck_music": -8.6,
+     "duck_bed": -5.4,
+     "duck_amb": -3.6
+    },
+    {
+     "t": 29.44,
+     "kind": "duck:gameover",
+     "desc": "music ducked to 0.28",
+     "duck_music": -24.1,
+     "duck_bed": -8.3,
+     "duck_amb": -1.4
+    },
+    {
+     "t": 29.46,
+     "kind": "music",
+     "desc": "music over/bronze layer 1"
+    },
+    {
+     "t": 29.46,
+     "kind": "state",
+     "desc": "state playing -> over"
+    },
+    {
+     "t": 29.46,
+     "kind": "mark",
+     "desc": "run-end over"
+    }
+   ]
+  },
+  "08-harbour-boats-bus-then-street-people-traffic": {
+   "seconds": 21.7,
+   "segments": [
+    {
+     "session": "fx",
+     "start_ct": 74.79,
+     "len": 12,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "fx",
+     "start_ct": 111.89,
+     "len": 10,
+     "at_clip_s": 11.7
+    }
+   ],
+   "loudness": {
+    "I": -17.4,
+    "LRA": 0.5,
+    "TP": -5.9,
+    "Smin": -17.8,
+    "Smax": -17.1
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 16.88,
+    "<150": 36.31,
+    "150-3k": 60.3,
+    ">3k": 3.38,
+    "3k-6k": 1.99,
+    ">6k": 1.4,
+    ">8k": 0.7
+   },
+   "width_side_vs_mid_db": -9.3,
+   "bus_db": {
+    "music": -32.1,
+    "sfx": -46.1,
+    "bed": -32.3,
+    "amb": -38.4,
+    "rev": -53.8
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 10.92,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 20.3,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 20.83,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -3.7,
+     "duck_bed": -3.9,
+     "duck_amb": -2.3
+    },
+    {
+     "t": 20.85,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 20.85,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    }
+   ]
+  },
+  "09-game-over-sting-and-loop": {
+   "seconds": 21.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 169.2,
+     "len": 21,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -14.9,
+    "LRA": 1.8,
+    "TP": -5.3,
+    "Smin": -16.8,
+    "Smax": -13.7
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 19.28,
+    "<150": 53.68,
+    "150-3k": 46.26,
+    ">3k": 0.06,
+    "3k-6k": 0.04,
+    ">6k": 0.02,
+    ">8k": 0.01
+   },
+   "width_side_vs_mid_db": -22.2,
+   "bus_db": {
+    "music": -24.3,
+    "sfx": -37.3,
+    "bed": -47.2,
+    "amb": -45.5,
+    "rev": -49.2
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.99,
+     "kind": "duck:gameover",
+     "desc": "music ducked to 0.35",
+     "duck_music": -24.6,
+     "duck_bed": -4.6,
+     "duck_amb": 0.2
+    },
+    {
+     "t": 1.0,
+     "kind": "music",
+     "desc": "music over/gold layer 1"
+    },
+    {
+     "t": 1.0,
+     "kind": "state",
+     "desc": "state playing -> over"
+    },
+    {
+     "t": 1.0,
+     "kind": "mark",
+     "desc": "run-end over"
+    }
+   ]
+  },
+  "10-full-run-60s-unedited": {
+   "seconds": 60.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 26.23,
+     "len": 60,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -16.2,
+    "LRA": 2.5,
+    "TP": -5.3,
+    "Smin": -17.7,
+    "Smax": -14.3
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 14.79,
+    "<150": 38.27,
+    "150-3k": 58.26,
+    ">3k": 3.48,
+    "3k-6k": 2.25,
+    ">6k": 1.22,
+    ">8k": 0.65
+   },
+   "width_side_vs_mid_db": -12.1,
+   "bus_db": {
+    "music": -29.3,
+    "sfx": -33.7,
+    "bed": -30.8,
+    "amb": -39.1,
+    "rev": -46.4
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.5,
+     "kind": "mark",
+     "desc": "enter"
+    },
+    {
+     "t": 0.72,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 0.72,
+     "kind": "state",
+     "desc": "state title -> playing"
+    },
+    {
+     "t": 4.99,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 5.14,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 5.14,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 7.55,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 8.75,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 9.18,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 10.12,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 10.12,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 12.64,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -3.1,
+     "duck_bed": -3.3,
+     "duck_amb": -2.3
+    },
+    {
+     "t": 12.69,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 16.07,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash"
+    },
+    {
+     "t": 17.49,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 17.53,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 18.79,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 19.07,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 19.1,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 19.1,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 19.43,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -6.5,
+     "duck_bed": -2.7,
+     "duck_amb": -1.3
+    },
+    {
+     "t": 19.45,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 19.45,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 19.66,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 20.37,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 20.52,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -5.9,
+     "duck_bed": -4.2,
+     "duck_amb": -2.2
+    },
+    {
+     "t": 20.53,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 20.53,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 20.92,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 21.09,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 21.48,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 22.53,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.9,
+     "duck_bed": -2.0,
+     "duck_amb": -2.0
+    },
+    {
+     "t": 22.54,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 22.54,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 22.87,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 25.18,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 27.72,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -5.9,
+     "duck_bed": -3.9,
+     "duck_amb": -1.6
+    },
+    {
+     "t": 27.74,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 30.44,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1319)"
+    },
+    {
+     "t": 30.44,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 31.3,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "duck_music": -10.3,
+     "duck_bed": -5.2,
+     "duck_amb": -3.2
+    },
+    {
+     "t": 36.73,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 36.73,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 37.72,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -5.2,
+     "duck_bed": -1.9,
+     "duck_amb": -1.9
+    },
+    {
+     "t": 37.75,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 37.75,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 40.97,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 42.46,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -4.7,
+     "duck_bed": -2.9,
+     "duck_amb": -2.8
+    },
+    {
+     "t": 42.49,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 42.49,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 43.99,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 44.58,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -4.1,
+     "duck_bed": -1.4,
+     "duck_amb": -2.8
+    },
+    {
+     "t": 44.59,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 50.32,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 50.36,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 51.13,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 51.49,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 51.49,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 51.81,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 51.84,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 52.43,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -4.3,
+     "duck_bed": -2.3,
+     "duck_amb": -2.7
+    },
+    {
+     "t": 52.47,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 52.47,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 52.86,
+     "kind": "passby",
+     "desc": "Doppler pass-by"
+    },
+    {
+     "t": 53.8,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -1.2,
+     "duck_bed": -2.7,
+     "duck_amb": -3.0
+    },
+    {
+     "t": 53.83,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 53.83,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 54.74,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 54.76,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -0.8,
+     "duck_bed": -4.0,
+     "duck_amb": -0.7
+    },
+    {
+     "t": 54.78,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 54.78,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 57.12,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.62",
+     "duck_music": -2.9,
+     "duck_bed": -2.7,
+     "duck_amb": -2.5
+    },
+    {
+     "t": 57.15,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 59.83,
+     "kind": "delivery",
+     "desc": "delivery 2 (score 2899)"
+    },
+    {
+     "t": 59.83,
+     "kind": "medal",
+     "desc": "medal tier 2"
+    }
+   ]
+  }
+ },
+ "before": {
+  "01-title-music": {
+   "seconds": 20.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 3.09,
+     "len": 20,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -14.4,
+    "LRA": 0.9,
+    "TP": -4.1,
+    "Smin": -14.8,
+    "Smax": -13.7
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 33.9,
+    "<150": 34.11,
+    "150-3k": 65.89,
+    ">3k": 0.0,
+    "3k-6k": 0.0,
+    ">6k": 0.0,
+    ">8k": 0.0
+   },
+   "width_side_vs_mid_db": -183.8,
+   "bus_db": {
+    "music": -25.7,
+    "sfx": -240.0,
+    "bed": -240.0,
+    "amb": -240.0,
+    "rev": -240.0
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": []
+  },
+  "02-takeoff-calm-flight-chain0": {
+   "seconds": 20.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 26.16,
+     "len": 20,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -12.8,
+    "LRA": 4.9,
+    "TP": -1.7,
+    "Smin": -15.2,
+    "Smax": -9.9
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 5.35,
+    "<150": 32.16,
+    "150-3k": 64.79,
+    ">3k": 3.05,
+    "3k-6k": 2.06,
+    ">6k": 0.99,
+    ">8k": 0.56
+   },
+   "width_side_vs_mid_db": -38.1,
+   "bus_db": {
+    "music": -31.8,
+    "sfx": -36.7,
+    "bed": -25.8,
+    "amb": -240.0,
+    "rev": -64.5
+   },
+   "clicks": {
+    "n": 1,
+    "at": [
+     0.586
+    ]
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.5,
+     "kind": "mark",
+     "desc": "enter"
+    },
+    {
+     "t": 0.71,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 0.71,
+     "kind": "state",
+     "desc": "state title -> playing"
+    },
+    {
+     "t": 4.95,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 4.95,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 7.28,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 9.44,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 9.44,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 9.56,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 11.01,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -3.4,
+     "duck_bed": 0.8
+    },
+    {
+     "t": 11.02,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 16.21,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 17.23,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 17.23,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 17.91,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -4.7,
+     "duck_bed": 0.9
+    },
+    {
+     "t": 18.36,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -4.9,
+     "duck_bed": 0.1
+    },
+    {
+     "t": 18.4,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 19.12,
+     "kind": "boost-off",
+     "desc": "boost off"
+    }
+   ]
+  },
+  "03-slipstream-chain-x3-payouts": {
+   "seconds": 25.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 98.78,
+     "len": 25,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -12.3,
+    "LRA": 5.0,
+    "TP": -1.7,
+    "Smin": -15.2,
+    "Smax": -9.4
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 5.96,
+    "<150": 32.42,
+    "150-3k": 64.77,
+    ">3k": 2.81,
+    "3k-6k": 1.85,
+    ">6k": 0.96,
+    ">8k": 0.55
+   },
+   "width_side_vs_mid_db": -37.4,
+   "bus_db": {
+    "music": -31.7,
+    "sfx": -33.7,
+    "bed": -25.6,
+    "amb": -240.0,
+    "rev": -60.8
+   },
+   "clicks": {
+    "n": 1,
+    "at": [
+     12.072
+    ]
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 2.3,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 2.3,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 3.4,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 4.0,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -7.2,
+     "duck_bed": 2.5
+    },
+    {
+     "t": 4.03,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 4.03,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 4.86,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -1.5,
+     "duck_bed": 0.6
+    },
+    {
+     "t": 4.89,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 4.89,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 6.35,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 6.35,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 6.35,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -8.7,
+     "duck_bed": 0.1
+    },
+    {
+     "t": 7.58,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -3.6,
+     "duck_bed": 0.3
+    },
+    {
+     "t": 7.6,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 8.51,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 12.05,
+     "kind": "duck:delivery",
+     "desc": "music ducked to 0.45",
+     "duck_music": -6.4,
+     "duck_bed": 0.6
+    },
+    {
+     "t": 12.08,
+     "kind": "delivery",
+     "desc": "delivery 3 (score 5136)"
+    },
+    {
+     "t": 15.61,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 15.61,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 16.94,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -8.5,
+     "duck_bed": 0.2
+    },
+    {
+     "t": 16.97,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 16.97,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 18.9,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 18.94,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 20.31,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 21.39,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -5.3,
+     "duck_bed": 0.9
+    },
+    {
+     "t": 21.41,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 21.41,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 21.93,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 22.91,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -5.0,
+     "duck_bed": -0.7
+    },
+    {
+     "t": 22.95,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 22.95,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    }
+   ]
+  },
+  "04-boost-and-tail-off": {
+   "seconds": 10.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 100.18,
+     "len": 10,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -11.3,
+    "LRA": 3.2,
+    "TP": -2.0,
+    "Smin": -13.5,
+    "Smax": -9.4
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 1.31,
+    "<150": 6.14,
+    "150-3k": 84.19,
+    ">3k": 9.67,
+    "3k-6k": 6.51,
+    ">6k": 3.17,
+    ">8k": 1.76
+   },
+   "width_side_vs_mid_db": -40.2,
+   "bus_db": {
+    "music": -31.7,
+    "sfx": -35.2,
+    "bed": -24.5,
+    "amb": -240.0,
+    "rev": -63.3
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.9,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 0.9,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 2.0,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 2.6,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -7.2,
+     "duck_bed": 2.5
+    },
+    {
+     "t": 2.63,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 2.63,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 3.46,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -1.5,
+     "duck_bed": 0.6
+    },
+    {
+     "t": 3.5,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 3.5,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 4.95,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 4.95,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 4.95,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -8.7,
+     "duck_bed": 0.1
+    },
+    {
+     "t": 6.18,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -3.6,
+     "duck_bed": 0.3
+    },
+    {
+     "t": 6.21,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 7.11,
+     "kind": "boost-off",
+     "desc": "boost off"
+    }
+   ]
+  },
+  "05-wall-scrape-and-head-on-crash": {
+   "seconds": 10.0,
+   "segments": [
+    {
+     "session": "fx",
+     "start_ct": 8.25,
+     "len": 10,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -14.6,
+    "LRA": 3.0,
+    "TP": -1.5,
+    "Smin": -16.5,
+    "Smax": -13.4
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 25.91,
+    "<150": 50.63,
+    "150-3k": 48.63,
+    ">3k": 0.74,
+    "3k-6k": 0.53,
+    ">6k": 0.21,
+    ">8k": 0.12
+   },
+   "width_side_vs_mid_db": -49.5,
+   "bus_db": {
+    "music": -33.0,
+    "sfx": -30.1,
+    "bed": -27.4,
+    "amb": -240.0,
+    "rev": -73.1
+   },
+   "clicks": {
+    "n": 9,
+    "at": [
+     0.459,
+     0.619,
+     5.534,
+     5.624,
+     5.694,
+     5.784,
+     5.874,
+     6.185,
+     6.205
+    ]
+   },
+   "clicks_music": 2,
+   "events": [
+    {
+     "t": 0.8,
+     "kind": "mark",
+     "desc": "scrape-setup"
+    },
+    {
+     "t": 1.08,
+     "kind": "scrape",
+     "desc": "wall scrape"
+    },
+    {
+     "t": 1.58,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash"
+    },
+    {
+     "t": 2.2,
+     "kind": "scrape",
+     "desc": "wall scrape"
+    },
+    {
+     "t": 2.39,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 2.39,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 4.66,
+     "kind": "mark",
+     "desc": "crash-setup"
+    },
+    {
+     "t": 4.69,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 5.31,
+     "kind": "duck:crash",
+     "desc": "music ducked to 0.35",
+     "duck_music": -8.5,
+     "duck_bed": 2.0
+    },
+    {
+     "t": 5.32,
+     "kind": "impact",
+     "desc": "head-on impact"
+    },
+    {
+     "t": 5.51,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 5.51,
+     "kind": "crash",
+     "desc": "crash charged (time penalty)"
+    },
+    {
+     "t": 5.51,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 6.22,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 9.71,
+     "kind": "mark",
+     "desc": "harbour-start"
+    }
+   ]
+  },
+  "06-pickup-delivery-medal": {
+   "seconds": 14.7,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 35.67,
+     "len": 5,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "main",
+     "start_ct": 47.11,
+     "len": 10,
+     "at_clip_s": 4.7
+    }
+   ],
+   "loudness": {
+    "I": -13.1,
+    "LRA": 2.3,
+    "TP": -1.7,
+    "Smin": -14.8,
+    "Smax": -12.0
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 5.77,
+    "<150": 40.34,
+    "150-3k": 59.19,
+    ">3k": 0.47,
+    "3k-6k": 0.28,
+    ">6k": 0.19,
+    ">8k": 0.13
+   },
+   "width_side_vs_mid_db": -33.8,
+   "bus_db": {
+    "music": -30.9,
+    "sfx": -30.5,
+    "bed": -26.8,
+    "amb": -240.0,
+    "rev": -59.3
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.05,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 1.5,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -3.4,
+     "duck_bed": 0.8
+    },
+    {
+     "t": 1.51,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 6.9,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -6.8,
+     "duck_bed": 0.9
+    },
+    {
+     "t": 6.93,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5"
+    },
+    {
+     "t": 9.84,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1472)"
+    },
+    {
+     "t": 9.84,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 10.7,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "duck_music": -9.1,
+     "duck_bed": 0.1
+    }
+   ]
+  },
+  "07-rush-hour-then-last-10s-into-overtime": {
+   "seconds": 30.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 84.73,
+     "len": 8,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "ot",
+     "start_ct": 17.85,
+     "len": 22.301333333333332,
+     "at_clip_s": 7.7
+    }
+   ],
+   "loudness": {
+    "I": -13.1,
+    "LRA": 3.8,
+    "TP": -1.6,
+    "Smin": -20.0,
+    "Smax": -10.0
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 5.9,
+    "<150": 34.85,
+    "150-3k": 62.07,
+    ">3k": 3.08,
+    "3k-6k": 2.08,
+    ">6k": 0.99,
+    ">8k": 0.55
+   },
+   "width_side_vs_mid_db": -35.0,
+   "bus_db": {
+    "music": -32.6,
+    "sfx": -31.1,
+    "bed": -26.9,
+    "amb": -240.0,
+    "rev": -60.0
+   },
+   "clicks": {
+    "n": 2,
+    "at": [
+     26.003,
+     26.855
+    ]
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 1.94,
+     "kind": "rush",
+     "desc": "rush hour starts"
+    },
+    {
+     "t": 3.0,
+     "kind": "duck:rush",
+     "desc": "music ducked to 0.4",
+     "duck_music": -9.3,
+     "duck_bed": -2.2
+    },
+    {
+     "t": 3.08,
+     "kind": "chain-reset",
+     "desc": "chain x4 -> x0"
+    },
+    {
+     "t": 3.08,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 3.95,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 3.95,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 4.8,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -6.6,
+     "duck_bed": 1.2
+    },
+    {
+     "t": 7.33,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -4.3,
+     "duck_bed": -0.8
+    },
+    {
+     "t": 7.35,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 7.35,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 8.98,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -3.5,
+     "duck_bed": 1.2
+    },
+    {
+     "t": 9.0,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 9.2,
+     "kind": "tick",
+     "desc": "clock tick 10 s"
+    },
+    {
+     "t": 9.2,
+     "kind": "music",
+     "desc": "music final/final layer 5"
+    },
+    {
+     "t": 10.2,
+     "kind": "tick",
+     "desc": "clock tick 9 s"
+    },
+    {
+     "t": 11.2,
+     "kind": "tick",
+     "desc": "clock tick 8 s"
+    },
+    {
+     "t": 12.19,
+     "kind": "tick",
+     "desc": "clock tick 7 s"
+    },
+    {
+     "t": 12.39,
+     "kind": "light-hit",
+     "desc": "hard knock, not a crash"
+    },
+    {
+     "t": 13.21,
+     "kind": "tick",
+     "desc": "clock tick 6 s"
+    },
+    {
+     "t": 14.19,
+     "kind": "tick",
+     "desc": "clock tick 5 s"
+    },
+    {
+     "t": 14.93,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 15.84,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -5.4,
+     "duck_bed": 1.3
+    },
+    {
+     "t": 15.87,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 17.1,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -9.4,
+     "duck_bed": -0.2
+    },
+    {
+     "t": 17.13,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 17.8,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 17.92,
+     "kind": "tick",
+     "desc": "clock tick 4 s"
+    },
+    {
+     "t": 19.81,
+     "kind": "tick",
+     "desc": "clock tick 3 s"
+    },
+    {
+     "t": 20.81,
+     "kind": "tick",
+     "desc": "clock tick 2 s"
+    },
+    {
+     "t": 21.65,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -5.3,
+     "duck_bed": 1.2
+    },
+    {
+     "t": 21.67,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5"
+    },
+    {
+     "t": 23.2,
+     "kind": "tick",
+     "desc": "clock tick 1 s"
+    },
+    {
+     "t": 24.19,
+     "kind": "duck:rush",
+     "desc": "music ducked to 0.4",
+     "duck_music": -11.4,
+     "duck_bed": 0.2
+    },
+    {
+     "t": 24.22,
+     "kind": "overtime",
+     "desc": "overtime starts"
+    },
+    {
+     "t": 24.9,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1407)"
+    },
+    {
+     "t": 24.9,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 25.96,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "duck_music": -1.6,
+     "duck_bed": -0.1
+    },
+    {
+     "t": 26.48,
+     "kind": "duck:gameover",
+     "desc": "music ducked to 0.28",
+     "duck_music": -25.1,
+     "duck_bed": -8.0
+    },
+    {
+     "t": 26.5,
+     "kind": "music",
+     "desc": "music over/bronze layer 1"
+    },
+    {
+     "t": 26.5,
+     "kind": "state",
+     "desc": "state playing -> over"
+    },
+    {
+     "t": 26.5,
+     "kind": "mark",
+     "desc": "run-end over"
+    }
+   ]
+  },
+  "08-harbour-boats-bus-then-street-people-traffic": {
+   "seconds": 21.7,
+   "segments": [
+    {
+     "session": "fx",
+     "start_ct": 18.95,
+     "len": 12,
+     "at_clip_s": 0.0
+    },
+    {
+     "session": "fx",
+     "start_ct": 34.28,
+     "len": 10,
+     "at_clip_s": 11.7
+    }
+   ],
+   "loudness": {
+    "I": -15.5,
+    "LRA": 0.9,
+    "TP": -3.4,
+    "Smin": -16.0,
+    "Smax": -14.9
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 7.67,
+    "<150": 49.94,
+    "150-3k": 49.93,
+    ">3k": 0.13,
+    "3k-6k": 0.09,
+    ">6k": 0.04,
+    ">8k": 0.02
+   },
+   "width_side_vs_mid_db": -70.2,
+   "bus_db": {
+    "music": -34.2,
+    "sfx": -60.5,
+    "bed": -27.8,
+    "amb": -240.0,
+    "rev": -96.3
+   },
+   "clicks": {
+    "n": 0,
+    "at": []
+   },
+   "clicks_music": 0,
+   "events": []
+  },
+  "09-game-over-sting-and-loop": {
+   "seconds": 21.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 175.66,
+     "len": 21,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -18.9,
+    "LRA": 3.1,
+    "TP": -2.1,
+    "Smin": -20.7,
+    "Smax": -16.3
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 34.99,
+    "<150": 68.48,
+    "150-3k": 31.52,
+    ">3k": 0.0,
+    "3k-6k": 0.0,
+    ">6k": 0.0,
+    ">8k": 0.0
+   },
+   "width_side_vs_mid_db": -33.9,
+   "bus_db": {
+    "music": -31.3,
+    "sfx": -37.9,
+    "bed": -41.4,
+    "amb": -240.0,
+    "rev": -66.2
+   },
+   "clicks": {
+    "n": 3,
+    "at": [
+     0.983,
+     1.103,
+     1.343
+    ]
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.96,
+     "kind": "duck:gameover",
+     "desc": "music ducked to 0.35",
+     "duck_music": -30.0,
+     "duck_bed": -4.3
+    },
+    {
+     "t": 1.0,
+     "kind": "music",
+     "desc": "music over/gold layer 1"
+    },
+    {
+     "t": 1.0,
+     "kind": "state",
+     "desc": "state playing -> over"
+    },
+    {
+     "t": 1.0,
+     "kind": "mark",
+     "desc": "run-end over"
+    }
+   ]
+  },
+  "10-full-run-60s-unedited": {
+   "seconds": 60.0,
+   "segments": [
+    {
+     "session": "main",
+     "start_ct": 26.16,
+     "len": 60,
+     "at_clip_s": 0.0
+    }
+   ],
+   "loudness": {
+    "I": -12.9,
+    "LRA": 4.2,
+    "TP": -1.5,
+    "Smin": -15.2,
+    "Smax": -9.9
+   },
+   "clipped": 0,
+   "bands": {
+    "<100": 7.25,
+    "<150": 41.51,
+    "150-3k": 57.2,
+    ">3k": 1.29,
+    "3k-6k": 0.85,
+    ">6k": 0.44,
+    ">8k": 0.26
+   },
+   "width_side_vs_mid_db": -36.2,
+   "bus_db": {
+    "music": -31.4,
+    "sfx": -33.0,
+    "bed": -26.3,
+    "amb": -240.0,
+    "rev": -61.3
+   },
+   "clicks": {
+    "n": 1,
+    "at": [
+     0.586
+    ]
+   },
+   "clicks_music": 0,
+   "events": [
+    {
+     "t": 0.5,
+     "kind": "mark",
+     "desc": "enter"
+    },
+    {
+     "t": 0.71,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 0.71,
+     "kind": "state",
+     "desc": "state title -> playing"
+    },
+    {
+     "t": 4.95,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 4.95,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 7.28,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 9.44,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 9.44,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 9.56,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 11.01,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -3.4,
+     "duck_bed": 0.8
+    },
+    {
+     "t": 11.02,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 16.21,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 17.23,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 17.23,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 17.91,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -4.7,
+     "duck_bed": 0.9
+    },
+    {
+     "t": 18.36,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -4.9,
+     "duck_bed": 0.1
+    },
+    {
+     "t": 18.4,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 19.12,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 23.15,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -6.8,
+     "duck_bed": 0.9
+    },
+    {
+     "t": 23.19,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x5"
+    },
+    {
+     "t": 26.09,
+     "kind": "delivery",
+     "desc": "delivery 1 (score 1472)"
+    },
+    {
+     "t": 26.09,
+     "kind": "medal",
+     "desc": "medal tier 1"
+    },
+    {
+     "t": 26.95,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "duck_music": -9.1,
+     "duck_bed": 0.1
+    },
+    {
+     "t": 32.2,
+     "kind": "chain-reset",
+     "desc": "chain x5 -> x0"
+    },
+    {
+     "t": 32.2,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 33.58,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -8.4,
+     "duck_bed": 0.7
+    },
+    {
+     "t": 33.59,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 33.59,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 37.87,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -3.8,
+     "duck_bed": -0.6
+    },
+    {
+     "t": 37.9,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 37.9,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 40.41,
+     "kind": "duck:pickup",
+     "desc": "music ducked to 0.6",
+     "duck_music": -2.0,
+     "duck_bed": 0.7
+    },
+    {
+     "t": 40.44,
+     "kind": "pickup",
+     "desc": "parcel picked up"
+    },
+    {
+     "t": 46.18,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 46.22,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 46.88,
+     "kind": "chain-reset",
+     "desc": "chain x2 -> x0"
+    },
+    {
+     "t": 46.88,
+     "kind": "music",
+     "desc": "music run/base layer 1"
+    },
+    {
+     "t": 47.55,
+     "kind": "boost-on",
+     "desc": "boost on"
+    },
+    {
+     "t": 47.9,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x1"
+    },
+    {
+     "t": 47.9,
+     "kind": "music",
+     "desc": "music run/drums layer 2"
+    },
+    {
+     "t": 47.9,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -6.7,
+     "duck_bed": 2.5
+    },
+    {
+     "t": 49.16,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -7.5,
+     "duck_bed": 0.3
+    },
+    {
+     "t": 49.17,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x2"
+    },
+    {
+     "t": 49.17,
+     "kind": "music",
+     "desc": "music run/arp layer 3"
+    },
+    {
+     "t": 50.37,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -4.1,
+     "duck_bed": -1.6
+    },
+    {
+     "t": 50.4,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x3"
+    },
+    {
+     "t": 50.4,
+     "kind": "boost-off",
+     "desc": "boost off"
+    },
+    {
+     "t": 50.4,
+     "kind": "music",
+     "desc": "music run/lead layer 4"
+    },
+    {
+     "t": 52.62,
+     "kind": "duck:slip",
+     "desc": "music ducked to 0.45",
+     "duck_music": -8.0,
+     "duck_bed": -0.3
+    },
+    {
+     "t": 52.64,
+     "kind": "payout",
+     "desc": "slipstream payout, chain x4"
+    },
+    {
+     "t": 56.85,
+     "kind": "delivery",
+     "desc": "delivery 2 (score 3057)"
+    },
+    {
+     "t": 56.85,
+     "kind": "medal",
+     "desc": "medal tier 2"
+    },
+    {
+     "t": 57.71,
+     "kind": "duck:medal",
+     "desc": "music ducked to 0.28",
+     "duck_music": -10.3,
+     "duck_bed": -0.1
+    }
+   ]
+  }
+ },
+ "chain_balance": {
+  "after": {
+   "x0": [
+    -0.5,
+    12
+   ],
+   "x1": [
+    0.4,
+    10
+   ],
+   "x2": [
+    -1.2,
+    8
+   ],
+   "x3+": [
+    -4.3,
+    12
+   ]
+  },
+  "before": {
+   "x0": [
+    7.2,
+    8
+   ],
+   "x1": [
+    5.2,
+    7
+   ],
+   "x2": [
+    4.4,
+    13
+   ],
+   "x3+": [
+    1.6,
+    21
+   ]
+  }
+ },
+ "loops": {
+  "altitude": {
+   "amb@1.0s": 0.002,
+   "amb@2.0s": 0.001,
+   "amb@2.4s": 0.002,
+   "amb@3.0s": 0.954,
+   "amb@6.0s": 0.904,
+   "drone@2.0s": 0.011,
+   "drone@3.0s": 0.045,
+   "amb_db": -43.1,
+   "drone_db": -31.0,
+   "music_db": -32.6,
+   "amb_bands": {
+    "<100": 10.49,
+    "<150": 29.14,
+    "150-3k": 46.42,
+    ">3k": 24.43,
+    "3k-6k": 11.01,
+    ">6k": 13.43,
+    ">8k": 8.06
+   }
+  },
+  "harbour": {
+   "amb@1.0s": 0.001,
+   "amb@2.0s": -0.004,
+   "amb@2.4s": 0.003,
+   "amb@3.0s": 0.793,
+   "amb@6.0s": 0.73,
+   "drone@2.0s": 0.065,
+   "drone@3.0s": 0.157,
+   "amb_db": -39.7,
+   "drone_db": -32.0,
+   "music_db": -32.1,
+   "amb_bands": {
+    "<100": 1.18,
+    "<150": 5.51,
+    "150-3k": 91.62,
+    ">3k": 2.86,
+    "3k-6k": 1.42,
+    ">6k": 1.44,
+    ">8k": 0.87
+   }
+  },
+  "street": {
+   "amb@1.0s": -0.003,
+   "amb@2.0s": 0.005,
+   "amb@2.4s": 0.014,
+   "amb@3.0s": 0.984,
+   "amb@6.0s": 0.979,
+   "drone@2.0s": -0.048,
+   "drone@3.0s": -0.052,
+   "amb_db": -37.5,
+   "drone_db": -32.9,
+   "music_db": -31.8,
+   "amb_bands": {
+    "<100": 20.34,
+    "<150": 56.2,
+    "150-3k": 35.06,
+    ">3k": 8.75,
+    "3k-6k": 5.73,
+    ">6k": 3.02,
+    ">8k": 1.69
+   }
+  }
+ },
+ "amb_title_db": -240.0
+}

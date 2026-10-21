@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Rng } from '../core/random';
-import { RUN } from '../game/config';
+import { RUN, SHIFT } from '../game/config';
 import type { Site } from '../world/CityGenerator';
 
 /**
@@ -50,7 +50,7 @@ export function jobSpec(phase: 'pickup' | 'drop', n: number, roofSlot: boolean, 
 export type DeliveryPhase = 'pickup' | 'deliver';
 export type DeliveryEvent =
   | { type: 'picked'; site: Site }
-  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number; final: boolean; plain: number; fastPts: number; clockTime: number; under: number; sharp: boolean }
+  | { type: 'delivered'; site: Site; points: number; timeBonus: number; fast: boolean; combo: number; legTime: number; par: number; final: boolean; plain: number; fastPts: number; clockTime: number; under: number; sharp: boolean; win: boolean }
   | null;
 
 export type Tally = {
@@ -66,8 +66,13 @@ export type Tally = {
   partial: number; // round 17: street bonus paid at time-up by the share of the leg flown (a part of `slip`, its own game-over row)
   overtimeSeconds: number; // round 17: seconds flown in overtime
   overtimeDrop: number; // round 17: 1 if the run ended on a delivery made in overtime
+  ringSeconds: number; // round 48: clock seconds from tailwind rings
+  rings: number; // round 48: tailwind rings flown through
+  clock: number; // round 48: points for the seconds left when the shift was done (its own game-over row)
+  clockLeft: number; // round 48: those seconds
+  clockExact: number; // round 48 fix pass: the exact seconds left at the finish (the run's flown time uses it)
 };
-export const newTally = (): Tally => ({ drops: 0, fast: 0, combo: 0, slip: 0, fastCount: 0, rush: 0, dropSeconds: 0, slipSeconds: 0, crashSeconds: 0, partial: 0, overtimeSeconds: 0, overtimeDrop: 0 });
+export const newTally = (): Tally => ({ drops: 0, fast: 0, combo: 0, slip: 0, fastCount: 0, rush: 0, dropSeconds: 0, slipSeconds: 0, crashSeconds: 0, partial: 0, overtimeSeconds: 0, overtimeDrop: 0, ringSeconds: 0, rings: 0, clock: 0, clockLeft: 0, clockExact: 0 });
 
 /** Objective loop: pick a parcel up, drop it off before the clock runs out; fast drops chain combos. */
 export class DeliverySystem {
@@ -90,8 +95,10 @@ export class DeliverySystem {
   private recent: number[] = []; // round 19: 2 = alley or tunnel shortcut, 1 = any other
   /** Round 17: overtime is running (the clock hit 0 with a parcel aboard). Once a run. */
   overtime = false;
-  /** Round 17: the overtime delivery is made; the run is over (no new job, the clock stops). */
+  /** Round 17: the overtime delivery is made; the run is over (no new job, the clock stops). Round 48: also the shift's last parcel. */
   finished = false;
+  /** Round 48: the shift's last parcel is delivered (the run is won). */
+  won = false;
   /** Round 17: the current drop was assigned on last call (short, street level). */
   lastCall = false;
   /** Where every point and second of the run came from (game-over breakdown). The point lines sum exactly to `score`. */
@@ -110,6 +117,7 @@ export class DeliverySystem {
     this.overtime = false;
     this.overtimeGiven = 0;
     this.finished = false;
+    this.won = false;
     this.lastCall = false;
     this.lastSiteId = -1;
     this.recent = [];
@@ -159,6 +167,27 @@ export class DeliverySystem {
     this.tally.slipSeconds += seconds;
     this.legClockGain += seconds;
     return seconds;
+  }
+
+  /** Round 48: a tailwind ring adds clock time (counted as saved on the leg's par, like the slow clock). */
+  addRing(seconds: number): number {
+    this.tally.rings += 1;
+    if (seconds <= 0 || this.timeLeft <= 0 || this.overtime || this.finished) return 0;
+    this.timeLeft += seconds;
+    this.tally.ringSeconds += seconds;
+    this.legClockGain += seconds;
+    return seconds;
+  }
+
+  /** Round 48: the shift is done: the seconds left on the clock pay points (no combo). Returns the points. */
+  payClockLeft(): number {
+    const sec = Math.max(0, Math.floor(this.timeLeft));
+    const pts = sec * SHIFT.pointsPerSecond;
+    this.score += pts;
+    this.tally.clock += pts;
+    this.tally.clockLeft = sec;
+    this.tally.clockExact = Math.max(0, this.timeLeft);
+    return pts;
   }
 
   /** Round 17: the clock hit 0 with a parcel aboard: start overtime (once a run). Returns false if it cannot start. */
@@ -313,8 +342,10 @@ export class DeliverySystem {
     const sharp = underRaw >= RUN.comboSharp;
     this.combo = sharp ? this.combo + 1 : fast ? this.combo : 0;
     const decay = this.clockDecay;
+    // Round 48: the shift's last parcel wins the run (also when it is made in overtime)
+    const win = this.deliveries + 1 >= SHIFT.parcels;
     // Round 17: a delivery made in overtime adds no clock and ends the run (overtime cannot chain)
-    const final = this.overtime;
+    const final = this.overtime || win;
     // Round 17: a last-call drop is short and adds no clock either, so short late legs cannot keep a run alive forever
     const timeBonus = final || this.lastCall ? 0 : Math.round(Math.max(RUN.minTimeBonus, Math.min(20, 5 + this.legDistance / 11)) * decay);
     const plain = Math.round(RUN.baseScore + this.legDistance * RUN.perMetre);
@@ -336,8 +367,9 @@ export class DeliverySystem {
     this.lastCall = false;
     if (final) {
       this.finished = true;
-      T.overtimeDrop = 1;
-      return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts, clockTime, under: Math.max(0, underRaw), sharp };
+      this.won = win;
+      if (this.overtime) T.overtimeDrop = 1;
+      return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts, clockTime, under: Math.max(0, underRaw), sharp, win };
     }
     // next pickup reasonably close so the loop keeps moving (round 16: a street-distance band, low pads only).
     // Round 17: never further than the clock left can reach (at last-call pace), so the last pickup is a real chance.
@@ -347,6 +379,6 @@ export class DeliverySystem {
     this.target = this.pickLeg(rng, t.pos, pspec, this.approachable(t.pos));
     this.legTime = 0;
     this.legClockGain = 0;
-    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts, clockTime, under: Math.max(0, underRaw), sharp };
+    return { type: 'delivered', site, points, timeBonus, fast, combo: this.combo, legTime, par: this.legPar, final, plain, fastPts, clockTime, under: Math.max(0, underRaw), sharp, win };
   }
 }

@@ -41,8 +41,9 @@ export const FLIGHT = {
   tailEase: 0.8,
   tailWind: 2, // the full headwind makes the tail (1 + tailWind) times shorter (cruising over the roofs stays slow)
   boostDrain: 0.38, // per second
-  boostRegen: 0.16, // per second
-  boostRegenDelay: 0.9, // s
+  boostRegen: 0.25, // per second (round 48: 0.16 -> 0.25, an empty meter is full again in 4 s instead of 6.3 s)
+  boostRegenDelay: 0.6, // s (round 48: 0.9 -> 0.6)
+  gustTurnCut: 0.25, // s: round 48 fix pass, this long of hard turn input at speed ends a tailwind ring's burst
   hopHeight: 2.2, // m: ledges lower than this above the skids are skimmed over when flying into them
   stepUp: 0.9, // m: lips up to this high above the skids (parapets, kerbs, rims) are stepped over at full speed
   hopSpeed: 6, // m/s upward while skimming a ledge
@@ -87,7 +88,7 @@ export const CAMERA = {
 };
 
 export const RUN = {
-  startTime: 56, // round 17: 50 -> 56 (with the smaller slow clock budget below, a slow but steady run keeps its third drop)
+  startTime: 50, // round 17: 50 -> 56 (with the smaller slow clock budget below, a slow but steady run keeps its third drop). Round 48: 56 -> 50, the shift's clock (tailwind rings add seconds; see progress/round-48/builder.md)
   minTimeBonus: 7,
   pickupRadius: 3.2,
   deliverRadius: 3.4,
@@ -313,12 +314,50 @@ export const RUSH = {
  * to 2,617 to 1,725 to 1,804; a street pilot's two-drop run scores about 2,800 and its three-drop runs 3,178 and up.
  * Silver 2800 -> 2400 sits between them with room on both sides. Bronze 1200 -> 1000: a lazy two-drop run (966 to 1,403)
  * still earns the first medal most of the time. See progress/round-26/builder.md.
+ * Round 48: a run is a shift of five parcels with points for the time left, so the table restarts (new storage keys).
+ * Balance bots on 8 cities: a slow flier (2 to 3 parcels) 1,500 to 2,850; a casual line that runs out on parcel 4 about
+ * 5,600 to 7,400 and finishes at 7,600 to 9,500; a good line 9,400 to 11,300; the best bot run 11,600. Bronze 1000 (two
+ * parcels), Silver 4000 (three or four), Gold 9000 (a shift finished with time to spare), Ace 12500 (above every bot run).
  */
 export const GOALS = {
   tiers: [
     { name: 'Bronze', score: 1000 },
-    { name: 'Silver', score: 2400 },
-    { name: 'Gold', score: 6000 },
-    { name: 'Ace', score: 15000 },
+    { name: 'Silver', score: 4000 },
+    { name: 'Gold', score: 9000 },
+    { name: 'Ace', score: 12500 },
   ],
+};
+
+/**
+ * Round 48: the shift. A run is a shift of `parcels` deliveries. Delivering the last one ends the run as a win, and every
+ * second left on the clock pays `pointsPerSecond` points (not multiplied by the combo). The clock running out before the
+ * shift is done is the loss (overtime can still finish the parcel in hand, and if that is the last one the shift is won).
+ */
+export const SHIFT = {
+  parcels: 5,
+  pointsPerSecond: 40,
+};
+
+/**
+ * Round 48: tailwind rings. Each leg places up to `max` glowing rings over straight stretches of its shortest street route
+ * (roads and boulevards only, never alleys or tunnels), `height` m up, at least `fromStart` m from the leg's start and
+ * `fromEnd` m from its pad, `spacing` m apart, about one per `perMetre` m of route. Flying through one gives a free
+ * boost burst of `burst` s while forward is held (the meter is not used; a hard turn ends it) and `clock` s on the clock, shrinking with the run like the drop
+ * time bonus. A missed ring costs nothing; the next leg replaces them.
+ */
+export const RINGS = {
+  min: 2,
+  max: 4,
+  perMetre: 50,
+  height: 6.5, // m: the hover-vans' roofs are about 4 m up, the ring's bottom 3.6 m
+  radius: 2.7, // m, the ring's centre line
+  capture: 3.3, // m from the ring's axis that counts as through
+  fromStart: 26,
+  fromEnd: 45,
+  spacing: 34,
+  minRun: 30, // m: a straight stretch must be at least this long to hold a ring
+  beforeTurn: 26, // m of the same straight still ahead after a ring (the burst has room before the next corner; fix pass: 18 -> 26)
+  afterTurn: 10, // m of the straight behind a ring (not right on a corner)
+  burst: 1.0, // s (fix pass: 1.5 -> 1.0, about 25 m at boost speed, so it ends before the next corner)
+  clock: 2,
 };

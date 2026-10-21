@@ -1507,6 +1507,16 @@ export class AudioSystem {
     this.boostGain = g;
   }
 
+  /** Round 48: through a tailwind ring: a quick rising air rush and two bright bells on the chord (the boost cue follows). */
+  ring(): void {
+    if (!this.fxOk) return;
+    const t = this.ctx!.currentTime;
+    this.noise(t, 0.3, 0.05, 'bandpass', 1200, 6400, 1.4);
+    const arp = this.chordNow();
+    this.bell(midi(this.ladder(arp, 6)), t + 0.01, 0.5, 0.08, { pan: -0.2, verb: 0.35, ping: 0.2, bright: 1.6 });
+    this.bell(midi(this.ladder(arp, 8)), t + 0.07, 0.7, 0.07, { pan: 0.2, verb: 0.4, ping: 0.4, bright: 1.6 });
+  }
+
   /** Boost released (or the run stopped): the burner fades out over 0.6 s. */
   boostEnd(): void {
     if (!this.ctx || !this.boostSrc || !this.boostGain) return;
@@ -1742,12 +1752,13 @@ export class AudioSystem {
   }
 
   /** Time's up: a falling sting with no medal; with a medal a rising C major cadence with one bell per tier. */
-  gameOver(tier = 0): void {
+  gameOver(tier = 0, win = false): void {
     if (!this.fxOk) return;
     const t = this.ctx!.currentTime;
     this.duck(0.35, t, 1.0, 0.8, 'gameover');
     this.boostEnd();
-    if (tier <= 0) {
+    // round 48: a completed shift always gets the rising cadence (with no medal bells)
+    if (tier <= 0 && !win) {
       [523.25, 415.3, 349.23, 261.63].forEach((n, i) => this.tone(n, t + i * 0.16, 0.7, 'triangle', 0.18));
       return;
     }

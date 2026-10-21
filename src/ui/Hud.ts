@@ -34,6 +34,16 @@ export type RunSummary = {
   overtimeSeconds: number; // round 17: seconds flown in overtime
   overtimeDrop: boolean; // round 17: the run ended on a delivery made in overtime
   dailyNew: boolean;
+  // round 48: the shift
+  win: boolean; // the shift's last parcel was delivered
+  parcels: number; // parcels in a shift
+  ringSeconds: number; // clock seconds from tailwind rings
+  rings: number; // rings flown through
+  ringsPlaced: number; // rings put up this run
+  clock: number; // points for the seconds left at the finish (part of the score)
+  clockLeft: number; // those seconds
+  clockExact: number; // the exact seconds left at the finish
+  boostUsed: number; // s of boost from the meter
 };
 
 /** Round 24: a screen box in CSS px. */
@@ -102,6 +112,11 @@ export class Hud {
   private readonly eventPopMain = $('event-pop-main');
   private readonly eventPopSub = $('event-pop-sub');
   private readonly deliveries = $('deliveries-value');
+  private readonly deliveriesOf = $('deliveries-of');
+  private readonly shift = $('shift');
+  private shiftLast = '';
+  private readonly boostButton = $('boost-button');
+  private nudgeOn = false;
   private readonly boost = document.querySelector('.boost') as HTMLElement;
   private readonly boostFill = $('boost-fill');
   private readonly speed = $('speed-value');
@@ -927,6 +942,55 @@ export class Hud {
     this.objective.classList.add('flash');
   }
 
+  /** Round 48: shift progress. Pips in the timer pill (one per parcel, filled when delivered) and "n/N" in the right chip. */
+  setShift(n: number, total: number): void {
+    const key = `${n}/${total}`;
+    if (key === this.shiftLast) return;
+    const prev = this.shiftLast ? Number(this.shiftLast.split('/')[0]) : -1;
+    this.shiftLast = key;
+    if (this.shift.childElementCount !== total) this.shift.innerHTML = '<i></i>'.repeat(total);
+    Array.from(this.shift.children).forEach((pip, i) => {
+      pip.classList.toggle('on', i < n);
+      pip.classList.toggle('new', i === n - 1 && n > prev && prev >= 0);
+    });
+    this.shift.dataset.n = String(n);
+    this.shift.dataset.of = String(total);
+    this.shift.title = `Shift: ${n} of ${total} parcels delivered`;
+    this.deliveriesOf.textContent = `/${total}`;
+  }
+
+  /** Round 48: pulse the boost indicator with its key (desktop) or the boost button (touch): a full meter left unused. */
+  setBoostNudge(on: boolean): void {
+    if (on === this.nudgeOn) return;
+    this.nudgeOn = on;
+    this.boost.classList.toggle('nudge', on);
+    this.boostButton.classList.toggle('nudge', on);
+  }
+
+  /**
+   * Round 48 fix pass: the screen boxes of the objective pill and the route hint chip (when shown), for the ring
+   * see-through check. Read a few times a second, never per frame.
+   */
+  chipBoxes(): Box[] {
+    const out: Box[] = [];
+    const add = (el: HTMLElement) => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) out.push({ l: r.left, t: r.top, r: r.right, b: r.bottom });
+    };
+    add(this.objective);
+    if (this.routeHint.classList.contains('show')) add(this.routeHint);
+    return out;
+  }
+
+  /** Round 48 fix pass: a tailwind ring sits behind the objective pill or the route hint: both fade so it shows through. */
+  setSeeThrough(on: boolean): void {
+    if (on === this.seeThrough) return;
+    this.seeThrough = on;
+    this.objective.classList.toggle('see-through', on);
+    this.routeHint.classList.toggle('see-through', on);
+  }
+  private seeThrough = false;
+
   setDeliveries(n: number): void {
     if (n === this.last.deliveries) return;
     this.last.deliveries = n;
@@ -1134,6 +1198,20 @@ export class Hud {
   /** Game-over card: medal, score, the points to the next medal, a breakdown that sums to the score, and the clock story. */
   showOver(r: RunSummary): void {
     $('over-score').textContent = fmt(r.score);
+    // round 48: a won shift, or a kind word and how far the shift got (with one tip for next time)
+    $('over-kicker').textContent = r.win ? 'Shift complete' : 'Out of time';
+    $('over-card').dataset.win = r.win ? '1' : '0';
+    const left = r.parcels - r.deliveries;
+    let line: string;
+    if (r.win) line = r.clockLeft > 0 ? `All ${r.parcels} parcels delivered with ${r.clockLeft} s to spare` : `All ${r.parcels} parcels delivered in overtime`;
+    else {
+      const tip = r.ringsPlaced > 0 && r.rings < r.ringsPlaced / 2 ? 'Fly through the glowing rings for a free boost and extra seconds.'
+        : r.boostUsed < 3 ? 'Boost on the long straights: it refills fast.'
+        : r.crashes >= 3 ? 'Fewer crashes keep seconds on the clock.'
+        : 'Fly low and close to the walls: the slipstream slows the clock.';
+      line = `${r.deliveries} of ${r.parcels} parcels delivered${left === 1 ? ', so close!' : '.'} ${tip}`;
+    }
+    $('over-shift').textContent = line;
     $('new-best').hidden = !r.newBest;
     const medal = $('over-medal');
     medal.dataset.m = String(r.tier);
@@ -1149,15 +1227,18 @@ export class Hud {
       row('Combo bonus', r.topCombo > 1 ? `up to ${fmtX(r.topCombo)}` : '', r.combo),
       row('Street bonus', bankDetail(r), r.slip - r.partial),
       ...(r.partial > 0 ? [row('Last leg', `${Math.round(r.partialShare * 100)}% flown at time-up`, r.partial)] : []),
+      ...(r.clock > 0 ? [row('Time left', `${r.clockLeft} s`, r.clock)] : []),
       `<div class="total"><dt>Score</dt><dd>${fmt(r.score)}</dd></div>`,
     ];
     $('over-breakdown').innerHTML = rows.join('');
     // the run's length: the clock only moves by these amounts, so this sums exactly to the seconds flown
-    const flown = r.startTime + r.dropSeconds + r.slipSeconds - r.crashSeconds + r.overtimeSeconds;
+    const flown = r.startTime + r.dropSeconds + r.slipSeconds + r.ringSeconds - r.crashSeconds + r.overtimeSeconds - (r.win ? r.clockExact : 0);
     const parts = [`${fmt(r.startTime)} s start`, `+${fmt(r.dropSeconds)} s drops`];
     if (r.slipSeconds > 0) parts.push(`+${fmtSec(r.slipSeconds)} s slipstream`);
+    if (r.ringSeconds > 0) parts.push(`+${fmtSec(r.ringSeconds)} s rings (${r.rings})`);
     if (r.overtimeSeconds > 0) parts.push(`+${fmtSec(r.overtimeSeconds)} s overtime${r.overtimeDrop ? ' (delivered)' : ''}`);
     if (r.crashSeconds > 0) parts.push(`<em>−${r.crashSeconds.toFixed(1).replace(/\.0$/, '')} s ${r.crashes} crash${r.crashes === 1 ? '' : 'es'}</em>`);
+    if (r.win && r.clockLeft > 0) parts.push(`(${r.clockLeft} s left)`);
     const m = Math.floor(flown / 60), sec = Math.round(flown % 60);
     $('over-time').innerHTML = `Flew ${m}:${String(sec).padStart(2, '0')} <small>${parts.join(' ')}</small>`;
     $('over-daily-new').hidden = !r.dailyNew;
@@ -1197,6 +1278,8 @@ export class Hud {
     this.comboChip.classList.remove('broken');
     this.timePenalty.classList.remove('show');
     this.timer.classList.remove('hit');
+    this.setBoostNudge(false);
+    this.setSeeThrough(false);
     this.last = { score: -1, time: '', combo: -1, deliveries: -1, boost: -1, speed: -1, alt: -1, dist: -1, low: false, boostState: '', slow: '' };
   }
 }

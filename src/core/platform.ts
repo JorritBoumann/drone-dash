@@ -3,8 +3,8 @@
  * - The Play Worker serves the game inside a full-screen iframe on another origin, injects a capture bridge before the
  *   game's scripts and adds `seed` plus its own configuration keys to the query.
  * - The game never calls `window.StateloopSession.complete`. The portal treats it as "leave the game" and closes
- *   the frame at once, and Drone Dash has no natural end: a run ends, then the player starts the next one. The
- *   player leaves through the portal (its back button, or Escape twice).
+ *   the frame at once. A run ends (round 48: a shift is won or the clock runs out), then the player starts the next
+ *   one from the results card. The player leaves through the portal (its back button, or Escape twice).
  */
 /** What a finished run reports to the test hook `__GAME__.session()`. */
 export type SessionDetail = {
@@ -17,6 +17,11 @@ export type SessionDetail = {
   cityMode: string;
   runSeconds: number;
   run: number;
+  /** Round 48: the shift was completed (the last parcel delivered before the clock ran out, or in overtime). */
+  win: boolean;
+  parcels: number;
+  /** Whole seconds left on the clock at the finish (0 on a loss). */
+  timeLeft: number;
 };
 
 type Bridge = { complete?: (detail: SessionDetail) => unknown };

@@ -148,7 +148,7 @@ export class CanvasHud {
     goal: $('goal'), goalName: $('goal-name'), goalScore: $('goal-score'), combo: $('combo-chip'), comboValue: $('combo-value'),
     timer: $('timer'), timerValue: $('timer-value'), objective: $('objective'), objVerb: $('objective-verb'), objName: $('objective-name'),
     rush: $('objective-rush'), rushValue: $('objective-rush-value'), slip: $('slip'), slipChain: $('slip-chain'), minimap: $('minimap'),
-    right: document.querySelector('.hud-right') as HTMLElement,
+    right: document.querySelector('.hud-right') as HTMLElement, shift: $('shift'),
   };
   private boxes: Record<string, Box | null> = {};
   private flags = { goal: false, combo: false, pending: false, slipOn: 0, rush: false };
@@ -158,6 +158,7 @@ export class CanvasHud {
   private ev: Ev | null = null;
   private evDrawn: Ev | null = null;
   mapDirty = false;
+  seeThrough = false;
   uploads = 0;
   msSum = 0;
   msMax = 0;
@@ -261,7 +262,7 @@ export class CanvasHud {
     if (cb) {
       const T = E.timer.classList;
       const st = T.contains('ot') || T.contains('ot-done') ? 'ot' : T.contains('low') ? 'low' : T.contains('slow') ? 'slow' : '';
-      const key = `${E.timerValue.textContent}|${st}|${Math.round(n.timeFrac * 60)}|${Math.round(cb.w)}x${Math.round(cb.h)}|${pr}`;
+      const key = `${E.timerValue.textContent}|${st}|${Math.round(n.timeFrac * 60)}|${Math.round(cb.w)}x${Math.round(cb.h)}|${pr}|${E.shift.dataset.n}/${E.shift.dataset.of}`;
       if (due(P.clock, key)) { P.clock.key = key; this.drawClock(P.clock, pr, cb, n.timeFrac, st); P.clock.commit(t0); this.uploads++; }
       P.clock.place(cb.x, cb.y);
       P.clock.box = { x: cb.x, y: cb.y, w: cb.w, h: cb.h };
@@ -279,6 +280,7 @@ export class CanvasHud {
       P.objective.place(x, ob.y);
       P.objective.box = { x: ob.x + ob.w / 2 - this.objW / 2, y: ob.y, w: this.objW, h: this.objH };
     }
+    P.objective.mat.opacity = this.seeThrough ? 0.22 : 1; // round 48 fix pass: a ring shows through the pill
     this.show(P.objective, !!ob);
 
     const slb = this.boxes.slip;
@@ -409,7 +411,22 @@ export class CanvasHud {
     c.font = font(800, Math.round(h * 0.5));
     c.textBaseline = 'middle';
     c.textAlign = 'left';
-    c.fillText(this.el.timerValue.textContent ?? '', cx + r + 8, cy + 1);
+    const tv = this.el.timerValue.textContent ?? '';
+    c.fillText(tv, cx + r + 8, cy + 1);
+    // round 48: the shift pips after the time (one per parcel, filled when delivered), as in the HTML pill
+    const of = Number(this.el.shift.dataset.of) || 0, done = Number(this.el.shift.dataset.n) || 0;
+    if (of > 0) {
+      const ps = h < 40 ? 7 : 9, gap = h < 40 ? 2 : 3;
+      let x = Math.max(cx + r + 8 + c.measureText(tv).width + 9, w - 16 - of * ps - (of - 1) * gap);
+      for (let i = 0; i < of; i++, x += ps + gap) {
+        roundRect(c, x, cy - ps / 2, ps, ps, 2.5);
+        c.fillStyle = i < done ? (st === 'low' ? '#ffffff' : '#14c9a0') : 'rgba(255, 247, 234, 0.14)';
+        c.fill();
+        c.lineWidth = 1.5;
+        c.strokeStyle = 'rgba(255, 247, 234, 0.7)';
+        c.stroke();
+      }
+    }
     c.textBaseline = 'alphabetic';
   }
 
@@ -675,11 +692,11 @@ export class CanvasHud {
         rows.push([small ? `${label} ${small}` : label, (dd.textContent ?? '').trim()]);
       }
       const tier = Number((document.getElementById('over-medal') as HTMLElement | null)?.dataset.m ?? 0) || 0;
-      const key = `${t('over-score')}|${t('over-medal-name')}|${rows.map((r) => r.join('=')).join(';')}|${seed}|${pr}|${touch}|${this.vw}x${this.vh}|${cn.r}`;
+      const key = `${t('over-score')}|${t('over-medal-name')}|${rows.map((r) => r.join('=')).join(';')}|${seed}|${pr}|${touch}|${this.vw}x${this.vh}|${cn.r}|${t('over-kicker')}|${t('over-shift')}`;
       if (key !== this.overKey) {
         if (!this.overKey) this.overAt = now;
         this.overKey = key;
-        this.drawOver(P, pr, touch, t('over-score'), t('over-medal-name'), tier, rows, seed, t('over-city'), cn);
+        this.drawOver(P, pr, touch, t('over-score'), t('over-medal-name'), tier, rows, seed, t('over-city'), cn, t('over-kicker'), t('over-shift'));
         P.commit(now);
         this.uploads++;
       }
@@ -700,12 +717,14 @@ export class CanvasHud {
   }
   private overW = 0;
   private overH = 0;
-  private drawOver(p: Panel, pr: number, touch: boolean, score: string, medal: string, tier: number, rows: [string, string][], seed: number, city: string, cn: { r: number; b: number }): void {
+  private drawOver(p: Panel, pr: number, touch: boolean, score: string, medal: string, tier: number, rows: [string, string][], seed: number, city: string, cn: { r: number; b: number }, kicker = "Time's up", shiftLine = ''): void {
+    // round 48: the shift line (how many parcels, or the time to spare) goes under the score, cut to one line
+    const shiftH = (k: number) => (shiftLine ? Math.round(16 * k) + 4 : 0);
     const small = touch || this.vh < 460;
     // round 43: the card fits the screen minus the corner box on both sides (it is centred) and 8 px top and bottom;
     // a short screen scales the whole card down, a long row gets smaller type and then an ellipsis
     const maxW = Math.max(120, this.vw - 2 * (cn.r + 4));
-    const hAt = (k: number) => pad0(k) * 2 + 14 * k + 8 + 22 * k + 6 + Math.round(46 * k) + 10 + rows.length * Math.round(17 * k) + 8 + 16 * k;
+    const hAt = (k: number) => pad0(k) * 2 + 14 * k + 8 + 22 * k + 6 + Math.round(46 * k) + 10 + shiftH(k) + rows.length * Math.round(17 * k) + 8 + 16 * k;
     const pad0 = (k: number) => Math.round(18 * k);
     let S = small ? 0.8 : 1;
     while (S > 0.5 && hAt(S) > this.vh - 16) S -= 0.05;
@@ -735,9 +754,10 @@ export class CanvasHud {
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
     let y = pad + 11 * S;
-    c.fillStyle = '#ffb02e';
+    const win = /complete/i.test(kicker);
+    c.fillStyle = win ? '#2fe6c0' : '#ffb02e';
     c.font = font(900, Math.round(12 * S));
-    c.fillText("TIME'S UP", w / 2, y);
+    c.fillText(kicker.toUpperCase(), w / 2, y);
     y += 8 + 20 * S;
     c.font = font(900, Math.round(16 * S));
     const mw = c.measureText(medal).width;
@@ -750,6 +770,14 @@ export class CanvasHud {
     c.font = font(900, big);
     c.fillText(score, w / 2, y);
     y += 10 + big * 0.1;
+    if (shiftLine) {
+      // the first sentence only (the tip after it stays on the HTML card)
+      const first = shiftLine.split(/(?<=[.!])\s/)[0];
+      y += Math.round(16 * S) + 4;
+      c.fillStyle = win ? '#5ff5d4' : 'rgba(255, 247, 234, 0.92)';
+      c.font = font(800, Math.round(13 * S));
+      c.fillText(fitText(c, first, w - 2 * pad), w / 2, y - 4);
+    }
     c.font = font(800, rf);
     for (const [l, v] of rows) {
       y += rowH;

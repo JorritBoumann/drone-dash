@@ -10,6 +10,10 @@ interface ThreeGameDiagnostics {
   complete: boolean;
   timeLeft: number;
   deliveries: number;
+  /** Round 48: the shift (parcels in it, delivered so far, won) and the leg's tailwind rings. */
+  shift?: { parcels: number; delivered: number; won: boolean };
+  rings?: Array<{ x: number; y: number; z: number; dx: number; dz: number; on: boolean }>;
+  ringStats?: { placed: number; taken: number; seconds: number; gust: number; boostUsed: number; nudgeT: number };
   combo: number;
   crashes?: number;
   leg?: { time: number; par: number };

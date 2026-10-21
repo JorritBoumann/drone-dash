@@ -26,6 +26,8 @@ export type MinimapFrame = {
   objective: { x: number; z: number; kind: 'pickup' | 'drop' | 'rush'; dist: number } | null;
   /** The leg's suggested shortcut: entrance (x, z) and exit (ex, ez) of the alley or tunnel run. */
   shortcut: { x: number; z: number; ex: number; ez: number; kind: 'alley' | 'tunnel' } | null;
+  /** Round 48: the leg's tailwind rings (centre and the way through); taken ones (`on` false) are not drawn. */
+  rings?: ReadonlyArray<{ x: number; z: number; dx: number; dz: number; on: boolean }>;
   /** Size of the marks in target pixels per desktop CSS pixel (default size / 160). */
   markScale?: number;
 };
@@ -49,6 +51,7 @@ const C = {
   rush: '#ff5d4a',
   alley: '#f29a2e',
   tunnelMark: '#3f9fd8',
+  ring: '#2fd8f0',
 };
 const FONT = "ui-rounded, 'SF Pro Rounded', 'Nunito', 'Avenir Next', 'Segoe UI', system-ui, sans-serif";
 
@@ -236,6 +239,29 @@ export function drawMinimap(ctx: Ctx2D, x: number, y: number, size: number, laye
       ctx.stroke();
       ctx.strokeStyle = col;
       ctx.lineWidth = 2.4 * u;
+      ctx.stroke();
+    }
+  }
+
+  // round 48: tailwind rings: a small hoop seen from above (a bar across the way through, with a cream outline)
+  if (f.rings) {
+    for (const r of f.rings) {
+      if (!r.on) continue;
+      const qx = sx(r.x - f.px, r.z - f.pz), qy = sy(r.x - f.px, r.z - f.pz);
+      if (Math.hypot(qx, qy) > rr - 5 * u) continue;
+      // across the way through: the screen direction of (dz, -dx)
+      const ax = sx(r.dz, -r.dx), ay = sy(r.dz, -r.dx);
+      const al = Math.hypot(ax, ay) || 1;
+      const h = 5 * u;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx + qx - (ax / al) * h, cy + qy - (ay / al) * h);
+      ctx.lineTo(cx + qx + (ax / al) * h, cy + qy + (ay / al) * h);
+      ctx.strokeStyle = C.cream;
+      ctx.lineWidth = 4.6 * u;
+      ctx.stroke();
+      ctx.strokeStyle = C.ring;
+      ctx.lineWidth = 2.6 * u;
       ctx.stroke();
     }
   }

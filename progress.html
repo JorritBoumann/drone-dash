@@ -16,7 +16,376 @@ figure { margin: 0; } img { width: 100%; border-radius: 6px; display: block; }
 figcaption { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 </style></head>
 <body><main><h1>Drone Dash progress</h1>
-<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-20 07:58 UTC.</p>
+<p class="sub">Builder and critic loop, newest round first. Updated 2026-10-21 00:04 UTC.</p>
+<section><h2>round 48</h2><details open><summary>critic.md</summary><pre># Round 48 critic: the shift and the tailwind rings
+
+Verdict: **FAIL (small fix needed).** The shift answers Jorrit's complaint. But the ring burst throws a normal player into the wall at the next corner, and the crash costs more time than the ring gave. A first-time player will notice that in the first minute.
+
+## How I tested
+- Production build (`npm run build`), copied and served on port 5393. Port 5188 was not touched. No source edits.
+- My own pilot (`critic/pilot48-critic.mjs`, not the builder's bot) flies in real time with real input: Playwright keyboard on desktop, CDP multi-touch on the stick and buttons on the phone. It reads diagnostics about 15 times a second and plans each leg on the street graph. It does not use `externalClock` or `__GAME__.key`.
+- Pilot styles:
+  - careful: brakes into corners. On long straights with a full meter, it boosts.
+  - casual: a first-timer. Holds W and lets go of W for corners, but never presses S.
+  - eager: boosts every straight and aims at rings.
+  - slow: 11 m/s and flies above the rings.
+- Round 47 baseline for frame time: `git archive HEAD` (c14d8ec), built and served on 5394.
+- Files: screenshots, the JSON log per run (with a trace) and one video (`s130-careful-a.webm`) are in `critic/`.
+
+## Runs (all real input, real time)
+| run | result | time left | score / medal | rings taken | crashes |
+| --- | --- | --- | --- | --- | --- |
+| seed 130, careful A (video) | Shift complete | 13 s | 9,270 Gold | 10 of 13 | 3 |
+| seed 130, careful B | Shift complete | 27 s | 10,653 Gold | 11 of 13 | 0 |
+| seed 130, eager | Shift complete | 45 s | 12,077 Gold | 12 of 13 | 0 |
+| seed 130, slow (above the rings) | Out of time, 3 of 5 | 0 | 2,976 Bronze | 0 of 7 | 0 |
+| daily city, casual, fresh storage (first-run teaching) | Shift complete | 12 s | 9,267 Gold | 4 of 6 | 2 |
+| random city, casual | Shift complete | 5 s | 7,328 Silver | 7 of 8 | 3 |
+| random city 23085, careful, `hud=canvas` | Shift complete | 36 s | 10,112 Gold | 10 of 10 | 1 |
+| phone 812x375 touch, seed 130, casual | Shift complete | 1 s | 7,150 Silver | 10 of 12 | 4 |
+| phone 812x375 touch, daily, casual | Shift complete | 13 s | 8,861 Silver | 5 of 6 | 1 |
+| seed 130, `hud=canvas`, no input | Out of time, 0 of 5 | 0 | 0 | 0 | 0 |
+
+No page errors in any run. `StateloopSession.complete` was not called (on purpose). `session()` reports win, parcels and timeLeft.
+
+## 1. Does it answer the owner?
+Yes, mostly.
+- **"You do your best but time runs out."** 8 of 9 flown runs won the shift. The wins include a casual first-timer on the daily city, a casual random city and both phone runs. Only the slow line, which skipped every ring, lost, and it still got 3 of 5 with a Bronze. The loss card says "3 of 5 parcels delivered" and gives a fitting tip (rings). The win card ("Shift complete", "All 5 parcels delivered with 13 s to spare", a Time left row) feels like a finish line. This is a real fix.
+- **"Boost the drone sometimes."** Rings come often: 4 to 12 per run, about one every 10 to 20 s. Boost time per run went to 6 to 22 s (round 47: 1.6 to 4.3 s). The rings are very easy to see from the chase camera on desktop: bright cyan, with bloom, visible down a whole block (`s130-careful-a-ring-ahead.jpg`, `daily-casual-fresh-ring-ahead.jpg`). The minimap shows them as clear cyan bars (`zoom-minimap-rings-desktop.jpg`). So boosting does now happen "sometimes". But it is not yet something you enjoy, because of gap 2 below.
+- The boost nudge works: "E or click" on desktop, "tap Boost" on phone, plus the pulsing button (`*-nudge.jpg`). It is small text at the bottom left. Fine as a hint.
+
+## 2. The single biggest gap: the ring burst carries you into the next corner
+The burst gives 1.5 s of full boost thrust. **Releasing W does not stop it** (`Drone.ts`: `thrustIn = ... || 1` during a gust). Only holding S (brake) stops it. At about 30 m/s that is about 40 to 45 m of travel. Placement only promises 18 m of straight road after a ring (`RINGS.beforeTurn`). Many rings sit 20 to 46 m before a turn, often a 40 to 50 degree turn onto a diagonal.
+
+Evidence (the casual style: lets go of W for a corner, never brakes, which is how most people fly):
+- 26 rings taken, 10 crashes, and **7 of those crashes came within 2.7 s of taking a ring**. That is 27% of rings ending in a wall. The time right after rings is under 10% of the flight but holds 70% of the crashes.
+- Examples:
+  - random city, t=118.9: ring, next corner 21 m ahead, speed 22.8 rising to 30.9 m/s, then a wreck at t=120.3 (26 m/s impact).
+  - daily city, t=11.2: ring, corner 21 m ahead, 11 to 28 m/s, then a hard crash 1.5 s later.
+  - phone, seed 130, t=42.9: ring, corner 44 m ahead, 31 m/s, then a crash 2.5 s later.
+- A crash costs 3 to 5 s. A ring gives at most 2 s (less later in the run). **So a ring and then a crash loses 1 to 3 s net.** It also breaks the combo. The phone casual run finished with 1 s to spare after 4 crashes, all after rings.
+- The careful and eager styles never crashed after a ring. But they brake above 18 to 21 m/s, and the brake cancels the burst. Their top speed during a burst was only 19 to 21 m/s. So with this rule, you either get the burst and hit the wall, or you brake and lose the burst.
+
+Fix suggestion (small, one owner):
+1. Make the burst follow the throttle. Push only while forward is held (`intent.thrust &gt; 0`). End it early on a hard turn (for example, 0.2 s of turn input above cruise speed). Then letting go of W in a corner works the way players expect.
+2. Raise `RINGS.beforeTurn` from 18 m to about 40 m, so a held burst ends before the corner. Or shorten `burst` to about 1.0 s.
+3. Test: rerun `pilot48-critic.mjs` with the casual style on seed 130, the daily city and one random city (desktop and phone). Target: under 1 crash in 10 rings within 2.7 s after the ring.
+
+## 3. Bugs and regressions (ranked)
+1. **Ring burst into corners (above).** Steps: any city, casual flying. Take a ring that is 20 to 45 m before a turn, let go of W and steer into the turn. The drone keeps boosting into the far wall. Seen in 4 of 4 casual runs.
+2. **Phone: the HUD chips hide the ring at mid distance.** At 812x375, a ring 30 to 60 m ahead sits behind two chips: the objective pill and "FAST LANE" (`phone-daily-casual-ring-ahead.jpg`). The ring hangs at 6.5 m, level with the chips. Closer in, the ring shows again. Suggestion: on short screens, fade the two chips while a ring is behind them. Another option is to frame phone rings a little lower.
+3. **A good line has too much clock (design, not a blocker).** Eager on seed 130 had 45 s left. Careful on a random city had 36 s left. In the eager run the clock went **up** from leg to leg: 59.8, 61.8 and 63.6 s left after drops 1 to 3. For a skilled player, the clock is no threat until the last leg. Jorrit asked for easier, so keep it for now. To get tension back later, shrink the ring clock late in the shift (for example, 0 s after parcel 3). Do not cut the start time.
+4. **Frame time: within noise, maybe a little higher in rush hour.** I measured both builds on the same machine in the same session. Settings: seed 22, uncapped, 2 runs each. The table gives p95 in ms. The machine was busier than in round 47 (round 47 itself measured 10 to 12 ms on desktop today, vs the 8 ms recorded then).
+
+   | case | round 47 | round 48 |
+   | --- | --- | --- |
+   | desktop normal | 10.1 / 10.5 | 11.3 / 10.4 |
+   | desktop rush | 12.3 / 11.3 | 13.9 / 13.7 |
+   | phone normal | 7.3 / 6.2 | 8.2 / 7.5 |
+   | phone rush | 6.2 / 5.5 | 6.2 / 7.0 |
+
+   Medians are the same (4.7 to 5.0 ms desktop, 2.7 to 3.2 ms phone). Draw calls are +2 (116 max). Not a blocker. Recheck desktop rush on a quiet machine. Seed 130 desktop normal p95 was 11.4 and 13.8 ms.
+5. **Minor: the "Flew" time on a win can be 1 s off.** It uses the whole seconds left (`clockLeft`). It does not use the exact time. Cosmetic.
+
+Not bugs (checked):
+- The HUD pips fill correctly in both HUDs (`*-hud-2of5.jpg`, `*-hud-4of5.jpg`, `canvas-random-careful-hud-2of5.jpg`). They are small on desktop, and the "2/5" chip carries the meaning.
+- The loss card with 0, 3 and 4 of 5 shows the right tip. The canvas HUD mode uses the same results card.
+- Medals and v2 keys: Bronze to Gold reached by these runs, and Ace is just above the best run (12,077 vs 12,500). That feels right.
+- One test-setup note: when I ran 2 or 3 pilots in parallel, the control loop starved and runs failed. I threw those runs away and reran every run alone. It was not a game problem.
+
+## 4. Verdict
+**FAIL, small fix.** The shift, the win and loss cards, the pips, the minimap rings and the nudge all work, and casual players now win. But the main new boost mechanic punishes the very player this round is for: about 1 in 4 rings ends in a wall and costs more time than it gave. Make the burst follow the throttle and give rings about 40 m of road after them, then rerun the casual pilot. With that fix, I expect this round to pass.
+
+## Re-check after the fix pass
+
+Verdict: **PASS for pushing round 48.** The ring no longer throws you into the wall. One tuning gap remains (the burst is cut too easily on keyboard). It is not a blocker.
+
+### How I tested
+- A fresh critic. I did not build it. No source edits.
+- Production build from `npm run build`, served from a copy of `dist` on port 5395. Port 5188 was not touched.
+- Pilot: `recheck/pilot48-recheck.mjs`, a copy of the first critic's pilot. Real-time Playwright keyboard on desktop, CDP touch on the phone (812x375). Runs went one at a time.
+- New style "eagerhold": it never brakes, aims at rings, and holds W on the ring approach and for 3 s after the ring, even into the next corner. It still steers.
+- Probe: `recheck/burst-probe.mjs` flies the first ring on seed 130 at 16.8 m/s with real keys, 2 repeats per variant.
+- Logs, JSON and screenshots are in `recheck/`. The summary script is `recheck/sum-recheck.py`.
+
+### 1. Crashes after a ring
+A crash counts if it comes within 3 s after a ring.
+
+| run | result | time left | rings | crashes | within 3 s of a ring |
+| --- | --- | --- | --- | --- | --- |
+| seed 130, casual | Shift complete, Gold | 44 s | 11 of 13 | 0 | 0 |
+| daily, casual | Shift complete, Gold | 17 s | 8 of 8 | 1 | 0 |
+| phone seed 130, casual | Shift complete, Gold | 34 s | 13 of 13 | 0 | 0 |
+| seed 130, careful | Shift complete, Gold | 29 s | 12 of 13 | 0 | 0 |
+| daily, careful | Shift complete, Silver | 7 s | 3 of 7 | 1 | 0 |
+| seed 130, eager (holds W) | Shift complete, Gold | 44 s | 9 of 13 | 1 | 1 |
+| daily, eager (holds W) | Shift complete, Silver | 16 s | 5 of 8 | 3 | 0 (see note) |
+| phone daily, eager (holds W) | Out of time, 4 of 5 | 0 | 2 of 7 | 0 | 0 |
+| seed 130, slow (above the rings) | Out of time, 3 of 5 | 0 | 0 of 9 | 0 | 0 |
+
+- Casual: 0 crashes in 32 rings. Careful: 0 in 15 rings. Both pass the bar (fewer than 1 in 10). The first critic saw 7 in 26 for casual.
+- Eager: 1 crash in 16 rings. It came 0.55 s after the first ring of seed 130. The pilot had swung off its line to take that ring, and it hit a wall at 20 m/s while holding W. The burst had already ended (the turn cut). Without the ring it would likely have hit the same wall at 17 m/s. That feels fair: the player chose to hold W while off line.
+- Note: one daily eager crash at 116.5 s came 0.5 s after the last drop, while landing during the finish. It does not count.
+- The daily city today (Wed 21 Oct) is tight: careful won with 7 s left, and the phone eager run lost 4 of 5 with 0 crashes. This is the city and the slower touch pilot, not the rings.
+- No page errors in any run.
+
+### 2. Is the burst still a treat?
+- Straight line, W held: 16.8 to 27.8 m/s (+11 m/s), the full 1.0 s. Same in both repeats. That is a real treat, close to the builder's 27.3.
+- Let go of W at the ring: peak 17.0 m/s (+0.2). The burst does not push. This is the fix working.
+- **Remaining gap: a short keyboard correction ends the burst.** Keyboard steering is all or nothing (turn = 1). So any A or D held for 0.25 s at speed counts as a "hard turn". In the probe, a 0.3 s D tap ended the burst at 0.36 s and the peak fell to 23 m/s (+6). A 0.15 s tap did not end it.
+- In the eagerhold runs, 11 of 16 bursts ended by 0.43 s, long before any corner (the corners were 33 to 78 m away). Only 1 of 16 ran the full 1.0 s. The median gain was 4.6 m/s.
+- So the treat is full on a clean line and about half after a normal lane correction. A player cannot see why. Suggestion for the next round: count the turn cut only when the heading has changed a lot (for example 25 degrees since the ring), or raise `FLIGHT.gustTurnCut` to about 0.5 s. Do not undo the throttle rule.
+- Casual and careful pilots let go of W near 17 m/s, so their gain is about 1 m/s. That is the intended trade.
+
+### 3. Phone 812x375
+- A ring ahead is easy to see. In `phone-s130-casual-ring-ahead.jpg` it sits below and right of the chips.
+- The chips fade when a ring is behind them (`phone-*-see-on-*.jpg`). They come back after the ring passes.
+- Seed 130 casual: 16 fades, all at least 0.5 s long, no quick re-fade. Clean.
+- Daily eager: 12 fades. 5 lasted only 0.3 to 0.37 s, and twice the chips came back for 0.5 s and then faded again. That is a mild blink while a close ring (10 to 26 m) moves at the chip edge.
+- **Small bug: the objective pill snaps back to full opacity with no fade.** The 0.2 s transition sits only on `.see-through`, so it applies on the way down but not on the way up. Probe: opacity is 1.0 already 0 ms after the class is removed. The route chip fades back smoothly (it has its own transition). Fix: put `transition: opacity 0.2s` on `.objective` itself, and maybe hold the fade for 0.4 s after the last hit. Not a blocker.
+- Desktop: one single 0.17 s fade in a whole seed 130 run. Fine.
+
+### 4. Win and loss screens
+- Win (`s130-casual-end.jpg`): "Shift complete", Gold 12,070, "All 5 parcels delivered with 44 s to spare". "Flew 2:03" matches 50 + 63 + 34.4 + 20 minus 44.5 s left. Correct.
+- Loss (`s130-slow-loss-end.jpg`): "Out of time", Bronze, "3 of 5 parcels delivered" with the ring tip, a "Last leg 56%" row. "Flew 1:33" matches 50 + 33 + 10.4. Correct.
+- Phone loss (`phone-daily-eager-end.jpg`): the two-column card fits. "4 of 5 parcels delivered, so close!" and a ring tip. Correct.
+
+### 5. Frame time (p95 in ms, seed 22, uncapped, 2 runs each)
+The machine was quieter than for the first critic. So I also rebuilt round 47 (c14d8ec) and measured it on the same port right after.
+
+| case | first critic, r48 | re-check, r48 | re-check, r47 |
+| --- | --- | --- | --- |
+| desktop normal | 11.3 / 10.4 | 7.0 / 6.8 | 7.0 / 7.5 |
+| desktop rush | 13.9 / 13.7 | 6.4 / 6.3 | 6.3 / 6.4 |
+| phone normal | 8.2 / 7.5 | 6.3 / 6.1 | 6.0 / 6.0 |
+| phone rush | 6.2 / 7.0 | 5.5 / 5.6 | 5.2 / 5.2 |
+
+- The desktop rush worry from the first critic was machine load. Round 48 and 47 are now equal on desktop.
+- The phone is up about 0.3 ms. Within noise. Draw calls are up by 2 (116 max), as before.
+- Logs: `recheck/perf-r48.log`, `recheck/perf-r47.log`.
+
+### Summary
+- Pass: 0 ring crashes in 47 casual and careful rings, and 1 fair crash in 16 eager rings.
+- Next round, top item: the keyboard turn cut ends most held bursts after 0.3 s.
+- Small fix: the objective pill pops back instead of fading back.
+</pre></details><details><summary>builder.md</summary><pre># Round 48 builder: a shift you can win, and speed bursts
+
+Jorrit said two things. Time always runs out, so a run never feels won. And he wants to boost more often.
+This round gives each run a finish line, puts free boost rings in the streets, and makes the boost meter easier to notice.
+
+## The diagnosis holds
+
+I checked the lead's diagnosis on the round 47 code. It is right.
+- Every run ended in "Time's up". A run ended only when the clock ran out.
+- With the round 47 code, all 32 bot runs (4 lines on 8 cities) ended on the clock. Even the best line ran out of time after 6 to 9 parcels.
+- The good bot pressed boost for only 1.6 to 4.3 s per run.
+
+## What changed
+
+### A. The shift (a run you can win)
+- A run is now a shift of **5 parcels** (`SHIFT.parcels` in `src/game/config.ts`).
+- Delivering the fifth parcel wins the run. The card says "Shift complete". Each whole second left pays **40 points** (`SHIFT.pointsPerSecond`). The combo does not multiply it.
+- If the clock runs out first, the run is lost. The card says "Out of time" and how far the shift got, for example "4 of 5 parcels delivered, so close!". It adds one tip: fly through the rings, boost on straights, crash less, or draft the walls. The tip depends on what the run missed.
+- Overtime still works. If the overtime drop is the fifth parcel, the shift is won with 0 s left.
+- The clock now starts at **50 s** (was 56). Last call is unchanged. It gives a short final drop when little time is left, and it keeps close runs alive.
+- HUD: five small parcel pips sit in the timer pill and fill in teal as you deliver. The right chip shows "2/5". The canvas HUD (`?hud=canvas`) draws the same pips in its clock panel. Its results card shows "SHIFT COMPLETE" or "OUT OF TIME" and the shift line.
+- A win plays the rising end tune, even with no medal. A "Shift complete!" banner shows for 2.4 s before the card.
+- Daily and seeded cities stay fair. The rings use no random numbers, and the parcel order is unchanged.
+
+### B. Tailwind rings
+- `src/entities/TailwindRings.ts`: up to 4 glowing cyan rings per leg. They sit 6.5 m up, over straight road or boulevard stretches of the leg's suggested street route. They are never placed in alleys or tunnels.
+- Placement (`RINGS` in config): about one ring per 50 m of route, 2 to 4 per leg. No ring within 26 m of the leg start or 45 m of the pad. At least 34 m between rings. At least 10 m of straight road before a ring and 18 m after it. Each spot is checked for solid boxes along 8 m of the ring's axis.
+- Flying through a ring gives 1.5 s of free boost. It uses the normal boost speed, camera FOV, burner sound and trail, but not the meter. It also adds +2 s to the clock, shrinking with the run like the drop bonus. A short chime plays and the timer shows "+2s". Missing a ring costs nothing.
+- A boost from a ring never pushes against a held brake.
+- Drawn as one InstancedMesh (one draw call, about 2,000 triangles). The parts are a hoop, an inner hoop, a faint halo and six wind streaks. It is bright enough to bloom on desktop and still reads on phones without bloom. It is not a collider.
+- The minimap shows each ring as a small cyan bar across the street.
+
+### C. Boost you notice
+- `FLIGHT.boostRegen` 0.16 to **0.25** per s and `boostRegenDelay` 0.9 to **0.6** s. An empty meter is full again in 4.6 s (was 7.2 s).
+- The nudge starts when the meter is full and unused for 8 s. The boost bar pulses three times and shows "E or click" next to "BOOST". On phones it shows "tap Boost" and the Boost button pulses too. This repeats every 20 s while the meter stays unused. There are no new banners, so the first run keeps the round 39 rule.
+
+### Medals and saved bests
+- A shift caps a run at 5 parcels. Old scores came from runs of up to 9 parcels, so the medal table is new.
+- Bronze 1000 (was 1000), Silver 4000 (was 2400), Gold 9000 (was 6000), Ace 12500 (was 15000).
+- Bot results: slow line 1,250 to 2,800 (Bronze). Casual win 6,200 to 9,600 (mostly Silver). Good line 9,500 to 11,400 (Gold), but 6,478 on the daily city. Best bot run 11,496, so Ace is above every bot run.
+- The storage keys for best score, best medal and daily best moved to `-v2`. No shift can beat the old bests from the endless runs (up to about 18,000). The played flag is kept, so returning players still skip the first-run teaching.
+
+### Stateloop: a conflict with the brief
+The brief asked to keep `window.StateloopSession.complete(detail)` firing once per run. But the last commit (c14d8ec, "Round 48: stop ending the Stateloop session after each run") removed that call on purpose. The portal closed the game on it, before the results card. **I did not put the call back.** `win`, `parcels` and `timeLeft` were added to the session detail that `__GAME__.session()` returns. The lead and Jorrit must decide this. Putting the call back is one line in `endRun`, but then the portal closes the game again.
+
+## Numbers (bot measurements)
+
+Method: `progress/round-48/builder-scripts/shiftbot48.js` is a deterministic pilot inside the page (`externalClock` plus `advance`, keys through `__GAME__.key`). The same city and line always give the same run. `shift48.mjs` and `matrix48.sh` run it. Round 47 numbers come from a copy of HEAD (c14d8ec, `git archive`) on port 5392. Cities: 22, 58, 130, the daily city of 2026-10-20 (seed 50488), 7, 91, 11 and 300. Raw logs: `before-bots.log`, `after-bots.log`.
+
+The four lines:
+- **slow**: plain street grid, 12 m/s, pauses, ignores rings. This is the round 48 first casual draft, kept as a floor.
+- **casual**: the suggested street route at 13 m/s, never presses boost, a 2 s pause every 20 s, takes rings that are on its line.
+- **good**: shortest route at 16 m/s, boosts on straights.
+- **perfect**: corners at 9 m/s, boosts on any straight, steers through rings.
+
+Before (round 47): every run was lost on the clock.
+
+| line | parcels before time ran out (8 cities) | 5th parcel at |
+| --- | --- | --- |
+| slow | 2 to 3 | never |
+| casual | 3 to 5 (5 on 2 cities) | 146 s, 129 s |
+| good | 5 to 7 | 122 to 135 s |
+| perfect | 6 to 9 | 116 to 124 s |
+
+After: seconds left at the end of a won shift. "L" means lost, with the parcel count.
+
+| city | slow | casual | good | perfect |
+| --- | --- | --- | --- | --- |
+| 22 | L 2/5 | 6.6 | 34.1 | 35.8 |
+| 58 | L 2/5 | 5.4 | 28.1 | 35.0 |
+| 130 | L 2/5 | 13.8 | 31.9 | 40.5 |
+| daily | L 3/5 | 2.4 | 1.4 (2 crashes) | 13.9 |
+| 7 | L 2/5 | 4.1 | 17.8 | 23.6 |
+| 91 | L 2/5 | 3.0 | 19.0 | 27.0 |
+| 11 | L 2/5 | L 3/5 (bot got stuck 3 times) | 25.5 | 28.2 |
+| 300 | L 2/5 | 0.6 | 24.0 | 26.1 |
+
+- **casual** wins 7 of 8 cities, mostly with 0.6 to 6.6 s left. The loss on city 11 is partly the bot getting stuck.
+- **good** has a median of about 24.8 s to spare. 4 cities fall in the 10 to 25 s target. 3 are above it (28 to 34 s). The daily city is close (1.4 s, with 2 crashes).
+- **perfect** finishes in 121 to 129 s, with 14 to 41 s left. That is not absurdly early. Its fifth parcel used to land at 116 to 124 s.
+- Rings: casual took 3 to 13 per run (+5.6 to +23.5 s). Good took 3 to 12 (+5.8 to +21.6 s).
+- Boost: good now boosts 7.5 to 20 s per run (rings plus meter), up from 1.6 to 4.3 s.
+
+The start time is a sensitive dial because of last call. Tested start times, with casual wins out of 8 and the good line's seconds to spare:
+
+| start time | casual wins | good line spare |
+| --- | --- | --- |
+| 46 s | 2 of 8 | 6.9 to 30 s |
+| 49 s | 4 of 8 | 0.4 to 33 s, median about 24 |
+| 50 s (chosen) | 7 of 8 | see the table above |
+| 52 s | 7 of 8 | |
+| 56 s | 7 of 8 | median about 31 |
+
+I chose 50 rather than 49 for one reason. Bots fly cleaner than people, and Jorrit's complaint was that the game is too hard. If the critic wants half of casual runs to lose, 49 is the measured setting (logs `m-s49.log`, `m-s46.log`, `m-s52.log`, `m-cur.log`).
+
+## Budgets and checks
+- `npx tsc --noEmit` passes. `npm run build` passes with no chunk warnings. dist without source maps is 3.66 MB.
+- Frame time (`perf48.mjs`, uncapped, street level, 12 s normal then 12 s rush). The machine was noisy this session, so I took the best of 2 to 5 A/B runs for each case:
+  - desktop normal p95: 8.2 ms before, 7.9 ms after
+  - desktop rush p95: 7.3 ms before, 7.1 ms after
+  - phone (iPhone 13, held sideways) normal p95: 6.0 ms before, 6.1 ms after
+  - phone rush p95: 5.6 ms before, 5.5 ms after
+  - Draw calls are up by 2 at most (111 vs 109). Some single runs of both builds had p95 values of 10 to 28 ms from background load (`perf48.log`).
+- Platform build (`platform48.mjs`, dist from a nested path inside a cross-origin iframe):
+  - Nothing is drawn in the 64 px top-left corner.
+  - Escape still reaches the portal. Single Escape pauses and nothing swallows it.
+  - Seeds match the dev server.
+  - No requests fail, and `StateloopSession.complete` is called 0 times (as in c14d8ec).
+- Screenshots are in `progress/round-48/shots/`, for desktop and phone, with both the HTML and the canvas HUD:
+  - `hud-*`: shift pips 2/5 and a ring ahead on a boulevard
+  - `win-*`: the "Shift complete" card
+  - `loss-*`: "Out of time, 2 of 5" with a tip
+  - `nudge-*`: the boost bar pulsing with "E or click"
+- README: the goal and the boost row are updated. Controls are unchanged. No assets were added.
+
+## Open risks
+- The Stateloop `complete` call. See above. It needs a decision.
+- The bots fly cleaner than people. A real casual player probably loses more often than 1 in 8. The loss card's tip and the rings are meant to close that gap.
+- The good line lands above 25 s spare on 3 of 8 cities. A ring clock of 1.5 s trims that, but then casual loses more often.
+- The daily city of 2026-10-20 is tight for every line, because of its rooftop legs and crashes. Daily cities change every day.
+- The shift's scores are a new table, so old bests are not shown any more (they stay under the v1 keys).
+- The ring burst is forward thrust at boost speed. A player who turns hard right after a ring can still hit a wall. Rings keep 18 m of straight road ahead, but this is not tested by hand.
+
+## Fix pass
+
+The critic failed the round on one gap. A ring's burst threw a normal player into the wall at the next corner. Codex found two small bugs.
+
+### What changed
+- **The burst follows the throttle** (`Drone.ts`). It pushes only while forward is held. A hard turn at speed (0.25 s of full turn input, `FLIGHT.gustTurnCut`) ends it. Letting go of W after a ring now works the same as without a ring.
+- **A shorter burst, more road after a ring.** `RINGS.burst` 1.5 to 1.0 s (about 25 m at boost speed). `RINGS.beforeTurn` 18 to 26 m.
+- **Phone chips over a ring.** Six times a second the game projects each live ring within 90 m to the screen. If a ring overlaps the objective pill or the route chip ("FAST LANE"), both fade to 22% opacity. The canvas HUD pill fades too.
+- **`Game.dispose()`** now calls `this.rings.dispose()`.
+- **The "Flew" time on a win** uses the exact seconds left (`tally.clockExact`), not the floored whole seconds.
+- The start time stays at 50 s and the ring clock gain at +2 s. `StateloopSession.complete` is still not called.
+
+### Choosing the burst and the road after a ring
+I measured placement with the deterministic bot (good and casual lines, 8 cities each, `fixpass/place-*.log`). The new throttle rule was already in.
+
+| setting | rings per leg | casual wins of 8 |
+| --- | --- | --- |
+| burst 1.5 s, 18 m (old) | 0.96 | 6 |
+| burst 1.5 s, 40 m | 0.68 | 4 |
+| burst 1.5 s, 34 m | 0.86 | 6 |
+| burst 1.2 s, 30 m | 0.86 | 5 |
+| burst 1.0 s, 26 m (chosen) | 0.89 | 5 |
+
+A 40 m margin removes almost a third of the rings. A 1.0 s burst with 26 m keeps nearly all of them. No setting reaches 2 rings on every leg. Short pickup legs (45 to 105 m) often have no straight stretch that is 26 m from the start and 45 m from the pad. The average was already about 1 ring per leg before this pass.
+
+### Ring crashes, before and after
+Test: the critic's casual pilot, copied as `builder-scripts/pilot48-fix.mjs`, with only the port and output folder changed. It uses real-time keyboard input on desktop and real touch on the phone (812x375). Runs went one at a time against a production build. The "before" build was the round 48 dist before this pass. Logs are in `fixpass/` (`pre-*.json`, `post-*.json`, `pre.log`, `post.log`). Count: `builder-scripts/ringcrash48.py`.
+
+| run | before: rings / crashes within 3 s / time left | after: rings / crashes within 3 s / time left |
+| --- | --- | --- |
+| seed 130, desktop | 9 / 1 / 49 s | 12 / 0 / 44 s |
+| daily city 2026-10-20, desktop | 5 / 0 / 35 s | 4 / 0 / 23 s |
+| seed 23085, desktop | 8 / 0 / 54 s | 10 / 0 / 46 s |
+| daily city, phone | 5 / 0 / 16 s | 3 / 0 / 5 s |
+| seed 130, phone | 10 / 2 / 7 s | 13 / 0 / 32 s |
+| **total** | **37 rings, 3 crashes (0.8 per 10)** | **42 rings, 0 crashes (0 per 10)** |
+
+- With the critic's own logs added (26 rings, 7 crashes within 2.7 s), the before total is 63 rings and 10 crashes: 1.6 per 10 rings.
+- After: 0 crashes of any kind in the 5 casual runs. All 5 won the shift.
+- The target was fewer than 1 crash per 10 rings. It is met on 5 runs, including seed 130 and the daily city, on desktop and phone.
+- My "before" runs crashed less than the critic's. Real-time runs vary with machine load, so the pooled before number is the fairer one.
+
+### The burst still works when you hold W
+- `builder-scripts/ringpass48.mjs` flies the first ring on seed 130 with W held the whole way, using the game's fixed step.
+- Speed goes from 16.8 m/s before the ring to a peak of 27.3 m/s, with the boost trail, wider view and burner sound. It eases back to 17 m/s about 1.5 s later.
+- Screenshots: `fixpass/ring-pass-desktop.jpg` and `fixpass/ring-pass-phone.jpg`.
+- The critic's pilots let go of W once they pass 17 m/s, so they no longer feel the burst. Their peak after a ring fell from about 30 m/s to about 18 m/s. That is the intended trade: the burst is there for a player who holds forward, and it never pushes one who lets go.
+
+### Phone chips
+- `ring-seethrough-phone.jpg` was taken on the same ring pass at 812x375. It shows the pill and the route chip faded while the ring is 44 m ahead behind them.
+- The chips stayed faded for 15 of the approach frames. On desktop, where the ring rarely sits behind the chips, it was 1 frame.
+- `ring-ahead-*.jpg` and `ring-seethrough-desktop.jpg` are extra views from the same pass.
+
+### Checks
+- `npx tsc --noEmit` passes.
+- `npm run build` passes with no chunk warnings.
+- Port 5188 was never touched. My servers on 5391, 5392, 5396 and 5397 are stopped.
+
+### Open points
+- A player who holds W into a corner right after a ring still meets the corner at speed. The 26 m margin and the turn cut cover most of this, but it is not tested by hand.
+- Rings per leg average about 0.9, not 2 to 4. Short pickup legs rarely have room for one.
+- A good line still finishes with a lot of time left (the critic saw 36 to 45 s). That is unchanged on purpose, because Jorrit asked for an easier game.
+</pre></details><div class="grid"><figure><a href="progress/round-48/critic/00-title-seed130.webp"><img loading="lazy" src="progress/round-48/critic/00-title-seed130.webp" alt="00-title-seed130.webp"></a><figcaption>00-title-seed130.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-random-careful-end.webp"><img loading="lazy" src="progress/round-48/critic/canvas-random-careful-end.webp" alt="canvas-random-careful-end.webp"></a><figcaption>canvas-random-careful-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-random-careful-hud-2of5.webp"><img loading="lazy" src="progress/round-48/critic/canvas-random-careful-hud-2of5.webp" alt="canvas-random-careful-hud-2of5.webp"></a><figcaption>canvas-random-careful-hud-2of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-random-careful-hud-4of5.webp"><img loading="lazy" src="progress/round-48/critic/canvas-random-careful-hud-4of5.webp" alt="canvas-random-careful-hud-4of5.webp"></a><figcaption>canvas-random-careful-hud-4of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-random-careful-nudge.webp"><img loading="lazy" src="progress/round-48/critic/canvas-random-careful-nudge.webp" alt="canvas-random-careful-nudge.webp"></a><figcaption>canvas-random-careful-nudge.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-random-careful-ring-ahead.webp"><img loading="lazy" src="progress/round-48/critic/canvas-random-careful-ring-ahead.webp" alt="canvas-random-careful-ring-ahead.webp"></a><figcaption>canvas-random-careful-ring-ahead.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-random-careful-ring-burst.webp"><img loading="lazy" src="progress/round-48/critic/canvas-random-careful-ring-burst.webp" alt="canvas-random-careful-ring-burst.webp"></a><figcaption>canvas-random-careful-ring-burst.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-s130-idle-nudge.webp"><img loading="lazy" src="progress/round-48/critic/canvas-s130-idle-nudge.webp" alt="canvas-s130-idle-nudge.webp"></a><figcaption>canvas-s130-idle-nudge.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/canvas-s130-loss-card.webp"><img loading="lazy" src="progress/round-48/critic/canvas-s130-loss-card.webp" alt="canvas-s130-loss-card.webp"></a><figcaption>canvas-s130-loss-card.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/daily-casual-fresh-end.webp"><img loading="lazy" src="progress/round-48/critic/daily-casual-fresh-end.webp" alt="daily-casual-fresh-end.webp"></a><figcaption>daily-casual-fresh-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/daily-casual-fresh-hud-2of5.webp"><img loading="lazy" src="progress/round-48/critic/daily-casual-fresh-hud-2of5.webp" alt="daily-casual-fresh-hud-2of5.webp"></a><figcaption>daily-casual-fresh-hud-2of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/daily-casual-fresh-hud-4of5.webp"><img loading="lazy" src="progress/round-48/critic/daily-casual-fresh-hud-4of5.webp" alt="daily-casual-fresh-hud-4of5.webp"></a><figcaption>daily-casual-fresh-hud-4of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/daily-casual-fresh-nudge.webp"><img loading="lazy" src="progress/round-48/critic/daily-casual-fresh-nudge.webp" alt="daily-casual-fresh-nudge.webp"></a><figcaption>daily-casual-fresh-nudge.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/daily-casual-fresh-ring-ahead.webp"><img loading="lazy" src="progress/round-48/critic/daily-casual-fresh-ring-ahead.webp" alt="daily-casual-fresh-ring-ahead.webp"></a><figcaption>daily-casual-fresh-ring-ahead.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/daily-casual-fresh-ring-burst.webp"><img loading="lazy" src="progress/round-48/critic/daily-casual-fresh-ring-burst.webp" alt="daily-casual-fresh-ring-burst.webp"></a><figcaption>daily-casual-fresh-ring-burst.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/phone-daily-casual-end.webp"><img loading="lazy" src="progress/round-48/critic/phone-daily-casual-end.webp" alt="phone-daily-casual-end.webp"></a><figcaption>phone-daily-casual-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/phone-daily-casual-hud-2of5.webp"><img loading="lazy" src="progress/round-48/critic/phone-daily-casual-hud-2of5.webp" alt="phone-daily-casual-hud-2of5.webp"></a><figcaption>phone-daily-casual-hud-2of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/phone-daily-casual-hud-4of5.webp"><img loading="lazy" src="progress/round-48/critic/phone-daily-casual-hud-4of5.webp" alt="phone-daily-casual-hud-4of5.webp"></a><figcaption>phone-daily-casual-hud-4of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/phone-daily-casual-nudge.webp"><img loading="lazy" src="progress/round-48/critic/phone-daily-casual-nudge.webp" alt="phone-daily-casual-nudge.webp"></a><figcaption>phone-daily-casual-nudge.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/phone-daily-casual-ring-ahead.webp"><img loading="lazy" src="progress/round-48/critic/phone-daily-casual-ring-ahead.webp" alt="phone-daily-casual-ring-ahead.webp"></a><figcaption>phone-daily-casual-ring-ahead.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/phone-daily-casual-ring-burst.webp"><img loading="lazy" src="progress/round-48/critic/phone-daily-casual-ring-burst.webp" alt="phone-daily-casual-ring-burst.webp"></a><figcaption>phone-daily-casual-ring-burst.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/phone-s130-casual-end.webp"><img loading="lazy" src="progress/round-48/critic/phone-s130-casual-end.webp" alt="phone-s130-casual-end.webp"></a><figcaption>phone-s130-casual-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/random-casual-end.webp"><img loading="lazy" src="progress/round-48/critic/random-casual-end.webp" alt="random-casual-end.webp"></a><figcaption>random-casual-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-careful-a-end.webp"><img loading="lazy" src="progress/round-48/critic/s130-careful-a-end.webp" alt="s130-careful-a-end.webp"></a><figcaption>s130-careful-a-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-careful-a-hud-2of5.webp"><img loading="lazy" src="progress/round-48/critic/s130-careful-a-hud-2of5.webp" alt="s130-careful-a-hud-2of5.webp"></a><figcaption>s130-careful-a-hud-2of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-careful-a-hud-4of5.webp"><img loading="lazy" src="progress/round-48/critic/s130-careful-a-hud-4of5.webp" alt="s130-careful-a-hud-4of5.webp"></a><figcaption>s130-careful-a-hud-4of5.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-careful-a-nudge.webp"><img loading="lazy" src="progress/round-48/critic/s130-careful-a-nudge.webp" alt="s130-careful-a-nudge.webp"></a><figcaption>s130-careful-a-nudge.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-careful-a-ring-ahead.webp"><img loading="lazy" src="progress/round-48/critic/s130-careful-a-ring-ahead.webp" alt="s130-careful-a-ring-ahead.webp"></a><figcaption>s130-careful-a-ring-ahead.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-careful-a-ring-burst.webp"><img loading="lazy" src="progress/round-48/critic/s130-careful-a-ring-burst.webp" alt="s130-careful-a-ring-burst.webp"></a><figcaption>s130-careful-a-ring-burst.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-careful-b-end.webp"><img loading="lazy" src="progress/round-48/critic/s130-careful-b-end.webp" alt="s130-careful-b-end.webp"></a><figcaption>s130-careful-b-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-eager-end.webp"><img loading="lazy" src="progress/round-48/critic/s130-eager-end.webp" alt="s130-eager-end.webp"></a><figcaption>s130-eager-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/s130-slow-loss-end.webp"><img loading="lazy" src="progress/round-48/critic/s130-slow-loss-end.webp" alt="s130-slow-loss-end.webp"></a><figcaption>s130-slow-loss-end.webp</figcaption></figure>
+<figure><a href="progress/round-48/critic/zoom-minimap-rings-desktop.webp"><img loading="lazy" src="progress/round-48/critic/zoom-minimap-rings-desktop.webp" alt="zoom-minimap-rings-desktop.webp"></a><figcaption>zoom-minimap-rings-desktop.webp</figcaption></figure></div></section>
 <section><h2>round 47</h2><details><summary>builder.md</summary><pre># Drone Dash, round 47 audio builder
 
 Brief: the eight changes from Gemini's listening review (`round-46/gemini-argon-soundtrack-review.md`). The focus is the Breakbeat soundtrack and the shared effects. Classic gets the shared fixes where they help. Mid-round, the lead passed on the owner's choice: **Breakbeat is now the default soundtrack** (see "Default soundtrack" below).

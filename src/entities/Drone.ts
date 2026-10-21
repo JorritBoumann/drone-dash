@@ -55,6 +55,9 @@ export class Drone {
   yawRate = 0;
   boost = 1;
   boosting = false;
+  /** Round 48: seconds of free boost left from a tailwind ring (boost speed, the meter is not used). */
+  gust = 0;
+  private gustTurn = 0; // s of hard turn input at speed during a gust
   /**
    * Round 40: boost tail. Speed over the cruise top (m/s) the drone may still carry after a boost while forward is held.
    * It is set while boosting and eases down at FLIGHT.tailDecel (gentler near the end), so the boost tails off instead
@@ -412,6 +415,8 @@ export class Drone {
     this.yawRate = 0;
     this.boost = 1;
     this.boosting = false;
+    this.gust = 0;
+    this.gustTurn = 0;
     this.carry = 0;
     this.carrying = false;
     this.cargo.visible = false;
@@ -526,8 +531,18 @@ export class Drone {
     this.forward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
 
     // Boost meter
-    const wantsBoost = intent.boost && this.boost > 0.02;
-    this.boosting = wantsBoost;
+    // round 48: a tailwind ring's gust boosts for free (the meter keeps refilling under it). Fix pass: it pushes only
+    // while forward is held, and a hard turn at speed ends it (the player is taking a corner), so letting go of forward
+    // or steering into a turn after a ring works the way it does without one
+    if (this.gust > 0) {
+      this.gust = Math.max(0, this.gust - dt);
+      const hs = Math.hypot(this.velocity.x, this.velocity.z);
+      this.gustTurn = Math.abs(intent.turn) > 0.5 && hs > F.maxSpeed * 0.8 ? this.gustTurn + dt : 0;
+      if (this.gustTurn > F.gustTurnCut) this.gust = 0;
+    } else this.gustTurn = 0;
+    const gustPush = this.gust > 0 && intent.thrust > 0.2;
+    const wantsBoost = intent.boost && this.boost > 0.02 && !gustPush;
+    this.boosting = wantsBoost || gustPush;
     if (wantsBoost) {
       this.boost = Math.max(0, this.boost - F.boostDrain * dt);
       this.boostIdle = 0;

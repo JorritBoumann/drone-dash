@@ -34,6 +34,7 @@
               <circle id="timer-ring-fg" class="timer-ring-fg" cx="22" cy="22" r="18" />
             </svg>
             <strong id="timer-value">0:50</strong>
+            <span id="shift" class="shift" title="Shift: parcels delivered" data-n="0" data-of="5" aria-hidden="true"></span>
             <span id="time-bonus" class="time-bonus"></span>
             <span id="timer-slow" class="timer-slow" aria-hidden="true"><span id="timer-slow-text"></span><i class="timer-slow-bar"></i></span>
             <span id="time-penalty" class="time-penalty" aria-live="polite"></span>
@@ -49,9 +50,9 @@
         </div>
 
         <div class="hud-right">
-          <div class="hud-deliveries" title="Deliveries">
+          <div class="hud-deliveries" title="Parcels delivered this shift">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></svg>
-            <strong id="deliveries-value">0</strong>
+            <strong id="deliveries-value">0</strong><small id="deliveries-of" class="deliveries-of">/5</small>
           </div>
           <button id="pause-button" class="icon-button" type="button" aria-label="Pause">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.2" /><rect x="14" y="5" width="4" height="14" rx="1.2" /></svg>
@@ -70,7 +71,7 @@
             <span>High wind · slower up here</span>
           </div>
           <div class="boost">
-            <span class="hud-label">Boost</span>
+            <span class="hud-label">Boost <span class="boost-key" aria-hidden="true"><kbd class="bk-desk">E</kbd><span class="bk-desk"> or click</span><span class="bk-touch">tap Boost</span></span></span>
             <div class="boost-track"><div id="boost-fill" class="boost-fill"></div></div>
           </div>
           <div class="telemetry"><span id="speed-value">0</span><small>m/s</small><span class="sep"></span><span id="alt-value">0</span><small>m alt</small></div>
@@ -134,7 +135,7 @@
             <span class="logo-kicker">Golden-hour courier</span>
             <h1>Drone<span>Dash</span></h1>
           </div>
-          <p class="tagline">Deliver parcels against the clock, flying fast and low by the walls to bank a street bonus.</p>
+          <p class="tagline">Finish a shift of five deliveries before the clock runs out. Fly through the glowing rings for a free boost.</p>
           <ul class="controls-hint">
             <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly &amp; turn</li>
             <li><kbd>Space</kbd>/<kbd>Shift</kbd> up / down</li>
@@ -179,13 +180,14 @@
 
       <!-- Game over -->
       <section id="over-screen" class="screen screen-modal" hidden>
-        <div class="modal-card over-card">
+        <div id="over-card" class="modal-card over-card" data-win="0">
           <div class="over-head">
-            <span class="over-kicker">Time's up</span>
+            <span id="over-kicker" class="over-kicker">Out of time</span>
             <span id="over-city" class="over-city"></span>
             <div id="over-medal" class="over-medal" data-m="0"><i class="medal" aria-hidden="true"></i><span id="over-medal-name">No medal yet</span></div>
             <h2 id="over-score">0</h2>
             <span id="new-best" class="new-best" hidden>New best!</span>
+            <span id="over-shift" class="over-shift"></span>
             <span id="over-next" class="over-next"></span>
           </div>
           <div class="over-body">

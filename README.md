@@ -1,6 +1,6 @@
 # Drone Dash
 
-Drone Dash is a 3D delivery game for the browser. You fly a courier drone through a small island city against the clock. You pick up parcels and drop them at their pads. A low, fast flight close to the walls builds a slipstream bonus, which the game pays out on delivery. Every load builds a new city, and the daily city is the same for everyone on a given day.
+Drone Dash is a 3D delivery game for the browser. You fly a courier drone through a small island city against the clock. You pick up parcels and drop them at their pads. A run is a shift of five parcels: deliver the fifth before the clock runs out and the shift is complete, and every second left on the clock adds points. Glowing tailwind rings hang over the streets on the way to each pad. Fly through one for a free boost and a few extra seconds. A low, fast flight close to the walls builds a slipstream bonus, which the game pays out on delivery. Every load builds a new city, and the daily city is the same for everyone on a given day.
 
 The game runs on desktop and on phones held sideways. It uses Three.js, TypeScript and Vite.
 
@@ -11,7 +11,7 @@ The game runs on desktop and on phones held sideways. It uses Three.js, TypeScri
 | Fly and turn | W A S D or the arrow keys | Left stick |
 | Climb | Space | Up button |
 | Descend | Shift or C | Down button |
-| Boost | E or left click | Boost button |
+| Boost (refills on its own; the tailwind rings give a free one) | E or left click | Boost button |
 | Look around | Right-drag, or a two-finger trackpad swipe | Drag with one finger on an empty part of the screen |
 | Zoom | Mouse wheel or trackpad pinch | Not available |
 | Map on or off | M | Always on |

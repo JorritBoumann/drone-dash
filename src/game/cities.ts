@@ -8,7 +8,7 @@ import { storeGet, storeSet } from '../core/storage';
 export type CityMode = 'seed' | 'random' | 'daily';
 export type CityPick = { mode: CityMode; seed: number; date: string };
 
-const DAILY_KEY = 'drone-dash-daily-v1';
+const DAILY_KEY = 'drone-dash-daily-v2'; // round 48: the shift's daily bests are a new table
 
 /** Local calendar date as YYYY-MM-DD. */
 export function localDateKey(d = new Date()): string {

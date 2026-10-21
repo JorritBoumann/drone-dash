@@ -7,6 +7,7 @@ import { createSeededRandom, type Rng } from '../core/random';
 import { Drone, type FlightEvents } from '../entities/Drone';
 import { MARKER_COLORS, ObjectiveMarker } from '../entities/ObjectiveMarker';
 import { RouteGate } from '../entities/RouteGate';
+import { TailwindRings } from '../entities/TailwindRings';
 import { AudioSystem } from '../systems/AudioSystem';
 import { CameraRig, type CamCorridor } from '../systems/CameraRig';
 import { CollisionWorld } from '../systems/CollisionWorld';
@@ -25,10 +26,10 @@ import { Minimap, buildMinimapLayer, type MinimapFrame } from '../ui/Minimap';
 import { applyMood, createSky, Environment, LightingRig, MOODS, PALETTE, SUN_DIR } from '../world/Environment';
 import { shadowSlab } from '../world/shadowSubset';
 import { radialTexture } from '../world/Textures';
-import { CRASH, FLIGHT, GOALS, QUALITY, RUN, RUSH, SLIPSTREAM } from './config';
+import { CRASH, FLIGHT, GOALS, QUALITY, RINGS, RUN, RUSH, SHIFT, SLIPSTREAM } from './config';
 import { cityLook, cityUrl, dateLabel, readDaily, resolveCity, writeDaily, type CityLook, type CityPick } from './cities';
 import { auditPads } from '../world/padAudit';
-import { buildStreetGraph, routeOnGraph } from '../world/CityFeatures';
+import { buildStreetGraph, routeOnGraph, type Route } from '../world/CityFeatures';
 
 /** Round 20: the alley mouth faces stand this far in from the block edge (sidewalk 3 m + the 1.5 m mouth setback). */
 const GATE_FACE = 4.5;
@@ -44,10 +45,15 @@ import { CanvasHud } from '../ui/CanvasHud';
 
 /** Round 43: the nav marker's edge inset. The edge arrow reaches 46 px out from the diamond, so 48 keeps it on screen (was 40). */
 const NAV_MX = 48;
+/** Round 48: seconds with a full boost meter and no boost before the boost indicator nudges (then every BOOST_NUDGE_EVERY s). */
+const BOOST_NUDGE = 8;
+const BOOST_NUDGE_EVERY = 20;
+const RING_FX = new THREE.Color('#9ff6ff');
 
 export type GameState = 'title' | 'playing' | 'paused' | 'over';
 
-const BEST_KEY = 'drone-dash-best-v1';
+// round 48: a run is now a shift with a finish, so its scores are a new table (v1 held the endless score attack)
+const BEST_KEY = 'drone-dash-best-v2';
 /** Round 25: set when a run ends. With it (or a saved best) the player is returning: full HUD from the start, no hints. */
 const PLAYED_KEY = 'drone-dash-played-v1';
 /**
@@ -110,6 +116,10 @@ export class Game {
   private readonly marker = new ObjectiveMarker();
   private readonly gate = new RouteGate(); // round 20: the suggested route's entrance arch and exit arch
   private readonly gateRoot = new THREE.Group(); // round 25: hides the arches until the teaching layer introduces routes
+  private readonly rings = new TailwindRings(); // round 48: tailwind rings over the leg's street route
+  private readonly ringPrev = new THREE.Vector3(); // drone position last frame (a ring is taken by crossing its plane)
+  private ringsPlaced = 0;
+  private boostIdleT = 0; // round 48: s with a full boost meter and no boost (the boost indicator nudges after BOOST_NUDGE)
   // round 25: layered teaching (see TEACH)
   private teachOn = false;
   private readonly learned = new Set<string>();
@@ -312,6 +322,7 @@ export class Game {
     this.scene.add(this.marker.group);
     this.gateRoot.add(this.gate.group);
     this.scene.add(this.gateRoot);
+    this.scene.add(this.rings.mesh);
     this.scene.add(this.vfx.group);
     this.streaks = new SpeedStreaks(56, createSeededRandom(this.seed + 39));
     this.scene.add(this.streaks.mesh);
@@ -541,6 +552,11 @@ export class Game {
     this.env.setRush(false);
     this.hud.setRush(0, 0);
     this.scoreLog = [];
+    this.ringsPlaced = 0;
+    this.boostIdleT = 0;
+    this.boostUsed = 0;
+    this.ringPrev.copy(this.startPos);
+    this.hud.setShift(0, SHIFT.parcels);
     this.newLeg(this.startPos);
     this.hud.setBank(0, false);
     this.hud.slowBudgetMax = SLIPSTREAM.clockBudget;
@@ -638,6 +654,9 @@ export class Game {
 
   private endRun(): void {
     this.state = 'over';
+    const win = this.delivery.won;
+    this.rings.clear();
+    this.hud.setBoostNudge(false);
     try {
       storeSet(PLAYED_KEY, '1');
     } catch {
@@ -650,7 +669,7 @@ export class Game {
     this.audio.setRotor(false);
     const score = this.delivery.score;
     this.scoreLog.push({ t: this.rt(), k: 'end', v: this.bank });
-    this.audio.gameOver(tierFor(score));
+    this.audio.gameOver(tierFor(score), win);
     this.audio.setMusicScene('over', tierFor(score));
     // Round 18: points paid at time-up (the last-leg share) can cross a medal line after the last checkMedal, so the
     // run's medal is settled here from the final score (no fanfare: the game-over card shows it).
@@ -707,6 +726,15 @@ export class Game {
       overtimeSeconds: T.overtimeSeconds,
       overtimeDrop: T.overtimeDrop > 0,
       dailyNew: dailyNew && score > 0,
+      win,
+      parcels: SHIFT.parcels,
+      ringSeconds: T.ringSeconds,
+      rings: T.rings,
+      ringsPlaced: this.ringsPlaced,
+      clock: T.clock,
+      clockLeft: T.clockLeft,
+      clockExact: T.clockExact,
+      boostUsed: this.boostUsed,
     });
     this.hud.showScreen('over');
     // round 48: the run summary is kept for the test hook only. Reporting it to the Stateloop portal as a
@@ -715,6 +743,7 @@ export class Game {
       game: 'drone-dash', score, medal: this.tier > 0 ? tierName(this.tier) : 'none', medalTier: this.tier,
       deliveries: this.delivery.deliveries, seed: this.seed, cityMode: this.city.mode,
       runSeconds: Math.round(this.runTime * 10) / 10, run: this.runCount,
+      win, parcels: SHIFT.parcels, timeLeft: T.clockLeft,
     };
     this.marker.hide();
     this.clearMark();
@@ -858,6 +887,7 @@ export class Game {
     if (this.state !== 'paused') {
       this.marker.update(animDt, time, this.camera.position);
       this.gate.update(animDt);
+      this.rings.update(animDt);
       this.vfx.update(animDt);
     }
     this.lighting.follow(this.drone.group.position);
@@ -881,6 +911,10 @@ export class Game {
     this.input.readView(this.viewIntent);
     const d = this.drone;
     d.update(dt, this.intent, this.world, this.layout.half + 30, this.events);
+    // round 48: a tailwind ring flown through (its plane crossed close to its axis since the last frame)
+    const ring = this.finishHold <= 0 ? this.rings.check(this.ringPrev, d.group.position) : null;
+    this.ringPrev.copy(d.group.position);
+    if (ring) this.takeRing(ring);
     this.checkCrash(realDt);
     this.updateMark(dt);
     this.updateSlipstream(dt, realDt);
@@ -985,12 +1019,29 @@ export class Game {
       this.bank = 0;
       this.newLeg(ev.site.pos);
       this.hud.setBank(0, false);
+      this.hud.setShift(this.delivery.deliveries, SHIFT.parcels);
       // round 25: the delivery is the headline: "+N delivered", the street bonus rides along as an add-on
       const subs = [rush > 0 ? `Rush +${rush}` : sub];
       if (paid > 0) subs.push(otCut > 0 ? `+${paid} street bonus (${Math.round(this.otShare * 100)}%)` : `+${paid} street bonus`);
-      this.hud.popText(`+${ev.points + rush} delivered`, subs.join(' · '), 'drop');
+      if (!ev.win) this.hud.popText(`+${ev.points + rush} delivered`, subs.join(' · '), 'drop');
       // round 19: the paid street bonus is named in the delivery pop's line (no second pop on top of it)
-      if (ev.final) {
+      if (ev.win) {
+        // round 48: the shift's last parcel. The run is won; every second left on the clock pays points
+        const left = Math.floor(this.delivery.timeLeft);
+        const clockPts = this.delivery.payClockLeft();
+        this.finishHold = 2.4;
+        this.scoreLog.push({ t: this.rt(), k: 'win', v: clockPts, c: left });
+        this.hud.eventPop('Shift complete!', left > 0 ? `+${ev.points + rush + paid} delivered · ${left} s left +${clockPts}` : `+${ev.points + rush + paid} delivered · made it in overtime`);
+        this.hud.setObjective('drop', 'Shift complete');
+        this.hud.setRouteHint(null);
+        this.hud.setOvertime(false, this.delivery.overtime);
+        this.audio.setOvertime(false);
+        this.marker.hide();
+        this.clearMark();
+        this.rings.clear();
+        d.hasGuide = false;
+        this.cameraRig.addShake(0.25);
+      } else if (ev.final) {
         // round 17: the overtime delivery ends the run on a high: no new job, a short beat, then the game-over card
         this.finishHold = 1.6;
         this.scoreLog.push({ t: this.rt(), k: 'otdrop', v: ev.points + paid + rush });
@@ -1001,6 +1052,7 @@ export class Game {
         this.audio.setOvertime(false);
         this.marker.hide();
         this.clearMark();
+        this.rings.clear();
         d.hasGuide = false;
       } else {
         this.hud.flashTimeBonus(ev.timeBonus);
@@ -1036,6 +1088,8 @@ export class Game {
     this.hud.setDeliveries(this.delivery.deliveries);
     this.hud.setTime(tl, this.delivery.overtime ? this.delivery.overtimeGiven : RUN.startTime);
     this.hud.setBoost(d.boost, d.boosting);
+    this.updateBoostNudge(realDt);
+    this.updateRingSeeThrough(realDt);
     // true altitude above street level (consistent everywhere, rooftops included)
     this.hud.setTelemetry(d.speed, Math.max(0, dp.y - 0.85));
     this.hud.setSpeedLines(Math.max(d.boosting ? Math.min(1, d.speed / 24) : 0, this.slip.intensity * 0.5));
@@ -1432,7 +1486,123 @@ export class Game {
     const narrowKind = this.mark ? this.mark.kind : narrow === 'diagonal' || r.kinds.includes('diagonal') ? 'diagonal' : '';
     this.routeHint = narrowKind ? { kind: narrowKind, names, save: Math.round(save), grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 } : { kind: '', names: [], save: 0, grid: Math.round(g), route: Math.round(r.length), kinds: r.kinds.slice(), at: this.rt(), shownAt: -1 };
     this.hintPending = true;
+    this.placeRings(r, from, t);
   }
+
+  /**
+   * Round 48: tailwind rings for this leg, over straight road or boulevard stretches of its shortest street route `r`
+   * (the route the hint and the arches suggest; never in an alley or a tunnel). See RINGS. Pure geometry, no random draws,
+   * so a seed or the daily city places the same rings for everyone. Each spot must have a clear way through (no solid box
+   * within the ring along 8 m of its axis).
+   */
+  private placeRings(r: Route, from: THREE.Vector3, to: THREE.Vector3): void {
+    const R = RINGS, pts = r.points;
+    const out: Array<{ x: number; y: number; z: number; dx: number; dz: number }> = [];
+    if (pts.length < 2) { this.rings.place(out); return; }
+    type Run = { ax: number; az: number; dx: number; dz: number; len: number; at: number; ok: boolean };
+    const runs: Run[] = [];
+    let dist = Math.hypot(pts[0].x - from.x, pts[0].z - from.z);
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      const len = Math.hypot(b.x - a.x, b.z - a.z);
+      if (len < 0.5) continue;
+      const dx = (b.x - a.x) / len, dz = (b.z - a.z) / len;
+      const ok = b.kind === 'road' || b.kind === 'diagonal';
+      const last = runs[runs.length - 1];
+      // a straight street crossing several junctions is one run
+      if (last && last.ok && ok && Math.abs(last.dx * dz - last.dz * dx) < 0.02 && last.dx * dx + last.dz * dz > 0) last.len += len;
+      else runs.push({ ax: a.x, az: a.z, dx, dz, len, at: dist, ok });
+      dist += len;
+    }
+    const total = dist + Math.hypot(to.x - pts[pts.length - 1].x, to.z - pts[pts.length - 1].z);
+    const lo = R.fromStart, hi = total - R.fromEnd;
+    const cands: Array<{ d: number; x: number; z: number; dx: number; dz: number }> = [];
+    const a = this.tmp, b = this.tmp2;
+    for (const run of runs) {
+      if (!run.ok || run.len < R.minRun) continue;
+      for (let s = R.afterTurn; s <= run.len - R.beforeTurn; s += 2) {
+        const d = run.at + s;
+        if (d < lo || d > hi) continue;
+        const x = run.ax + run.dx * s, z = run.az + run.dz * s;
+        let clear = true;
+        for (const oy of [-R.radius * 0.8, 0, R.radius * 0.8]) {
+          a.set(x - run.dx * 4, R.height + oy, z - run.dz * 4);
+          b.set(x + run.dx * 4, R.height + oy, z + run.dz * 4);
+          if (this.world.segmentFraction(a, b, 0.8, false) < 0.999) { clear = false; break; }
+        }
+        if (clear) cands.push({ d, x, z, dx: run.dx, dz: run.dz });
+      }
+    }
+    const n = Math.max(R.min, Math.min(R.max, Math.round(total / R.perMetre)));
+    for (let k = 0; k < n && cands.length; k++) {
+      const want = lo + ((hi - lo) * (k + 0.5)) / n;
+      let best: (typeof cands)[number] | null = null;
+      for (const c of cands) {
+        if (out.some((o) => Math.hypot(o.x - c.x, o.z - c.z) < R.spacing)) continue;
+        if (!best || Math.abs(c.d - want) < Math.abs(best.d - want)) best = c;
+      }
+      if (best) out.push({ x: best.x, y: R.height, z: best.z, dx: best.dx, dz: best.dz });
+    }
+    this.rings.place(out);
+    this.ringsPlaced += out.length;
+  }
+
+  /** Round 48: through a tailwind ring: a free boost burst, a little clock time (shrinking with the run), the cue. */
+  private takeRing(ring: { x: number; y: number; z: number }): void {
+    const d = this.drone;
+    d.gust = RINGS.burst;
+    const sec = Math.round(RINGS.clock * this.delivery.clockDecay * 10) / 10;
+    const got = this.delivery.addRing(sec);
+    if (got > 0) this.hud.flashTimeBonus(got);
+    this.scoreLog.push({ t: this.rt(), k: 'ring', v: got });
+    this.audio.ring();
+    this.cameraRig.addShake(0.12);
+    this.vfx.burst(this.tmp.set(ring.x, ring.y, ring.z), RING_FX, 18, 7, 0.16, this.fxRng);
+  }
+
+  /**
+   * Round 48: a full boost meter left unused for BOOST_NUDGE s makes the boost indicator pulse once with its key (E or
+   * click on a desktop, the button glows on a phone), then again every BOOST_NUDGE_EVERY s while it stays unused.
+   */
+  private updateBoostNudge(dt: number): void {
+    const d = this.drone;
+    if (d.boosting && d.gust <= 0) this.boostUsed += dt;
+    this.boostIdleT = d.boost >= 0.99 && !d.boosting ? this.boostIdleT + dt : 0;
+    const t = this.boostIdleT - BOOST_NUDGE;
+    this.hud.setBoostNudge(t >= 0 && t % BOOST_NUDGE_EVERY < 2.4 && this.finishHold <= 0);
+  }
+  private boostUsed = 0;
+
+  /**
+   * Round 48 fix pass: on a short phone screen a ring 30 to 60 m ahead sits right behind the objective pill and the route
+   * hint chip (it hangs level with them). Six times a second, each live ring within 90 m in front of the camera is
+   * projected to the screen; if its circle overlaps either chip, both fade (CSS .see-through, and the canvas HUD pill).
+   */
+  private updateRingSeeThrough(dt: number): void {
+    this.seeT -= dt;
+    if (this.seeT > 0) return;
+    this.seeT = 1 / 6;
+    let hit = false;
+    const live = this.rings.rings.filter((r) => r.on);
+    if (live.length) {
+      const boxes = this.hud.chipBoxes();
+      const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+      const cam = this.camera.position;
+      const k = h / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+      const v = this.tmp;
+      for (const r of live) {
+        const dist = Math.hypot(r.x - cam.x, r.y - cam.y, r.z - cam.z);
+        if (dist > 90) continue;
+        v.set(r.x, r.y, r.z).project(this.camera);
+        if (v.z > 1 || v.z < -1) continue;
+        const sx = (v.x * 0.5 + 0.5) * w, sy = (-v.y * 0.5 + 0.5) * h, rad = ((RINGS.radius + 0.3) * k) / dist;
+        if (boxes.some((b) => sx + rad > b.l && sx - rad < b.r && sy + rad > b.t && sy - rad < b.b)) { hit = true; break; }
+      }
+    }
+    this.hud.setSeeThrough(hit);
+    if (this.chud) this.chud.seeThrough = hit;
+  }
+  private seeT = 0;
   /** Round 19: this leg's route hint (diagnostics and HUD). */
   private routeHint: { kind: string; names: string[]; save: number; grid: number; route: number; kinds: string[]; at: number; shownAt: number } | null = null;
   private hintPending = false;
@@ -2289,6 +2459,7 @@ export class Game {
       this.mmCut.kind = m.kind;
       f.shortcut = this.mmCut;
     } else f.shortcut = null;
+    f.rings = this.rings.rings;
     this.minimap.draw(f);
   }
 
@@ -2345,6 +2516,9 @@ export class Game {
       complete: this.state === 'over',
       timeLeft: this.delivery.timeLeft,
       deliveries: this.delivery.deliveries,
+      shift: { parcels: SHIFT.parcels, delivered: this.delivery.deliveries, won: this.delivery.won },
+      rings: this.rings.rings.map((r) => ({ x: r.x, y: r.y, z: r.z, dx: r.dx, dz: r.dz, on: r.on })),
+      ringStats: { placed: this.ringsPlaced, taken: this.delivery.tally.rings, seconds: this.delivery.tally.ringSeconds, gust: this.drone.gust, boostUsed: this.boostUsed, nudgeT: this.boostIdleT },
       ending: { overtime: this.delivery.overtime, finished: this.delivery.finished, lastCall: this.delivery.lastCall, overtimeSeconds: this.delivery.tally.overtimeSeconds, partial: this.delivery.tally.partial, partialShare: this.partialShare, legRoute: this.legRoute3 },
       combo: this.delivery.combo,
       crashes: this.crashes,
@@ -2453,7 +2627,7 @@ export class Game {
       },
       // test hook: patch tunables, e.g. tune({ SLIPSTREAM: { points: 40 } }) (builder balance sims)
       tune: (patch: Record<string, Record<string, unknown>>) => {
-        const all: Record<string, object> = { CRASH, FLIGHT, GOALS, RUN, RUSH, SLIPSTREAM, JOBS };
+        const all: Record<string, object> = { CRASH, FLIGHT, GOALS, RUN, RUSH, SLIPSTREAM, JOBS, RINGS, SHIFT };
         for (const [k, v] of Object.entries(patch)) if (all[k]) Object.assign(all[k], v);
       },
       externalClock: (on: boolean) => {
@@ -2709,6 +2883,7 @@ export class Game {
     this.audio.dispose();
     this.debug.dispose();
     this.minimap.dispose();
+    this.rings.dispose();
     this.pipeline.dispose();
     window.removeEventListener('blur', this.onBlur);
     document.removeEventListener('visibilitychange', this.onVisibility);

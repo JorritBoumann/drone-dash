@@ -25,7 +25,7 @@ export function nextGoal(score: number): { tier: number; name: string; score: nu
   return { tier: t + 1, name: GOALS.tiers[t].name, score: to, progress: Math.max(0, Math.min(1, (score - from) / (to - from))) };
 }
 
-const BEST_TIER_KEY = 'drone-dash-best-tier-v1';
+const BEST_TIER_KEY = 'drone-dash-best-tier-v2'; // round 48: the shift's medals are a new table
 
 export function readBestTier(): number {
   try {
